@@ -106,7 +106,7 @@ class IA:
             self.tts_service = 'google'
 
        #calls the eleven lab api from the env.txt
-        set_api_key(getenv('ELEVENLABS_API_KEY'))
+        set_api_key("your_api_key_here") #CHANGE THIS TO set_api_key(getenv('ELEVENLABS_API_KEY')) IF YOURE NOT DEBUGGING
 
        #configs for the levenlabs voice
         if voice:
@@ -207,8 +207,8 @@ class IA:
             print('\n\33[7m' + "Epic Assistant:" + '\33[0m' + f' {text}')
             return
 
-        audio_file = sf.read('output.mp3') #reads the audio fale generated
-        sd.play(audio_file) #plays the audio file
+        data, samplerate = sf.read('output.mp3') #reads the audio fale generated
+        sd.play(data, samplerate) #plays the audio file
         sd.wait() #wait for playback to finish
 
     #little function that puts in play the user input and the chatgpt response
@@ -320,9 +320,10 @@ def main():
     ai.conversation_cycle()
 
     #loop to repeat convo
-    #while True:
-    #    ai.conversation_cycle()
+    while True:
+       ai.conversation_cycle()
 
 #if this file is executed directly it will run the main funtion
 if __name__ == "__main__":
     main()
+

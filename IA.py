@@ -1,4 +1,5 @@
 #all of the import libraries duh
+import asyncio #this is for vtube aswell
 import openai #well... its opena ai
 import speech_recognition as sr #self explanatory I think
 from gtts import gTTS #goolge tts free :)
@@ -6,6 +7,7 @@ from elevenlabs import generate, save, set_api_key, voices #shitty elevenlab pai
 import sounddevice as sd #sounddevice important in a function
 import soundfile as sf #library to generate the sound file
 
+from VtubeS_Plugin import VtubeControll #my vtube plugin
 from dotenv import load_dotenv #for the env.txt to put the api keys into
 from os import getenv, path #gets the system envorenment variable
 from json import load, dump, dumps, JSONDecodeError
@@ -16,7 +18,8 @@ from json import load, dump, dumps, JSONDecodeError
 #class of the AI this time IA as the name in spanish
 class IA:
     #initializacion that puts placeholders on all the modifiable variables
-    def __init__(self) -> None:
+    def __init__(self, vts: VtubeControll=None) -> None:
+        self.vts = vts #adds the vtube capapbility
         self.mic = None
         self.recogniser = None
 
@@ -125,7 +128,7 @@ class IA:
             try:
                 sd.check_output_settings(output_device)  #checks output settings
                 sd.default.samplerate = 44100 #sample rate in hz ex: 44100 is 44khz 
-                sd.default.device = output_device #sets the default device (should be the vb cable)
+                sd.default.device = "CABLE Input (VB-Audio Virtual Cable)" #sets the default device (should be the vb cable)
             except sd.PortAudioError:
                 #error
                 print("Invalid output device! Make sure you've launched VB-Cable.\n",
@@ -218,6 +221,15 @@ class IA:
         response = self.get_chatbot_response(input)
 
         self.tts_say(response) #pass the response through the tts functions
+
+        '''
+        Vtube Studio plugin implementation.
+        This passes the output from chatgpt and passes it through the emotion detection so that AI can trigger hotkeys
+        '''
+        if self.vts:
+            emotion = self.vts.emotion_auto
+            asyncio.create_task(self.vts.trigger_hotkey(emotion))
+        
         
         return dict(user = input, assistant = response) #returns everything in a dictionary
     

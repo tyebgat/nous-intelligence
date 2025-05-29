@@ -3,10 +3,10 @@ from IA import IA
 from VtubeS_Plugin import VtubeControll
 
 async def main():
-    vts = VtubeControll()
-    await vts.initialize() #starts up the plugin
+    vtsp = VtubeControll()
+    await vtsp.initialize() #starts up the plugin
 
-    ai = IA(vts=vts)
+    ai = IA(vts=vtsp)
 
     ai.initialize(user_input_service='console',
                      stt_duration = None,

@@ -5,7 +5,7 @@ THIS PROJECT ONLY WORKS WITH PYTHON 3.11!!!!
 
 THIS PROJECT IS STILL UNDER DEVELOPMENT AND NOT YET REALESED PLEASE DO NOT TRY TO USE IT
 --------------------------------------------------------------------------------------
-REQUIREMENTS:
+**REQUIREMENTS:**
 
 -Vb virtual audio cable
 
@@ -14,8 +14,8 @@ REQUIREMENTS:
 -Vtube Studio
 
 ---------------------------------------------------------------------------------------
-How to install:
-
+**How to install:**
+--------------------
 -download code as zip and extract onto a folder
 
 -Go to either your visual studio or local windows terminal
@@ -35,8 +35,8 @@ How to install:
 https://github.com/user-attachments/assets/805fde38-ef2e-4681-b4c1-8bbff890419b
 
 ----------------------------------------------------------------------------------------
-Vtube Studio Configuration
-
+**Vtube Studio Configuration**
+------------------------------
 -Select the model of your choice
 
 -Go to configuration (gear icon) and scroll down until you see the slider "START API (allow plugin)" and tick it to blue.
@@ -68,9 +68,10 @@ make sure its running on port 8001
 etc..
 
 model should be setup now.
------------------------------------------------------------------------------------------------------------
-Common problems:
 
+-----------------------------------------------------------------------------------------------------------
+**Common problems:**
+--------------------
 -If lypsync is not working it's probably because there is no audio signal going to CABLE Output. 
  Fix this by going into windows sound settings > playback > CABLE Input > Properites > Advanced > "Give Exclusiver mode applications priority" should be ticked off.
  

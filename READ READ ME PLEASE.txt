@@ -1,0 +1,13 @@
+Como instalar:
+
+abrir cmd en una computadora con python instalado
+
+ir a la directoria del proyecto:
+  cd c\users\directoria del proyecto ejemplo
+
+instalar requerimientos de python
+  pip install -r requirements.txt
+
+dejar la instalacion haga su cosa
+
+ESTE PROYECTO SOLO FUNCIONA EN PYTHON 3.11 o 3.12!!!!!!

@@ -1,11 +1,12 @@
 # nouse-intelligence
-Ai assistant with vtuber capabilityies powered by chatgpt
+Ai assistant with vtuber capabilities powered by chatgpt
 
 THIS PROJECT ONLY WORKS WITH PYTHON 3.11!!!!
 
 THIS PROJECT IS STILL UNDER DEVELOPMENT AND NOT YET REALESED PLEASE DO NOT TRY TO USE IT
 --------------------------------------------------------------------------------------
 REQUIREMENTS:
+
 -Vb virtual audio cable
 
 -Python 3.11

@@ -68,3 +68,16 @@ make sure its running on port 8001
 etc..
 
 model should be setup now.
+-----------------------------------------------------------------------------------------------------------
+Common problems:
+
+-If lypsync is not working it's probably because there is no audio signal going to CABLE Output. 
+ Fix this by going into windows sound settings > playback > CABLE Input > Properites > Advanced > "Give Exclusiver mode applications priority" should be ticked off.
+ 
+ ![image](https://github.com/user-attachments/assets/06163191-1136-4051-aed0-d2c807c7b087)
+
+ ![image](https://github.com/user-attachments/assets/0ca08be1-9819-48ff-8e38-e37cac7410dc)
+
+-Click Apply > click ok.
+-Lypsync should be working now.
+ 

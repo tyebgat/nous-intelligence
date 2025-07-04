@@ -24,7 +24,7 @@ jedi==0.19.0
 matplotlib-inline==0.1.6
 multidict==6.0.4
 numpy==1.25.2
-openai==0.27.8
+openai==1.0.0
 parso==0.8.3
 pickleshare==0.7.5
 prompt-toolkit==3.0.39

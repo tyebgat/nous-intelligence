@@ -1,6 +1,6 @@
 Como instalar:
 
-abrir cmd en una computadora con python instalado
+abrir terminal dentro de visual studio en una computadora con python instalado
 
 ir a la directoria del proyecto:
   cd c\users\directoria del proyecto ejemplo

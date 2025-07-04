@@ -1,4 +1,4 @@
-# nouse-intelligence
+# nous-intelligence
 Ai assistant with vtuber capabilities powered by chatgpt
 
 THIS PROJECT ONLY WORKS WITH PYTHON 3.11!!!!

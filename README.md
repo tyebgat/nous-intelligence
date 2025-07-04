@@ -23,7 +23,7 @@ How to install:
 
 -If it shows python 3.11 or 3.12 you are good to go, if not then uninstall your current python  version and install python 3.11
 
--Go to the file directory that you have the porject folder (EX: C\Users\exUser\desktop\example_project_folder)
+-Go to the file directory that you have the porject folder with cmd (EX: C\Users\exUser\desktop\example_project_folder) using the command: cd your_directory_here
 
 -Install the required libraries with command: pip install -r requirements.txt
 

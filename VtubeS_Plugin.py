@@ -5,6 +5,7 @@ from ast import main
 import os #lets me control windows, used to delete, write, and read the auth token
 import pyvts #python library especifically made to work with vtube studio api
 import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
+from typing import List, Dict
 
 #avatar control class
 class VtubeControll:
@@ -15,7 +16,7 @@ class VtubeControll:
           plugin_info={
              "plugin_name": "NousSoul",
              "developer": "Tagb",
-             "authentication_token_path": "./noussoul_auth_token.txt" #this is the token file name that will be save when verfied, you can change to whatever you want
+             "authentication_token_path": "./noussoul_auth_token.txt" #token is stored in a txt
           }
      )
      self.hotkeys = {} #cache for hotkeys which will serve for emotions
@@ -24,7 +25,7 @@ class VtubeControll:
     #initializes the function of the authentication and hotkey fetch
     async def initialize(self):
         await self.auth_connect()
-        await self.hotkey_fetch() #Comment out this function, because hotkey triggers stops lypsync, if you dont mind it then leave it as is :P
+        await self.hotkey_fetch() #Comment out this function, because hotkey triggers stops lypsync for some models, if you dont mind it then leave it as is :P
 
     #function for the authentication of the plugin
     async def auth_connect(self):
@@ -93,7 +94,7 @@ class VtubeControll:
          with open(token_path, 'w') as f :
              f.write(auth_token)
         
-         # Authenticate with new token
+         #authenticate with new token
          auth_response = await self.vts.request({ #calls the api for an authentication request of the new token
              "apiName": "VTubeStudioPublicAPI",
              "apiVersion": "1.0",
@@ -116,12 +117,12 @@ class VtubeControll:
      #if the execution of the code had an error then stop code execution and raise an error
      except Exception as e:
          print(f"Authentication error: {e}")
-         raise #raises error, it stops the rest of the code execution to prevent a crash since the auth was incompleted
+         raise #raises error
 
     #function that requests the models hotkeys
     async def hotkey_fetch(self):
         try:
-            #calls vtube studio api to request hotkeys 
+            #calls vtube studio api to request hotkeys  
             response = await self.vts.request({
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
@@ -206,26 +207,40 @@ class VtubeControll:
         except Exception as reconnect_error:
             print(f"Failed to reconnect and trigger hotkey '{name}': {reconnect_error}")
 
-    #automatically detects emotion FIXED: This should return the detected emotion, not call trigger_hotkey
-    def emotion_auto(self, text): #text refers to the ai response, im not sure how that works too XD
-        emotions = []
-        text_lower = text.lower() #makes the text into lowercase
-        
-        #triggers angry hotkey if any of this words are in response
-        if any(word in text_lower for word in ["angry", "mad", "furious", "annoyed"]):
-            emotions.append("Angry")
-        #triggers sad hotkey if any of this words are in response
-        if any(word in text_lower for word in ["sad", "cry", "depressed", "upset"]):
-            emotions.append("Sad")
-        #triggers happy hotkey if any of this words are in response
-        if any(word in text_lower for word in ["great", "happy", "yay", "joy", "excited", "wonderful", "good", "awesome", "fantastic"]):
-            emotions.append("Happy")
-        #triggers surprised hotkey if any of this words are in response
-        if any(word in text_lower for word in ["surprised", "wow", "amazing", "shocked"]):
-            emotions.append("Surprised")
-        
-        #return the first detected emotion, or Neutral if none found
-        return emotions[0] if emotions else "Neutral"
+    def analyze_dominant_emotion(self, text: str) -> Dict:
+        try:
+            # Define emotions and their keywords
+            happy_words = ["great", "happy", "yay", "joy", "awesome", "excited", "wonderful", "good", "fantastic", "amazing", "love", "perfect"]
+            sad_words = ["sad", "cry", "depressed", "upset", "terrible", "awful", "disappointed", "sorry"]
+            angry_words = ["angry", "mad", "furious", "annoyed", "hate", "stupid", "ridiculous", "frustrated"]
+            surprised_words = ["surprised", "wow", "shocked", "incredible", "unbelievable", "whoa"]
+    
+            # Convert text to lowercase and clean it
+            text_lower = text.lower()
+            words = text_lower.split()
+            clean_words = [word.strip('.,!?;:"()[]') for word in words]
+    
+            # Count each emotion
+            happy_count = sum(1 for word in clean_words if word in happy_words)
+            sad_count = sum(1 for word in clean_words if word in sad_words)
+            angry_count = sum(1 for word in clean_words if word in angry_words)
+            surprised_count = sum(1 for word in clean_words if word in surprised_words)
+    
+            print(f"Emotion counts - Happy: {happy_count}, Sad: {sad_count}, Angry: {angry_count}, Surprised: {surprised_count}")
+    
+            # Find the highest count
+            counts = [happy_count, sad_count, angry_count, surprised_count]
+            emotions = ["Happy", "Sad", "Angry", "Surprised"]
+    
+            max_count = max(counts)
+            if max_count == 0:
+                return "Neutral"
+    
+            dominant_emotion = emotions[counts.index(max_count)]
+            print(f"Dominant emotion: {dominant_emotion}")
+            return dominant_emotion
+        except Exception as e:
+            print(f"error in analyzing dominant emotion: {e}")
 
 #if this file is executed directly it will run the main funtion         
 if __name__ == "__main__":

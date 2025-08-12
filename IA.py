@@ -1,446 +1,212 @@
-#all of the import libraries duh
-import asyncio #this is for the web requests and api calls, basically for the vtube studio plugin
-import openai #well... its opena ai
-from openai import OpenAI # more ai
-import speech_recognition as sr #self explanatory I think
-from gtts import gTTS #goolge tts free :)
-from elevenlabs import generate, save, set_api_key, voices #shitty elevenlab paid config libraries
-import sounddevice as sd #sounddevice important in a function
-import soundfile as sf #library to generate the sound file
+import asyncio #asynchronous lirbary that lets every IO task be in sync
+import speech_recognition as sr #handles speech recognition
+from gtts import gTTS #google's text to speech
+import sounddevice as sd #library that allows audio playback to a selected device
+import soundfile as sf #library that enables creation of audio file
+from VtubeS_Plugin import VtubeControll #My vtube studio plugin :3
+from os import path #os library path to check existence of files
+from json import load, dump, JSONDecodeError #Library used for saving and loading chat history
+from dotenv import load_dotenv #library to load the .env file
+from openai import OpenAI #open ai library
+from os import getenv #library to open the .env file
 
-from VtubeS_Plugin import VtubeControll #my vtube plugin
-from dotenv import load_dotenv #for the env.txt to put the api keys into
-from os import getenv, path #gets the system envorenment variable
-from json import load, dump, dumps, JSONDecodeError
-
-#this code uses classes, because its prob the best way to do this and looks very cool
-#If you want to understand this watch this video https://www.youtube.com/watch?v=u4Ryk0YuW6A
-
-#class of the AI this time IA as the name in spanish
-class nous:
-    #initializacion that puts placeholders on all the modifiable variables
-    def __init__(self, vts: VtubeControll=None) -> None: #vts argument is used for the vtube studio plugin in main.py
-        self.vts = vts 
-        self.mic = None
-        self.recogniser = None
-
-        self.user_input_service = None
-        self.stt_duration = None #stt is Speech To Text which is the speec recognizion
-
-        self.chatbot_service = None
-        self.chatbot_model = None
-        self.chatbot_temperature = None
-        self.chatbot_personality_file = None
-
+class Nous:
+    def __init__(self, vts: VtubeControll = None) -> None:
+        #chatgpt personlaity
+        self.context = [
+            {
+                "role": "system",
+                "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic"
+            }
+        ]
+        #variable initialization
+        self.vts = vts #calls the vts plugin
+        self.chatbot_service = "openai"
+        self.user_input_service = "speech"
+        self.mic = None #mic for speech recognition, None means it will use default device
+        self.recogniser = sr.Recognizer()
         self.message_history = []
         self.context = []
+        self.cable_device_id = None
+        self.last_audio_duration = 0
 
-        self.tts_service = None
-        self.tts_voice = None
-        self.tts_model = None
+    def initialize(self, mic_index: int = None) -> None:
+        self.debug_audio_devices() #prints all available audio devices for debuggin purposes
+        self.mic = sr.Microphone(device_index=mic_index)  #micrphone where audio will be played
+        self.cable_device_id = self.get_cable_device_id() #gets cable device id
+        if self.cable_device_id is not None:
+            print(f"VB Cable device set to id: {self.cable_device_id}") #prints cable device id
+        else:
+            print("No VB cable found, lypsinc may not work.")
+        self.load_chatbot_data() #loads chatbot history if it exists
 
-    #defines all of the variables, the function that calls all of the api keys from the env.txt
-    def initialize(self, user_input_service:str = None, stt_duration:float = None, mic_index:int = None,
-                    chatbot_service:str = None, chatbot_model:str = None, chatbot_temperature:float = None, personality_file:str = None,
-                    tts_service:str = None, output_device = None, tts_voice:str = None, tts_model:str = None) -> None:
-        load_dotenv() #loads the env.txt file with the api keys
-
-        #function that prints out all audio device, used for debuggin 
-        self.debug_audio_devices()
-
-        #speech recognition using open ai "whisper" or google 
-        self.update_user_input(user_input_service=user_input_service, stt_duration=stt_duration)
-        self.mic = sr.Microphone(device_index=mic_index)
-        self.recogniser = sr.Recognizer()
-        
-        #calls all of the open ai chat bot functions
-        openai.api_key = getenv("OPENAI_API_KEY")
-        self.update_chatbot(service = chatbot_service, model = chatbot_model, temperature = chatbot_temperature, personality_file = personality_file)
-        self.__load_chatbot_data()
-        
-        #calls the tts function
-        self.update_tts(service=tts_service, output_device=output_device, voice=tts_voice, model=tts_model)
-
-    #debug function that prints out all of audio devices
     def debug_audio_devices(self):
-     """Debug all audio devices"""
-     devices = sd.query_devices() #gets the list of audio devices
-     print("\n=== ALL AUDIO DEVICES ===")
-     for i, device in enumerate(devices): #enumerates thge audio devices
-         print(f"[{i}] {device['name']}")
-         print(f"    Max input channels: {device['max_input_channels']}")
-         print(f"    Max output channels: {device['max_output_channels']}")
-         print(f"    Default sample rate: {device['default_samplerate']}")
-         print()   
-   
-   #updates and configures chat gpt stt 'whisper'
-    def update_user_input(self, user_input_service:str = 'whisper', stt_duration:float = 0.5) -> None:
-        #if user input is none then automatically put whisper
-        if user_input_service:
-            self.user_input_service = user_input_service 
-        elif self.user_input_service is None: 
-            self.user_input_service = 'whisper' 
+        devices = sd.query_devices() #gets a lists of all audio devices
+        print("\n=== ALL AUDIO DEVICES ===")
+        #loops stores the index of each device in i, printing the following information of each audio device
+        for i, device in enumerate(devices):
+            print(f"[{i}] {device['name']}")
+            print(f"    Max input channels: {device['max_input_channels']}")
+            print(f"    Max output channels: {device['max_output_channels']}")
+            print(f"    Default sample rate: {device['default_samplerate']}")
+            print()
 
-       #magic code that adjust for ambience noise
-        if stt_duration:
-            self.stt_duration = stt_duration
-        elif self.stt_duration is None:
-            self.stt_duration = 0.5 #don't really know how this value works itf its any different from 0.5 there are problems so don't touch it XD
-
-   #defines the specific of the open ai's chatbot functions, only modify the chatgpt model
-   #the variable "temperature" if to determine the model randomness, everything else is self explanatory
-    def update_chatbot(self, service:str = 'openai', model:str = 'gpt-3.5-turbo', temperature:float = 0.5, personality_file:str = 'personality.txt') -> None:
-        
-        #chat bot service
-        if service:
-            self.chatbot_service = service
-        elif self.chatbot_service is None:
-            self.chatbot_service = 'openai'
-
-        #open ai model, change depending on what model you're paying the api key. 
-        if model:
-            self.chatbot_model = model
-        elif self.chatbot_model is None:
-            self.chatbot_model = 'gpt-3.5-turbo'
-
-        #temperature, randomness in responses. 
-        if temperature:
-            self.chatbot_temperature = temperature
-        elif self.chatbot_temperature is None:
-            self.chatbot_temperature = 0.5
-
-        #the personality file.
-        if personality_file:
-            self.chatbot_personality_file = personality_file
-        elif self.chatbot_personality_file is None:
-            self.chatbot_personality_file = 'personality.txt'
-
-    #finds the vb virtual audio cable 
     def get_cable_device_id(self):
-     """FIND THE CABLE OUTPUT FOR VTUBE LYPSYCN"""
-     devices = sd.query_devices()
+        devices = sd.query_devices()
+        #same loop logic as the past function
+        #except this one checks if the name matches with cable input audio device
+        for i, device in enumerate(devices):
+            name = str(device['name']).lower()
+            #checks the name output and sample rate to identify the audio cable
+            if (device['max_output_channels'] > 0 and
+                'cable input' in name and
+                'vb-audio virtual cable' in name and
+                device['default_samplerate'] == 44100.0):
+                print(f"Found VB Cable Input: [{i}] {device['name']}")
+                return i #returns i AKA the audio device inidex/id
+        return None
 
-     #llok for cable input with 44100 sample rate
-     for i, device in enumerate(devices): #enumerates the audio devices
-         device_name = str(device['name']).lower() #converts audio devices to a string and puts it in lower case 
-         #if audio devices are more than 0 then check if a 'cable input' or 'vb-audio virtual cable' exists
-         if (device['max_output_channels'] > 0 and 
-             'cable input' in device_name and 
-             'vb-audio virtual cable' in device_name and
-             device['default_samplerate'] == 44100.0):
-             print(f"Found VB Cable Input: [{i}] {device['name']}") #prints that audio device name
-             return i #return the cable input ID
-    #print error if cable input not found
-     print("Warning: No VB Cable Input found.")
-     return None
-    
-    #function that updates the text to speech, chacks which service the user is using
-    def update_tts(self, service:str = 'google', output_device = None, voice:str = None, model:str = None) -> None:
-        
-        #If service is set to none then automatically use google tts
-        if service:
-            self.tts_service = service
-        elif self.tts_service is None:
-            self.tts_service = 'google'
-
-       #if service is elevenlabs then use 
-        if service == 'elevenlabs':
-            elevenlabs_api = getenv('ELEVENLABS_API_KEY')
-            if elevenlabs_api:
-                set_api_key(elevenlabs_api)
-            else:
-                print("WARNING: No api for elevenlabs.")
-
-       #configs for the levenlabs voice
-        if voice:
-            self.tts_voice = voice
-        elif self.tts_voice is None:
-            self.tts_voice = 'Elli'
-
-        if model:
-            self.tts_model = model
-        elif self.tts_model is None:
-            self.tts_model = 'eleven_monolingual_v1'
-
-        #find and set the vb cable device
-        self.cable_device_id = self.get_cable_device_id() #gets the cable device id from the funtcion I made to detect it
-        if self.cable_device_id is not None: #if cable device actually has an id then print it
-             print(f"VB Cable decive set to id: {self.cable_device_id}")
-        #if there is no cable device then print an error
+    def get_user_input(self) -> str:
+        if self.user_input_service == "console": #input from console
+            try:
+                user_input = input('\n\33[7m' + "User: " + '\33[0m')
+                return user_input #returns input from conole
+            except Exception as e:
+                print(f"console input error: {e}")
+                return ""
+        elif self.user_input_service == "speech":
+            #'with' is a fancy way of doing 'source = sr.Microphone()'
+            #what 'with' allows me to do is end the hassle of closing the variable manually (source.open_stream()/source.close_stream())
+            with self.mic as source: #here its used to assigned the open mic to a variable called source
+                print('(start listening)')
+                self.recogniser.adjust_for_ambient_noise(source, duration=0.5) #function from sr library we pass the audio through here to reduce noise
+                audio = self.recogniser.listen(source) #function from sr library were it creates a audio data object that we store in a variable
+                print('(stoped listening)')
+            try:
+                return self.recogniser.recognize_google(audio) #function from sr libary passes the audio data we stored to google to recognize
+            except Exception as e:
+                print(f"Speech recognition error: {e}")
+                return ""
         else:
-             print("ERROR: No VB Cable found, lyp sync wont work.")
-    
-   #gets and lists all audio devices
-    def get_audio_devices(self): #honestly im pretty sure this functin is unnecesary, but the code functions so im not gonna touch it and wreck it 
-        return sd.query_devices() 
-    
-    #gets user input and turns into a string to send it the chatbot from desired service 
-    #"None" means they'll use the default values
-    def get_user_input(self, service:str = None, stt_duration:float = None) -> str:
-        #this are the variables used in initialize, if set to none it uses the default values
-        service = self.user_input_service if service is None else service
-        stt_duration = self.stt_duration if stt_duration is None else stt_duration
+            print(f"unknown input service: {self.user_input_service}")
+            return ""
 
-        #lists of services
-        supported_stt_services = ['whisper', 'google']
-        supported_text_services = ['console']
-        
-        #checks the supported services, if there aren't any stt services then it uses the console
-        result = "" 
-        #self variables with double underscore like self.__recognise_speech are only meant to be used inside the class not called from the outside
-        #this self variables are functions that are defined later in the code around line 365
-        if service in supported_stt_services:
-            result = self.__recognise_speech(service, duration=stt_duration)
-        elif service in supported_text_services:
-            result = self.__get_text_input(service)
-        #if user inputted wrong or unsopported the raise an error
+    def get_chatbot_response(self, prompt: str) -> str:
+        if self.chatbot_service == "openai":
+            try:
+                client = OpenAI(api_key=getenv("OPENAI_API_KEY")) #calls api key
+                self.add_message('user', prompt)
+                messages = self.context + self.message_history #chatgpt personality plus the chatbot history
+                response_obj = client.chat.completions.create( #create chat with openai function and store it in a variable
+                    model = "gpt-4o-mini",
+                    messages=messages,
+                    temperature=0.5
+                )
+                chatgpt_response = response_obj.choices[0].message.content #in chatgpt response, it gets the first response in 'content'
+                self.add_message('assistant', chatgpt_response)
+                self.update_message_history()
+                return chatgpt_response
+            except Exception as e:
+                print(f"Opeai api error: {e}")
+                return "Api error."
+
+        elif self.chatbot_service == "test": #test answer
+            dummy_response = "Testing tts, functions great!"
+            self.add_message('user', prompt)
+            self.add_message('assistant',dummy_response)
+            self.update_message_history()
+            return dummy_response
         else:
-            raise ValueError(f"{service} servise doesn't supported. Please, use one of the following services: {supported_stt_services + supported_text_services}")
+            print(f"unknown chatbot service. chatbot_services {self.chatbot_service}")
+            return "Unknown service."
         
-        #returns the console prompt or the speech recognition turned into a string
-        return result
-    
-    #the chatgpt response
-    #"None" means they'll use the default values
-    def get_chatbot_response(self, prompt:str, service:str = None, model:str = None, temperature:float = None) -> str:
-        service = self.chatbot_service if service is None else service
-        model = self.chatbot_model if model is None else model
-        temperature = self.chatbot_temperature if temperature is None else temperature
-
-        supported_chatbot_services = ['openai', 'test']
-
-        #checks which chatbot service there is, if openai api key isn't activated then it will just put out the test response
-        result = ""
-        if service == 'openai':
-            result = self.__get_openai_response(prompt, model=model, temperature=temperature)
-        elif service == 'test':
-            result = "Test answer from the very great assistant!" #test answer
-        #if user inputted wrong or unsopported the raise an error
-        else:
-            raise ValueError(f"{service} servise doesn't supported. Please, use one of the following services: {supported_chatbot_services}")
-        
-        #returns chatgpt response
-        return result
-    
-    #text to speech settings 
-    #"None" means they'll use the default settings
-    async def tts_say(self, text:str, service:str = None, voice:str = None, model:str = None) -> None:
-        service = self.tts_service if service is None else service
-        voice = self.tts_voice if voice is None else voice
-        model = self.tts_model if model is None else model
-
-        supported_tts_services = ['google', 'elevenlabs', 'console'] #supported tts services
-
-        #if the service is not in supported_tts_services it throws and error
-        if service not  in supported_tts_services:
-            raise ValueError(f"{service} servise doesn't supported. Please, use one of the following services: {supported_tts_services}")
-        
-        #print to console first 
+    async def tts_say(self, text: str) -> None:
+        #chatgpt response or test response in console
         print('\n\33[7m' + "Epic Assistant:" + '\33[0m' + f' {text}')
-
-        #checks the service of the output
+        
         try:
-         if service == 'google':
-             gTTS(text=text, lang='en', slow=False, lang_check=False).save('output.wav') #you can put the output in whatever audio extension you want
-             print('\n\33[7m' + "Epic Assistant:" + '\33[0m' + f' {text}') #prints gtts response in console
-         elif service == 'elevenlabs': #chooses the elevenlabs sevice which was configured earlier
-             self.__elevenlabs_generate(text=text, voice=voice, model=model)
+            #generate tts with response from chatgpt or test reponse
+            gTTS(text=text, lang='en', slow=False, lang_check=False).save('output.wav')
         except Exception as e:
-             print(f"Error generating tts: {e}")
-             return
-
-        #error checks!
-        if not path.exists('output.wav'): #if output was not created then print error
-            print("ERROR output.wav file was not created!")
+            print(f"Error generating TTS: {e}")
             return
         
-        print(f"File size: {path.getsize('output.wav')}") #print file size of audio output that was created
+        if not path.exists('output.wav'): #error if the file output is not found
+            print("error: output.wav file not created!")
+            return
 
-        #tries reading the audio file
         try:
-            print("reading audio file...")
-            data, samplerate = sf.read('output.wav') #make this variables read the output file
-            print(f"Audio loaded: {len(data)} samples at {samplerate}Hz") #counts  the sample and hz and then prints it 
+            #stores the two things sf reads return, data: raw audio data, samplerate: samplerate
+            data, samplerate = sf.read('output.wav')
+            self.last_audio_duration = len(data) / samplerate #formula for calculating audio duration 
 
-            #resamples if audio is not 44100
-            if samplerate!=44100:
-                print("resampling audio")
-                import librosa #library used for resampling audio
-                data = librosa.resample(data, orig_sr=samplerate, target_sr=44100)
-                samplerate=44100
-
-            #if cable device has an id (which we set earlier in the code) then play in default speaker and in cable input
             if self.cable_device_id is not None:
-                print(f"Playing to both default and VB Cable device: {self.cable_device_id}")
-                
-                #play to both devices simultaneously using threading
-                import threading #library used for... you guessed it! threading!
-
-                #function that plays on the default device
-                def play_to_default(): 
+                import threading
+                def play_default(): #plays to default device
                     sd.play(data, samplerate)
                     sd.wait() #waits for audio to finish
-
-                #function that plays to the cable input
-                def play_to_cable():
-                    sd.play(data, samplerate, device=self.cable_device_id)
+                def play_cable(): #prints to virtual cable
+                    sd.play(data, samplerate, device=self.cable_device_id) #uses our function to find the deivce id and plays it to that device
                     sd.wait() #waits for audio to finish
-                    print("Audio sent to VB Cable Vtube studio should detect it.")
-                
-                #start both threads
-                thread1 = threading.Thread(target=play_to_default) #run play on defualt device function in 1 thread
-                thread2 = threading.Thread(target=play_to_cable) #run play on cable input on another thread
-                
-                #start both threads
-                thread1.start()
-                thread2.start()
-                
-                #wait for both threads to complete
-                thread1.join()
-                thread2.join()
-            #if cable input doesnt have an id then just play on the default device
-            else:
-                print("No VB Cable found, playing to default only")
+                #calls threading
+                t1 = threading.Thread(target=play_default)
+                t2 = threading.Thread(target=play_cable)
+                #starts threads
+                t1.start()
+                t2.start()
+                #ends threads
+                t1.join()
+                t2.join()
+            else: #if cable device is not found then just play it to the default device
                 sd.play(data, samplerate)
-                sd.wait() #waits for audio to finish playing
-
-            print("Audio playback completed")
-
-        #if code execution gone wrong then print an error
+                sd.wait()
         except Exception as e:
-            print(f"Error playing audio. Are your sounds alright?: {e}")
+            print(f"Error playing audio: {e}")
 
-    #little function that puts in play the user input and the chatgpt response
-    async def conversation_cycle(self) -> dict:
-        input = self.get_user_input()
-        response = self.get_chatbot_response(input)
-        
-        #trigger emotion immediatly when response is generated
+    async def conversation_cycle(self):
+        user_input = self.get_user_input() #calls user input
+        if not user_input:
+            return ""
+        response = self.get_chatbot_response(user_input) #gets chatgpt response or test response
+
         if self.vts:
             try:
-                emotion = self.vts.emotion_auto(response) #calls the emotion auto function in vts plugin
-                print(f"Detected emtotion: '{emotion}'")
-                if emotion != "Neutral":
-                    await self.vts.trigger_hotkey(emotion)
-            #if there is an error in triggering a hotkey then print it
+                dominant_emotion = self.vts.analyze_dominant_emotion(response) #gets dominant emotion form chatgpt response
+                await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
             except Exception as e:
-                print(f"Vtube studio error: {e}")
-        await self.tts_say(response) #wait for chatgpt response to finish
-    
-    #get chatgptn response
-    def __get_openai_response(self, prompt:str, model:str, temperature:float) -> str:
-        self.__add_message('user', prompt) #adds the users message to history
-        messages = self.context + self.message_history #combines the users prompts with the context (the personality file)
+                print(f"Emotion analysis error: {e}")
 
-        #creates a chat in open ai chatgpt api 
-        client = OpenAI(api_key= getenv('OPENAI_API_KEY'))
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature, 
-        )
-        response = response.choices[0].message.content #extracts the content from the reply
+        await self.tts_say(response) #waits for tts to finish
 
-        self.__add_message('assistant', response) #adds chatgpt response to the message history
-        self.__update_message_history() #updates the history
-
-        return response #returns the response generated by chatgpt
-    
-    #this marks if the message is from the user or chatgpt
-    def __add_message(self, role:str, content:str) -> None:
-        self.message_history.append({'role': role, 'content': content})
-
-    #loads the personality file, this is where the os lib is used
-    def __load_chatbot_data(self, file_name:str = None) -> None:
-        file_name = self.chatbot_personality_file if file_name is None else file_name #makes the personality.txt file the default one
-
-        #opens the persnality file in read mode
-        with open(file_name, 'r') as file:
-            personality = file.read()
-        self.context = [{'role': 'system', 'content': personality}] #stores it so cahtgpt can read the previous conversation
-
-        #if a message history file exists, open it and continue the convo
-        if path.isfile('./message_history.txt'):
-            with open('message_history.txt', 'r') as file:
-                try:
-                    self.message_history = load(file)
-                except JSONDecodeError:
-                    pass
-    
-    #creates a .txt out of the message history 'w' is write mode
-    def __update_message_history(self) -> None:
-        with open('message_history.txt', 'w') as file:
-                dump(self.message_history, file)
-
-    #if the user input is set to console show this prompt and get input
-    def __get_text_input(self, service:str) -> str:
-        user_input = ""
-        if service == 'console':
-            user_input = input('\n\33[42m' + "User:" + '\33[0m' + " ")
-        return user_input
-    
-    #generate audio output from elevenlabd 
-    def __elevenlabs_generate(self, text:str, voice:str, model:str, filename:str='output.mp3'): #set to preffered audio extension
-        audio = generate(
-                 text=text,
-                 voice=voice,
-                 model=model
-                )
-        save(audio, filename)
-
-    #turn the audio to text
-    def __recognise_speech(self, service:str, duration:float) -> str:
-        with self.mic as source: #opens mic
-            print('(Start listening)')
-            self.recogniser.adjust_for_ambient_noise(source, duration=duration) #adjust ambient noise
-            audio = self.recogniser.listen(source) #record mic
-            print('(Stop listening)') 
-
-            #passes the audio to be transcribe by either whisper or google
-            result = ""
+        if self.vts:
             try:
-                if service == 'whisper':
-                    result = self.__whisper_sr(audio)
-                elif service == 'google':
-                    result = self.recogniser.recognize_google(audio)
+                await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
             except Exception as e:
-                print(f"Exeption: {e}")
-        return result
-    
-    #amkes whisper open the audio and transcribes it into text
-    def __whisper_sr(self, audio) -> str:
-     try:
-         with open('speech.wav', 'wb') as file:
-             file.write(audio.get_wav_data())
-    
-         client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
-    
-         with open('speech.wav', 'rb') as audio_file:
-             transcript = client.audio.transcriptions.create(
-             model="whisper-1", 
-             file=audio_file
-            )
-             return transcript.text
-     except Exception as e:
-         print(f"Error in Whisper transcription: {e}")
-         return ""
+                print(f"Error resetting to Neutral: {e}")
+
+    def add_message(self, role: str, content: str) -> None: #this only saves to ram
+        self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
+
+    def load_chatbot_data(self) -> None: #creates a file with add_message() adds stuff to it 
+        if path.isfile('./message_history.txt'): #checks if file exists
+            try:
+                with open('message_history.txt', 'r') as file: #loads file
+                    self.message_history = load(file)
+            except JSONDecodeError:
+                pass #if file si corrupted then just start over fresh
+
+    def update_message_history(self) -> None: 
+        with open('message_history.txt', 'w') as file: #opens in write mode
+            dump(self.message_history, file) #function from json library, saves the ptyhon dicitonary as a json
 
 
-#main function, initializes the ai
 def main():
-    ai = nous()
-    ai.initialize(user_input_service='console', 
-                 chatbot_service='test', 
-                 tts_service='google', output_device=8)
-    
-    #starts the conversation cycle
-    ai.conversation_cycle()
-
-    #loop to repeat convo
+    ai = Nous()
+    ai.user_input_service = "console"
+    ai.chatbot_service = "test"
+    ai.initialize()
     while True:
-       ai.conversation_cycle()
+        asyncio.run(ai.conversation_cycle())
 
-#if this file is executed directly it will run the main funtion
 if __name__ == "__main__":
     main()
-

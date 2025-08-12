@@ -210,3 +210,37 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+#------------MEMOS----------------------
+
+"""Help in understanding some function:
+in get_chatbot_response: response obj stores chatgpt api response, which is something like this:
+{
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Hello! How can I help you today?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { ... },
+  "model": "gpt-4o-mini"
+}
+"""
+
+"""
+In tts_say funciton at the beginning sf.read function returns something like this:
+(array([0.1, -0.2, 0.3, -0.1, ...]), 44100)
+these are two different values, which corresponds to the variable they are assigned to in the function.
+first is 'data' which holds the raw audio data [0.1, -0.2, 0.3, -0.1, ...]
+the other one is 'samplerate' which holeds the samplerate
+You can also do it like this:
+#result = sf.read
+#data = result[0]        # Get first item (audio data)
+#samplerate = result[1]  # Get second item (sample rate)
+here we point the result variable to each value that sf.read gives us, put python lets us put it all in one line like this
+#data, samplerate = sf.read
+"""

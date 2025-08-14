@@ -77,7 +77,7 @@ class VtubeControll:
              "apiName": "VTubeStudioPublicAPI",
              "apiVersion": "1.0",
               "messageType": "AuthenticationTokenRequest", #this and the line below request the token
-             "requestID": "auth_token_request", #this and the line above request the token
+             "requestID": "auth_token_request",
              "data": {
                  "pluginName": "NousSoul",
                  "pluginDeveloper": "Tagb"
@@ -99,7 +99,7 @@ class VtubeControll:
              "apiName": "VTubeStudioPublicAPI",
              "apiVersion": "1.0",
              "messageType": "AuthenticationRequest", #it calls it right here
-             "requestID": "auth_request", #and here
+             "requestID": "auth_request",
              "data": {
                  "pluginName": "NousSoul",
                  "pluginDeveloper": "Tagb",
@@ -127,7 +127,7 @@ class VtubeControll:
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
                 "messageType": "HotkeysInCurrentModelRequest", #requests hoykeys here
-                "requestID": "fetch_hotkeys" #and here
+                "requestID": "fetch_hotkeys"
             })
 
             print("Full API response from VTS:") 
@@ -177,7 +177,7 @@ class VtubeControll:
              "apiName": "VTubeStudioPublicAPI",
              "apiVersion": "1.0",
              "messageType": "HotkeyTriggerRequest", #requests here
-             "requestID": "trigger_hotkey", #requests here
+             "requestID": "trigger_hotkey",
              "data": {
                  "hotkeyID": hotkey_id #the variable where I stored the hotkey name
              }
@@ -197,7 +197,7 @@ class VtubeControll:
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
                 "messageType": "HotkeyTriggerRequest", #hotkey requests is here
-                "requestID": "trigger_hotkey", #and here
+                "requestID": "trigger_hotkey",
                 "data": {
                     "hotkeyID": hotkey_id #use variable here
                 }
@@ -248,3 +248,66 @@ if __name__ == "__main__":
         vts = VtubeControll()
         await vts.initialize()
     asyncio.run(main())
+
+
+#---------------------MEMOS---------------------
+"""
+pyvts is a wrapper that facilitates api calls.
+it returns and sends all data in json
+
+Generic vts api call:
+response = await self.vts.request({
+    "apiName": "VTubeStudioPublicAPI",      #always this value
+    "apiVersion": "1.0",                    #always this value  
+    "messageType": "SpecificRequestType",   #changes based on what you want to do
+    "requestID": "unique_identifier",       #any string to identify this request
+    "data": {                              #request-specific data
+        #parameters specific to the messageType
+    }
+})
+
+To understand some of the function like the token auth logic, note that the response from vts api is this:
+{
+    "apiName": "VTubeStudioPublicAPI",
+    "apiVersion": "1.0",
+    "timestamp": 1234567890,
+    "messageType": "AuthenticationResponse",
+    "requestID": "auth_request", 
+    "data": {
+        "authenticated": true,
+        "reason": "Token valid."
+    }
+}
+
+and the comprehension dictionary in hotkey fetch, it makes a dictionary with a for loop out of vts response which is like this:
+{
+    "data": {
+        "availableHotkeys": [
+            {
+                "name": "Happy",
+                "hotkeyID": "abc123",
+                "description": "Happy expression",
+                "file": "happy.exp3.json"
+            },
+            {
+                "name": "Sad", 
+                "hotkeyID": "def456",
+                "description": "Sad expression",
+                "file": "sad.exp3.json"
+            },
+            {
+                "name": "Angry",
+                "hotkeyID": "ghi789", 
+                "description": "Angry expression",
+                "file": "angry.exp3.json"
+            },
+            {
+                "name": "Surprised",
+                "hotkeyID": "jkl012",
+                "description": "Surprised expression", 
+                "file": "surprised.exp3.json"
+            }
+        ]
+    }
+}
+"""

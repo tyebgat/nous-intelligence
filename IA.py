@@ -9,6 +9,8 @@ from json import load, dump, JSONDecodeError #Library used for saving and loadin
 from dotenv import load_dotenv #library to load the .env file
 from openai import OpenAI #open ai library
 from os import getenv #library to open the .env file
+import keyboard
+import time
 
 class Nous:
     def __init__(self, vts: VtubeControll = None) -> None:
@@ -20,6 +22,7 @@ class Nous:
             }
         ]
         #variable initialization
+        self.is_speaking = False
         self.vts = vts #calls the vts plugin
         self.chatbot_service = "openai"
         self.user_input_service = "speech"
@@ -66,27 +69,48 @@ class Nous:
                 return i #returns i AKA the audio device inidex/id
         return None
 
-    def get_user_input(self) -> str:
+    async def get_user_input(self) -> str:
         if self.user_input_service == "console": #input from console
-            try:
-                user_input = input('\n\33[7m' + "User: " + '\33[0m')
-                return user_input #returns input from conole
-            except Exception as e:
-                print(f"console input error: {e}")
-                return ""
+            def get_input_blocking():
+                try:
+                    user_input = input('\n\33[7m' + "User: " + '\33[0m')
+                    return user_input #returns input from conole
+                except Exception as e:
+                    print(f"console input error: {e}")
+                    return ""
+            return await asyncio.to_thread(get_input_blocking)
         elif self.user_input_service == "speech":
-            #'with' is a fancy way of doing 'source = sr.Microphone()'
-            #what 'with' allows me to do is end the hassle of closing the variable manually (source.open_stream()/source.close_stream())
-            with self.mic as source: #here its used to assigned the open mic to a variable called source
-                print('(start listening)')
-                self.recogniser.adjust_for_ambient_noise(source, duration=0.5) #function from sr library we pass the audio through here to reduce noise
-                audio = self.recogniser.listen(source) #function from sr library were it creates a audio data object that we store in a variable
-                print('(stoped listening)')
-            try:
-                return self.recogniser.recognize_google(audio) #function from sr libary passes the audio data we stored to google to recognize
-            except Exception as e:
-                print(f"Speech recognition error: {e}")
-                return ""
+            def get_speech_blocking():
+                print("-----Press space to start listening.----")
+                while True:
+                    if keyboard.is_pressed(' '):
+                        print("listening for 10 seconds...")
+                        break
+                    else:
+                        time.sleep(0.1)
+                #'with' is a fancy way of doing 'source = sr.Microphone()'
+                #what 'with' allows me to do is end the hassle of closing the variable manually (source.open_stream()/source.close_stream())
+                with self.mic as source: #here its used to assigned the open mic to a variable called source
+                    self.recogniser.adjust_for_ambient_noise(source, duration=0.5) #function from sr library we pass the audio through here to reduce noise
+                    try:
+                        audio = self.recogniser.listen(source, timeout=10)
+                        try:
+                            text = self.recogniser.recognize_google(audio)
+                            print(f"text captured: {text}")
+                            return text
+                        except sr.UnknownValueError:
+                            print("could not understand audio. putting default response...")
+                            print("default response: hello!")
+                            return "hello!"
+                        except sr.RequestError as e:
+                            print(F"request error from google: {e} \n putting default response...")
+                            print("default response: hello!")
+                            return "hello!"
+                    except sr.WaitTimeoutError:
+                        print("timed out, no speech detected. putting default response...")
+                        print("default response: hello!")
+                        return "hello!"
+            return await asyncio.to_thread(get_speech_blocking)
         else:
             print(f"unknown input service: {self.user_input_service}")
             return ""
@@ -123,17 +147,19 @@ class Nous:
     async def tts_say(self, text: str) -> None:
         #chatgpt response or test response in console
         print('\n\33[7m' + "Epic Assistant:" + '\33[0m' + f' {text}')
-        
+        self.is_speaking = True
         try:
             #generate tts with response from chatgpt or test reponse
             gTTS(text=text, lang='en', slow=False, lang_check=False).save('output.wav')
         except Exception as e:
             print(f"Error generating TTS: {e}")
-            return
+            self.is_speaking = False
+            return 
         
         if not path.exists('output.wav'): #error if the file output is not found
             print("error: output.wav file not created!")
-            return
+            self.is_speaking = False
+            return 
 
         try:
             #stores the two things sf reads return, data: raw audio data, samplerate: samplerate
@@ -162,27 +188,30 @@ class Nous:
                 sd.wait()
         except Exception as e:
             print(f"Error playing audio: {e}")
+        finally:
+            self.is_speaking =False
 
     async def conversation_cycle(self):
-        user_input = self.get_user_input() #calls user input
-        if not user_input:
-            return ""
-        response = self.get_chatbot_response(user_input) #gets chatgpt response or test response
+        while True:
+            user_input =  await self.get_user_input() #calls user input
+            if not user_input:
+                return ""
+            response = self.get_chatbot_response(user_input) #gets chatgpt response or test response
 
-        if self.vts:
-            try:
-                dominant_emotion = self.vts.analyze_dominant_emotion(response) #gets dominant emotion form chatgpt response
-                await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
-            except Exception as e:
-                print(f"Emotion analysis error: {e}")
+            if self.vts:
+                try:
+                    dominant_emotion = self.vts.analyze_dominant_emotion(response) #gets dominant emotion form chatgpt response
+                    await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
+                except Exception as e:
+                    print(f"Emotion analysis error: {e}")
 
-        await self.tts_say(response) #waits for tts to finish
+            await self.tts_say(response) #waits for tts to finish
 
-        if self.vts:
-            try:
-                await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
-            except Exception as e:
-                print(f"Error resetting to Neutral: {e}")
+            if self.vts:
+                try:
+                    await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
+                except Exception as e:
+                    print(f"Error resetting to Neutral: {e}")
 
     def add_message(self, role: str, content: str) -> None: #this only saves to ram
         self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary

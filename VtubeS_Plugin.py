@@ -210,7 +210,7 @@ class VtubeControll:
     def analyze_dominant_emotion(self, text: str) -> Dict:
         try:
             # Define emotions and their keywords
-            happy_words = ["great", "happy", "yay", "joy", "awesome", "excited", "wonderful", "good", "fantastic", "amazing", "love", "perfect"]
+            happy_words = ["great", "happy", "yay", "joy", "awesome", "excited", "wonderful", "good", "fantastic", "amazing", "love", "perfect","hi","hello","absolutely"]
             sad_words = ["sad", "cry", "depressed", "upset", "terrible", "awful", "disappointed", "sorry"]
             angry_words = ["angry", "mad", "furious", "annoyed", "hate", "stupid", "ridiculous", "frustrated"]
             surprised_words = ["surprised", "wow", "shocked", "incredible", "unbelievable", "whoa"]

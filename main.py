@@ -19,8 +19,8 @@ async def main():
         print(f"Failed to initialize or authenticate: {e}")
 
     ai = Nous(vts=vts)
-    ai.user_input_service = "speech"
-    ai.chatbot_service = "test"
+    ai.user_input_service = "console"
+    ai.chatbot_service = "openai"
     print("Initializing nous...")
     ai.initialize(mic_index=None)
     print("Nous initialized.")

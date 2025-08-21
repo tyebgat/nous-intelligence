@@ -4,7 +4,7 @@ from gtts import gTTS #google's text to speech
 import sounddevice as sd #library that allows audio playback to a selected device
 import soundfile as sf #library that enables creation of audio file
 from VtubeS_Plugin import VtubeControll #My vtube studio plugin :3
-from os import path #os library path to check existence of files
+import os #os library path to check existence of files
 from json import load, dump, JSONDecodeError #Library used for saving and loading chat history
 from dotenv import load_dotenv #library to load the .env file
 from openai import OpenAI #open ai library
@@ -29,7 +29,6 @@ class Nous:
         self.mic = None #mic for speech recognition, None means it will use default device
         self.recogniser = sr.Recognizer()
         self.message_history = []
-        self.context = []
         self.cable_device_id = None
         self.last_audio_duration = 0
 
@@ -41,6 +40,7 @@ class Nous:
             print(f"VB Cable device set to id: {self.cable_device_id}") #prints cable device id
         else:
             print("No VB cable found, lypsinc may not work.")
+        load_dotenv()
         self.load_chatbot_data() #loads chatbot history if it exists
 
     def debug_audio_devices(self):
@@ -73,7 +73,9 @@ class Nous:
         if self.user_input_service == "console": #input from console
             def get_input_blocking():
                 try:
+                    print('\033[s', end='') #save cursor position
                     user_input = input('\n\33[7m' + "User: " + '\33[0m')
+                    print('\033[u', end='') #restore cursor position
                     return user_input #returns input from conole
                 except Exception as e:
                     print(f"console input error: {e}")
@@ -121,7 +123,7 @@ class Nous:
                 client = OpenAI(api_key=getenv("OPENAI_API_KEY")) #calls api key
                 self.add_message('user', prompt)
                 messages = self.context + self.message_history #chatgpt personality plus the chatbot history
-                response_obj = client.chat.completions.create( #create chat with openai function and store it in a variable
+                response_obj =  client.chat.completions.create( #create chat with openai function and store it in a variable
                     model = "gpt-4o-mini",
                     messages=messages,
                     temperature=0.5
@@ -156,7 +158,7 @@ class Nous:
             self.is_speaking = False
             return 
         
-        if not path.exists('output.wav'): #error if the file output is not found
+        if not os.path.exists('output.wav'): #error if the file output is not found
             print("error: output.wav file not created!")
             self.is_speaking = False
             return 
@@ -196,7 +198,7 @@ class Nous:
             user_input =  await self.get_user_input() #calls user input
             if not user_input:
                 return ""
-            response = self.get_chatbot_response(user_input) #gets chatgpt response or test response
+            response =  self.get_chatbot_response(user_input) #gets chatgpt response or test response
 
             if self.vts:
                 try:
@@ -217,7 +219,7 @@ class Nous:
         self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
 
     def load_chatbot_data(self) -> None: #creates a file with add_message() adds stuff to it 
-        if path.isfile('./message_history.txt'): #checks if file exists
+        if os.path.isfile('./message_history.txt'): #checks if file exists
             try:
                 with open('message_history.txt', 'r') as file: #loads file
                     self.message_history = load(file)

@@ -2,6 +2,7 @@ import asyncio #library that lets me use the async and await syntax, vital for w
 from IA import Nous #imports nous class from the IA script
 from VtubeS_Plugin import VtubeControll #imports VtubeCOnbtroll class from the plugin script
 from Face_detectecion import FaceDetectionVTuber #imports face detection script
+from json import load #to load settings
 
 token_path='noussoul_auth_token.txt' #store token path in a variable for ease of use
 
@@ -19,8 +20,19 @@ async def main():
         print(f"Failed to initialize or authenticate: {e}")
 
     ai = Nous(vts=vts)
-    ai.user_input_service = "console"
-    ai.chatbot_service = "openai"
+    try:
+        with open("settings.json", 'r') as f:
+            print("loading settings from json....")
+            config = load(f)
+            user_input_service = config.get("user_input_service", "console")
+            chatbot_service = config.get("chatbot_service", "openai")
+    except FileNotFoundError:
+        print("file not found using default settings...")
+        user_input_service = "console"
+        chatbot_service = "test"
+
+    ai.user_input_service = user_input_service
+    ai.chatbot_service = chatbot_service
     print("Initializing nous...")
     ai.initialize(mic_index=None)
     print("Nous initialized.")

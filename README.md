@@ -1,65 +1,97 @@
 # nous-intelligence
 Ai assistant with vtuber capabilities powered by chatgpt
-
-THIS PROJECT ONLY WORKS WITH PYTHON 3.11!!!!
-
-THIS PROJECT IS STILL UNDER DEVELOPMENT AND NOT YET REALESED PLEASE DO NOT TRY TO USE IT
 --------------------------------------------------------------------------------------
 **REQUIREMENTS:**
 
--Vb virtual audio cable
+- Vb virtual audio cable
 
--Python 3.11
+- Python 3.11 or above
 
--Vtube Studio
+- Vtube Studio
 
----------------------------------------------------------------------------------------
+- An OpenAi API key
+
+
 **How to install:**
 --------------------
--download code as zip and extract onto a folder
+- download code as zip and extract onto a folder
 
--Go to either your visual studio or local windows terminal
+- Create a .env file on the root directory of the project. This is where you put your ChatGPT API key:
+```
+OPENAI_API_KEY=your_api_here
+```
 
--Check your version of python with comman: python --version 
+- Go to either your visual studio or local windows terminal
 
--If it shows python 3.11 or 3.12 you are good to go, if not then uninstall your current python  version and install python 3.11
+- Go to the file directory that you have the porject folder with cmd (EX: C\Users\exUser\desktop\example_project_folder) using the command: 
+```
+cd your_directory_here
+```
 
--Go to the file directory that you have the porject folder with cmd (EX: C\Users\exUser\desktop\example_project_folder) using the command: cd your_directory_here
+- Install the required libraries with command: 
+```
+pip install -r requirements.txt
+```
 
--Install the required libraries with command: pip install -r requirements.txt
+- launch main.py from terminal by typying: 
+```
+python main.py
+```
 
--launch main.py from terminal by typying: python main.py
+**Configuration**
+-----------------------------
+There are two configuration variables that change the behavior of the program.
+this being:
+- **user_input_service**: changes what user input is being used. Either 'speech' or 'console'
+     - 'console': uses the cmd command line for input.
+     - 'speech': uses google speech recognizion, pressing spacebar makes it record for 10 seconds.
 
--Program should launch without error.
+- **chatbot_service**: changes what chabot service to use. either 'openai' or 'test'
+     - 'openai': uses chatgpt as the bot, requires an openai api key.
+     - 'test': prints a test response no matter what you input.
+  
 
-https://github.com/user-attachments/assets/805fde38-ef2e-4681-b4c1-8bbff890419b
+This configuration are stored in 'settings.json' on the projects root:
+``` ruby
+{
+    "user_input_service": "console",
+    "chatbot_service": "openai"
+}
+```
 
-----------------------------------------------------------------------------------------
+For example, if I want to use 'speech' as the user input, and 'test' as the chatbot service I would do:
+``` ruby
+{
+    "user_input_service": "speech",
+    "chatbot_service": "test"
+}
+```
+
 **Vtube Studio Configuration**
 ------------------------------
--Select the model of your choice
+Select the model of your choice
 
--Go to configuration (gear icon) and scroll down until you see the slider "START API (allow plugin)" and tick it to blue.
+Go to configuration (gear icon) and scroll down until you see the slider "START API (allow plugin)" and tick it to blue.
 
 ![image](https://github.com/user-attachments/assets/3bc1dde3-000e-4c75-9c45-0476dc317383)
 
 make sure its running on port 8001
 
--Scroll down even more until Microphone settings, tick the slider "Use Microphone" to blue and use micrpohne "CABLE Output (VB-Audio Virtual Cable)"
+Scroll down even more until Microphone settings, tick the slider "Use Microphone" to blue and use micrpohne "CABLE Output (VB-Audio Virtual Cable)"
 
--Set volume gain and frequency gain to 100
+Set volume gain and frequency gain to 100
 
 ![image](https://github.com/user-attachments/assets/43424cd3-1a06-4528-b9fb-b60e95f67972)
 
--Go to model settings and scroll down until you the parameter for mouth open and set input as "VoiceVolume"
+Go to model settings and scroll down until you the parameter for mouth open and set input as "VoiceVolume"
 
 ![image](https://github.com/user-attachments/assets/d1941b2a-5eed-49ab-b007-76fff5cec6f0)
 
--Scroll down a little until you find the parameter mouth smile and set it to "VoiceFrequencyPlusMouthSmile"
+Scroll down a little until you find the parameter mouth smile and set it to "VoiceFrequencyPlusMouthSmile"
 
 ![image](https://github.com/user-attachments/assets/5ecac5dd-bb34-4141-9800-7ac5997dfa78)
 
--Go to hotkey settinngs and edit the names of 4 hotkeys of your preferrence to: "Happy" "Sad" "Angry" "Surprised"
+Go to hotkey settinngs and edit the names of 4 hotkeys of your preferrence to: "Happy" "Sad" "Angry" "Surprised"
 
 ![image](https://github.com/user-attachments/assets/4cfcadab-8539-4ecb-8498-e8357219522c)
 
@@ -69,16 +101,16 @@ etc..
 
 model should be setup now.
 
------------------------------------------------------------------------------------------------------------
+
 **Common problems:**
 --------------------
--If lypsync is not working it's probably because there is no audio signal going to CABLE Output. 
+If lypsync is not working it's probably because there is no audio signal going to CABLE Output. 
  Fix this by going into windows sound settings > playback > CABLE Input > Properites > Advanced > "Give Exclusiver mode applications priority" should be ticked off.
  
  ![image](https://github.com/user-attachments/assets/06163191-1136-4051-aed0-d2c807c7b087)
 
  ![image](https://github.com/user-attachments/assets/0ca08be1-9819-48ff-8e38-e37cac7410dc)
 
--Click Apply > click ok.
+Click Apply > click ok.
 -Lypsync should be working now.
  

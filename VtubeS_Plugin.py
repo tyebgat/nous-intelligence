@@ -1,11 +1,10 @@
 
 #this code uses the pyvts librarie to make the plugin simple, shorter, and easier to read
 
-from ast import main
 import os #lets me control windows, used to delete, write, and read the auth token
 import pyvts #python library especifically made to work with vtube studio api
 import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
-from typing import List, Dict
+
 
 #avatar control class
 class VtubeControll:
@@ -207,7 +206,7 @@ class VtubeControll:
         except Exception as reconnect_error:
             print(f"Failed to reconnect and trigger hotkey '{name}': {reconnect_error}")
 
-    def analyze_dominant_emotion(self, text: str) -> Dict:
+    def analyze_dominant_emotion(self, text: str):
         try:
             # Define emotions and their keywords
             happy_words = ["great", "happy", "yay", "joy", "awesome", "excited", "wonderful", "good", "fantastic", "amazing", "love", "perfect","hi","hello","absolutely"]

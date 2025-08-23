@@ -19,28 +19,32 @@ async def main():
     except Exception as e:
         print(f"Failed to initialize or authenticate: {e}")
 
-    ai = Nous(vts=vts)
+    ai = Nous(vts=vts) #decalring nous class
+
+    #opens the json setting
     try:
         with open("settings.json", 'r') as f:
             print("loading settings from json....")
             config = load(f)
-            user_input_service = config.get("user_input_service", "console")
-            chatbot_service = config.get("chatbot_service", "openai")
-    except FileNotFoundError:
+            user_input_service = config.get("user_input_service", "console") #gets user input
+            chatbot_service = config.get("chatbot_service", "openai") #gets chatbor service
+    except FileNotFoundError: #if file is not found use default settings
         print("file not found using default settings...")
         user_input_service = "console"
         chatbot_service = "test"
 
+    #set the input and chatbot service to the ones in the json file
     ai.user_input_service = user_input_service
     ai.chatbot_service = chatbot_service
+
     print("Initializing nous...")
-    ai.initialize(mic_index=None)
+    ai.initialize(mic_index=None) #initializes nous
     print("Nous initialized.")
 
     print("Initializing face detection...")
-    fvts = FaceDetectionVTuber(ai=ai)
-    fvts.list_cameras()
-    if not fvts.initialize_camera(camera_index=0):
+    fvts = FaceDetectionVTuber(ai=ai) #decalres the face detection class
+    fvts.list_cameras() #gets the list of
+    if not fvts.initialize_camera(camera_index=0): #initializes on index 0 (default device)
         print("Failed to initialized camera. Check on index which devices are acttive.")
         return
     print("camera iniialized")
@@ -48,11 +52,12 @@ async def main():
     print("starting both systems...")
 
     try:
+        #creates tasks for both face and conversation loops
         fvts_task = asyncio.create_task(fvts.start_detection())
         ai_task = asyncio.create_task(ai.conversation_cycle())
 
-        await asyncio.gather(fvts_task, ai_task, return_exceptions=True)
-    except Exception as e:
+        await asyncio.gather(fvts_task, ai_task, return_exceptions=True) #awaits them both at the same time
+    except Exception as e: #if there is an exception stop everything
         print(f"Unexpected error occured in main loop, shutting down: {e}")
         fvts.stop_detection()
         print("gracefull shut down.")

@@ -1,4 +1,4 @@
 {
-    "user_input_service": "console",
+    "user_input_service": "speech",
     "chatbot_service": "openai"
 }

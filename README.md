@@ -1,7 +1,14 @@
 # nous-intelligence
 Ai assistant with vtuber capabilities powered by chatgpt
---------------------------------------------------------------------------------------
-**REQUIREMENTS:**
+
+## Table of Contents 
+- [Requirements](#requirements)
+- [Hot to Install](#how-to-install)
+- [Configuraions](#configuration)
+- [Vtube Studio Configuration](#vtube-studio-configuration)
+- [Common Problems](#common-problems)
+  
+## **REQUIREMENTS:**
 
 - Vb virtual audio cable
 
@@ -12,8 +19,7 @@ Ai assistant with vtuber capabilities powered by chatgpt
 - An OpenAi API key
 
 
-**How to install:**
---------------------
+## **How to install:**
 - download code as zip and extract onto a folder
 
 - Create a .env file on the root directory of the project. This is where you put your ChatGPT API key:
@@ -38,8 +44,8 @@ pip install -r requirements.txt
 python main.py
 ```
 
-**Configuration**
------------------------------
+## **Configuration**
+
 There are two configuration variables that change the behavior of the program.
 this being:
 - **user_input_service**: changes what user input is being used. Either 'speech' or 'console'
@@ -67,8 +73,8 @@ For example, if I want to use 'speech' as the user input, and 'test' as the chat
 }
 ```
 
-**Vtube Studio Configuration**
-------------------------------
+## **Vtube Studio Configuration**
+
 Select the model of your choice
 
 Go to configuration (gear icon) and scroll down until you see the slider "START API (allow plugin)" and tick it to blue.
@@ -102,8 +108,8 @@ etc..
 model should be setup now.
 
 
-**Common problems:**
---------------------
+## **Common problems:**
+
 If lypsync is not working it's probably because there is no audio signal going to CABLE Output. 
  Fix this by going into windows sound settings > playback > CABLE Input > Properites > Advanced > "Give Exclusiver mode applications priority" should be ticked off.
  

@@ -9,7 +9,7 @@ import asyncio #library that lets me use the async and await syntax, vital for w
 #avatar control class
 class VtubeControll:
     #initialize
-    def __init__(self):
+    def __init__(self,detailed_logs: bool = True):
      #identifies the plugin so that it shows the plugin name and developer in Vtube Studio
      self.vts = pyvts.vts(
           plugin_info={
@@ -19,6 +19,7 @@ class VtubeControll:
           }
      )
      self.hotkeys = {} #cache for hotkeys which will serve for emotions
+     self.detailed_logs = detailed_logs
      print("Plugin starto!") #starts plugin
 
     #initializes the function of the authentication and hotkey fetch
@@ -128,9 +129,12 @@ class VtubeControll:
                 "messageType": "HotkeysInCurrentModelRequest", #requests hoykeys here
                 "requestID": "fetch_hotkeys"
             })
-
-            print("Full API response from VTS:") 
-            print(response) #prints the full response data form the previous api call for debugging purposes
+            print("Hotkeys fetched")
+            if self.detailed_logs:
+                print("="*60)
+                print("Full API response from VTS:") 
+                print(response) #prints the full response data form the previous api call for debugging purposes
+                print("="*60)
 
             #if there is no data in response raise an error
             if "data" not in response:
@@ -145,8 +149,10 @@ class VtubeControll:
                 hotkey["name"]: hotkey["hotkeyID"]
                 for hotkey in response["data"]["availableHotkeys"]
             }
-
-            print("Hotkeys fetched:", list(self.hotkeys.keys())) #prints the hotkey dictionary
+            if self.detailed_logs:
+                print("="*60)
+                print(f"Hotkeys fetched: \n{list(self.hotkeys.keys())}") #prints the hotkey dictionary
+                print("="*60)
 
         #if hotkeys fetch gone wrong then raise error and proceed without hotkeys
         except Exception as e:
@@ -154,14 +160,20 @@ class VtubeControll:
             print("Make sure you have a model loaded in VTube Studio with configured hotkeys")
             #just continue without hotkeys
             self.hotkeys = {}
-        print("Hotkeys fetched:", list(self.hotkeys.keys())) #prints the empty hotkey list
+        if self.detailed_logs:
+            print("="*60)
+            print("Hotkeys fetched:", list(self.hotkeys.keys())) #prints the empty hotkey list
+            print("="*60)
         if not self.hotkeys: #if hotkeys were not found then print the error message
          print("WARNING: No hotkeys found! Make sure your VTube Studio model has hotkeys configured.")
 
     #fuinction detects ai response and triggers corresponding hotkey
     async def trigger_hotkey(self, name):
      print(f"Attempting to trigger hotkey: {name}") #prints the name of the hotkey
-     print(f"Available hotkeys: {list(self.hotkeys.keys())}") #prints the available hotkeys that were grabbes form the model
+     if self.detailed_logs:
+        print("="*60)
+        print(f"Available hotkeys: \n{list(self.hotkeys.keys())}") #prints the available hotkeys that were grabbes form the model
+        print("="*60)
 
      #if a hotkey name that is triggered is not found in the model then print error message
      if name not in self.hotkeys:
@@ -181,7 +193,9 @@ class VtubeControll:
                  "hotkeyID": hotkey_id #the variable where I stored the hotkey name
              }
          })
-         print(f"Hotkey trigger response: {response}") #prints the response of vtube studio api after trying to trigger hotkey
+         print("="*60)
+         print(f"Hotkey trigger response: \n{response}") #prints the response of vtube studio api after trying to trigger hotkey
+         print("="*60)
 
      #if error during api call, programn asummes connection is lost and tries to reconnect    
      except Exception as e: 
@@ -201,7 +215,10 @@ class VtubeControll:
                     "hotkeyID": hotkey_id #use variable here
                 }
             })
-            print(f"Hotkey triggered after reconnection: {response}") #prints that it triggered the hotkey after a reconnect and prints vtube studio's response
+            if self.detailed_logs:
+                print("="*60)
+                print(f"Hotkey triggered after reconnection: \n{response}") #prints that it triggered the hotkey after a reconnect and prints vtube studio's response
+                print("="*60)
         #if reconnect code gone wrong then print error    
         except Exception as reconnect_error:
             print(f"Failed to reconnect and trigger hotkey '{name}': {reconnect_error}")
@@ -224,8 +241,9 @@ class VtubeControll:
             sad_count = sum(1 for word in clean_words if word in sad_words)
             angry_count = sum(1 for word in clean_words if word in angry_words)
             surprised_count = sum(1 for word in clean_words if word in surprised_words)
-    
-            print(f"Emotion counts - Happy: {happy_count}, Sad: {sad_count}, Angry: {angry_count}, Surprised: {surprised_count}")
+            
+            if self.detailed_logs:
+                print(f"Emotion counts - Happy: {happy_count}, Sad: {sad_count}, Angry: {angry_count}, Surprised: {surprised_count}")
     
             # Find the highest count
             counts = [happy_count, sad_count, angry_count, surprised_count]

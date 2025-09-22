@@ -1,26 +1,48 @@
+#local imports
+from VtubeS_Plugin import VtubeControll #My vtube studio plugin :3
+
 import asyncio #asynchronous lirbary that lets every IO task be in sync
 import speech_recognition as sr #handles speech recognition
 from gtts import gTTS #google's text to speech
 import sounddevice as sd #library that allows audio playback to a selected device
 import soundfile as sf #library that enables creation of audio file
-from VtubeS_Plugin import VtubeControll #My vtube studio plugin :3
 import os #os library path to check existence of files
 from json import load, dump, JSONDecodeError #Library used for saving and loading chat history
 from dotenv import load_dotenv #library to load the .env file
 from openai import OpenAI #open ai library
 from os import getenv #library to open the .env file
+import threading
 import keyboard
 import time
 
+#push to talk
+import pyaudio
+import wave
+import tempfile
+
 class Nous:
-    def __init__(self, vts: VtubeControll = None) -> None:
-        #chatgpt personlaity
-        self.context = [
-            {
-                "role": "system",
-                "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic"
-            }
-        ]
+    def __init__(self, vts: VtubeControll = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False) -> None:
+        self.audio = pyaudio.PyAudio()
+        self.detailed_logs = detailed_logs
+        self.print_adio_devices = print_audio_devices
+        self.tts_language = tts_language
+        #chatgpt personality and language check
+        if self.tts_language == "english":
+            self.context = [
+                {
+                    "role": "system",
+                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic"
+                }
+            ]
+        elif self.tts_language == "spanish":
+             self.context = [
+                {
+                    "role": "system",
+                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language"
+                }
+            ]
+        else:
+            print("TTS language not supported. Either english or spanish.")
         #variable initialization
         self.is_speaking = False
         self.vts = vts #calls the vts plugin
@@ -33,7 +55,8 @@ class Nous:
         self.last_audio_duration = 0
 
     def initialize(self, mic_index: int = None) -> None:
-        self.debug_audio_devices() #prints all available audio devices for debuggin purposes
+        if self.print_adio_devices:
+            self.debug_audio_devices() #prints all available audio devices for debuggin purposes
         self.mic = sr.Microphone(device_index=mic_index)  #micrphone where audio will be played
         self.cable_device_id = self.get_cable_device_id() #gets cable device id
         if self.cable_device_id is not None:
@@ -74,7 +97,7 @@ class Nous:
             def get_input_blocking():
                 try:
                     print('\033[s', end='') #save cursor position
-                    user_input = input('\n\33[7m' + "User: " + '\33[0m')
+                    user_input = input("User: ")
                     print('\033[u', end='') #restore cursor position
                     return user_input #returns input from conole
                 except Exception as e:
@@ -83,35 +106,123 @@ class Nous:
             return await asyncio.to_thread(get_input_blocking)
         elif self.user_input_service == "speech":
             def get_speech_blocking():
-                print("-----Press space to start listening.----")
+                print("-----Press space to start listening, release to stop----")
                 while True:
                     if keyboard.is_pressed(' '):
-                        print("listening for 10 seconds...")
+                        print("recording, release space to stop...")
                         break
                     else:
                         time.sleep(0.1)
-                #'with' is a fancy way of doing 'source = sr.Microphone()'
-                #what 'with' allows me to do is end the hassle of closing the variable manually (source.open_stream()/source.close_stream())
-                with self.mic as source: #here its used to assigned the open mic to a variable called source
-                    self.recogniser.adjust_for_ambient_noise(source, duration=0.5) #function from sr library we pass the audio through here to reduce noise
-                    try:
-                        audio = self.recogniser.listen(source, timeout=10)
+                
+                #audio recording parameters
+                chunk = 1024 
+                format = pyaudio.paInt16
+                channels = 1
+                rate = 16000
+
+                if self.mic.device_index is not None:
+                    device_index = self.mic.device_index
+                else:
+                    device_index = None
+
+                try:
+                    stream = self.audio.open(
+                        format=format,
+                        channels=channels,
+                        rate=rate,
+                        input=True,
+                        input_device_index=device_index,
+                        frames_per_buffer=chunk
+                    )
+                    frames = []
+
+                    while keyboard.is_pressed(' '): #record while space is pressed
+                        data = stream.read(chunk, exception_on_overflow=False)
+                        frames.append(data)
+
+                    print("recording stopped. Processing...")
+                    stream.stop_stream()
+                    stream.close()
+                    self.audio.terminate()
+
+                    if not frames: #If nothing was recorded
+                        print("No audio captures. Putting default response...")
+                        return "hello!"
+                    
+                    #save temporary file
+                    temp_audio_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+                    temp_filename = temp_audio_file.name
+                    temp_audio_file.close()
+                    wf = wave.open(temp_filename, 'wb')
+                    wf.setnchannels(channels)
+                    wf.setsampwidth(self.audio.get_sample_size(format))
+                    wf.setframerate(rate)
+                    wf.writeframes(b''.join(frames))
+                    wf.close()
+
+                    #use sr on the recorded file
+                    with sr.AudioFile(temp_filename) as source:
+                        audio_data = self.recogniser.record(source)
+
                         try:
-                            text = self.recogniser.recognize_google(audio)
-                            print(f"text captured: {text}")
+                            text = self.recogniser.recognize_google(audio_data)
+                            print(f"Text captured: {text}")
+
+                            #clena up temp file
+                            try:
+                                os.unlink(temp_filename)
+                            except OSError:
+                                pass #fille might be deleted so ingore
+                
                             return text
-                        except sr.UnknownValueError:
-                            print("could not understand audio. putting default response...")
-                            print("default response: hello!")
+                        except sr.UnknownValueError as e:
+                            if self.detailed_logs:
+                                print(f"Unknown value error in sr: {e}")
+                            print("Could not understand audio. Putting default response")
+
+                            #clena up temp file
+                            try:
+                                os.unlink(temp_filename)
+                            except OSError:
+                                pass #fille might be deleted so ingore
+
                             return "hello!"
                         except sr.RequestError as e:
-                            print(F"request error from google: {e} \n putting default response...")
-                            print("default response: hello!")
+                            if self.detailed_logs:
+                                print(f"Rquest Error in google sr: {e}")
+                            print("Request error from google. putting default response...")
+
+                            #clena up temp file
+                            try:
+                                os.unlink(temp_filename)
+                            except OSError:
+                                pass #fille might be deleted so ingore
+                            
                             return "hello!"
-                    except sr.WaitTimeoutError:
-                        print("timed out, no speech detected. putting default response...")
-                        print("default response: hello!")
-                        return "hello!"
+                except Exception as e:
+                    if self.detailed_logs:
+                        print(f"unexpected error during reecording: {e}")
+                    print("Error during recording.")
+                    if self.detailed_logs:
+                        print("Cleaning up Pyadio...")
+                    try:
+                        print("recording stopped. Processing...")
+                        stream.stop_stream()
+                        stream.close()
+                        self.audio.terminate()
+                    except:
+                        pass
+
+                    if self.detailed_logs: 
+                        print("Cleaning up temp file...")
+                    try:
+                        if 'temp_filename' in locals():
+                            os.unlink(temp_filename)
+                    except OSError:
+                        pass
+                    
+                    print("Putting default response...")
+                    return "hello!"
             return await asyncio.to_thread(get_speech_blocking)
         else:
             print(f"unknown input service: {self.user_input_service}")
@@ -148,11 +259,17 @@ class Nous:
         
     async def tts_say(self, text: str) -> None:
         #chatgpt response or test response in console
-        print('\n\33[7m' + "Epic Assistant:" + '\33[0m' + f' {text}')
+        print("Epic Assistant:" + f' {text}')
         self.is_speaking = True
+            
         try:
             #generate tts with response from chatgpt or test reponse
-            gTTS(text=text, lang='en', slow=False, lang_check=False).save('output.wav')
+            if self.tts_language == "english":
+                gTTS(text=text, lang='en', slow=False, lang_check=False).save('output.wav')
+            elif self.tts_language == "spanish":
+                gTTS(text=text, lang='es', slow=False, lang_check=False).save('output.wav')
+            else:
+                print("TTS language not supported. Either english or spanish.")
         except Exception as e:
             print(f"Error generating TTS: {e}")
             self.is_speaking = False
@@ -169,7 +286,6 @@ class Nous:
             self.last_audio_duration = len(data) / samplerate #formula for calculating audio duration 
 
             if self.cable_device_id is not None:
-                import threading
                 def play_default(): #plays to default device
                     sd.play(data, samplerate)
                     sd.wait() #waits for audio to finish
@@ -193,6 +309,14 @@ class Nous:
         finally:
             self.is_speaking =False
 
+    async def analyze_emotion(self, text:str):
+        if self.vts: #checks if there is a vts instance
+            try:
+                dominant_emotion = self.vts.analyze_dominant_emotion(text) #gets dominant emotion form chatgpt response
+                await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
+            except Exception as e:
+                print(f"Emotion analysis error: {e}")
+
     async def conversation_cycle(self):
         while True:
             user_input =  await self.get_user_input() #calls user input
@@ -200,12 +324,7 @@ class Nous:
                 return ""
             response =  self.get_chatbot_response(user_input) #gets chatgpt response or test response
 
-            if self.vts:
-                try:
-                    dominant_emotion = self.vts.analyze_dominant_emotion(response) #gets dominant emotion form chatgpt response
-                    await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
-                except Exception as e:
-                    print(f"Emotion analysis error: {e}")
+            await self.analyze_emotion(response) #analyzes emotion in response
 
             await self.tts_say(response) #waits for tts to finish
 

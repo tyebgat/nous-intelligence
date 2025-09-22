@@ -3,9 +3,14 @@ import asyncio #to sycn everything
 import threading #to run the camera loop in a separate thread
 import time #used to apply cooldown, basically a simple ver of asyncio
 from IA import Nous #imports ai script to send messages to 
+from VtubeS_Plugin import VtubeControll
 
 class FaceDetectionVTuber:
-    def __init__(self, ai: Nous = None):
+    def __init__(self, ai: Nous = None, vts: VtubeControll = None, tts_language: str = "english", detailed_logs = False):
+        self.face_message_active = False
+        self.vts = vts
+        self.detailed_logs = detailed_logs
+        self.tts_language = tts_language
         self.ai = ai
         self.camera = None
         self.face_cascade = None
@@ -13,15 +18,21 @@ class FaceDetectionVTuber:
         self.face_detected = False
         self.last_face_time = 0
         self.detection_cooldown = 3.0  #seconds to wait before detecting again
-
-        self.face_detection_messages = [
-            "Oh, hello there! I can see you!",
-            "Hey! Someone's here!",
-            "Hi there! Nice to see a face!",
-            "Well well, look who showed up!",
-            "Oh my, a human appeared!",
-            "Greetings! I detect your presence!"
-        ]
+        if self.tts_language == "english":
+            self.face_detection_messages = [
+                "Oh, hello there! I can see you!",
+                "Hey! Someone's here!",
+                "Hi there! Nice to see a face!",
+                "Well well, look who showed up!",
+                "Oh my, a human appeared!",
+                "Greetings! I detect your presence!"
+            ]
+        elif self.tts_language == "spanish":
+            self.face_detection_messages = [
+                "Oh, hola!",
+                "Hey! alguien esta aqui!",
+                "hola! que bueno verte!"
+            ]
         self.current_message_index = 0
 
     def initialize_camera(self, camera_index: int = 0) -> bool:
@@ -52,9 +63,9 @@ class FaceDetectionVTuber:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #converts every frame to grayscale
         faces = self.face_cascade.detectMultiScale( #functions that detects faces in an image
             gray,
-            scaleFactor=1.1, #how much the image size is reduces at each scale
-            minNeighbors=5, #minimun 'neighbor' rectangle to keep a detection
-            minSize=(30, 30) #minimun face size
+            scaleFactor=1.01, #how much the image size is reduces at each scale
+            minNeighbors=20, #minimun 'neighbor' rectangle to keep a detection
+            minSize=(90, 90) #minimun face size
         )
         return faces #returns a list of rectanges (x, y, w, h) where faces were detected
 
@@ -83,9 +94,12 @@ class FaceDetectionVTuber:
         print(f"Face detected! Saying: {message}")
         #cehcks if nous exists
         if self.ai:
+            self.face_message_active = True
             await self.ai.tts_say(message) #send detection message to nous tts
+            self.face_message_active = False
         else:
             print("AI (Nous) not available to say message.")
+            self.face_message_active = False
 
     def camera_loop(self): #main camera loop
         while self.is_running and self.camera.isOpened(): #check if is_running and camera is opened are true
@@ -100,7 +114,7 @@ class FaceDetectionVTuber:
             faces = self.detect_faces(frame) #detects the faces
             current_face_detected = len(faces) > 0 #gets the number of current faces detected
 
-            if current_face_detected and not self.face_detected and len(faces) == 1: #if there is more than one face detected
+            if current_face_detected and not self.face_detected: #if there is more than one face detected
                 self.face_detected = True
                 asyncio.run_coroutine_threadsafe( #allows for async operation on a separate thread
                     self.handle_face_detection(), #runs the face detection
@@ -108,7 +122,8 @@ class FaceDetectionVTuber:
                 )
             elif not current_face_detected and self.face_detected: #if face is not detected
                 self.face_detected = False
-                print("Face no longer detected")
+                if self.detailed_logs:
+                    print("Face no longer detected")
 
             for (x, y, w, h) in faces: #draws a rectangle on detected face
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)

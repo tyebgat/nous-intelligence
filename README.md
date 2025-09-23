@@ -50,11 +50,11 @@ There are 3 categories of configuration. Chatbot settings, general settings and 
 
 - **Chatbot Settings:**
      - "user_input_service":changes what user input is being used. Either 'speech' or 'console'.
-            - 'speech': User google speech recognition to send messages to the AI with push to talk.
-            - 'console': Uses console input to send messages to tha AI.
+       - 'speech': User google speech recognition to send messages to the AI with push to talk.
+       - 'console': Uses console input to send messages to tha AI.
      - "chatbot_service":changes what chabot service to use. either 'openai' or 'test'
-            - 'openai': Uses the OpenAI API default model is 4o-mini (API Key is required).
-            - 'test': Just prints out a predetermined message everytime.
+       - 'openai': Uses the OpenAI API default model is 4o-mini (API Key is required).
+       - 'test': Just prints out a predetermined message everytime.
 
 - **General Settings:**
      - "tts_language": Changes Google tts. Either 'spanish' or 'english'.

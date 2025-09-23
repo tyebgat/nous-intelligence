@@ -66,7 +66,7 @@ There are 3 categories of configuration. Chatbot settings, general settings and 
   
 
 This configuration are stored in 'settings.json' on the projects root:
-``` python
+``` ruby
 {
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "console",
@@ -83,7 +83,7 @@ This configuration are stored in 'settings.json' on the projects root:
 ```
 
 For example, if I want to use 'speech' as the user input, and 'test' as the chatbot service I would do:
-``` python
+``` ruby
 {
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "speech",

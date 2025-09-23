@@ -87,7 +87,7 @@ For example, if I want to use 'speech' as the user input, and 'test' as the chat
 {
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "speech",
-    "chatbot_service": test",
+    "chatbot_service": "test",
 
     "_comment1": "------GENERAL SETTINGS-------",
     "tts_language": "english",

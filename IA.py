@@ -22,7 +22,7 @@ import tempfile
 
 class Nous:
     def __init__(self, vts: VtubeControll = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False) -> None:
-        self.audio = pyaudio.PyAudio()
+        self.audio = None  # Initialize as None, will be set in initialize()
         self.detailed_logs = detailed_logs
         self.print_adio_devices = print_audio_devices
         self.tts_language = tts_language
@@ -63,8 +63,18 @@ class Nous:
             print(f"VB Cable device set to id: {self.cable_device_id}") #prints cable device id
         else:
             print("No VB cable found, lypsinc may not work.")
+        
+        # Initialize PyAudio here instead of in __init__
+        self.audio = pyaudio.PyAudio()
+        
         load_dotenv()
         self.load_chatbot_data() #loads chatbot history if it exists
+
+    def cleanup(self):
+        """Clean up resources when shutting down"""
+        if self.audio:
+            self.audio.terminate()
+            self.audio = None
 
     def debug_audio_devices(self):
         devices = sd.query_devices() #gets a lists of all audio devices
@@ -143,7 +153,7 @@ class Nous:
                     print("recording stopped. Processing...")
                     stream.stop_stream()
                     stream.close()
-                    self.audio.terminate()
+                    # Don't terminate PyAudio here - keep it alive for next recording
 
                     if not frames: #If nothing was recorded
                         print("No audio captures. Putting default response...")
@@ -204,12 +214,11 @@ class Nous:
                         print(f"unexpected error during reecording: {e}")
                     print("Error during recording.")
                     if self.detailed_logs:
-                        print("Cleaning up Pyadio...")
+                        print("Cleaning up audio stream...")
                     try:
-                        print("recording stopped. Processing...")
-                        stream.stop_stream()
-                        stream.close()
-                        self.audio.terminate()
+                        if 'stream' in locals():
+                            stream.stop_stream()
+                            stream.close()
                     except:
                         pass
 
@@ -318,21 +327,26 @@ class Nous:
                 print(f"Emotion analysis error: {e}")
 
     async def conversation_cycle(self):
-        while True:
-            user_input =  await self.get_user_input() #calls user input
-            if not user_input:
-                return ""
-            response =  self.get_chatbot_response(user_input) #gets chatgpt response or test response
+        try:
+            while True:
+                user_input =  await self.get_user_input() #calls user input
+                if not user_input:
+                    return ""
+                response =  self.get_chatbot_response(user_input) #gets chatgpt response or test response
 
-            await self.analyze_emotion(response) #analyzes emotion in response
+                await self.analyze_emotion(response) #analyzes emotion in response
 
-            await self.tts_say(response) #waits for tts to finish
+                await self.tts_say(response) #waits for tts to finish
 
-            if self.vts:
-                try:
-                    await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
-                except Exception as e:
-                    print(f"Error resetting to Neutral: {e}")
+                if self.vts:
+                    try:
+                        await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
+                    except Exception as e:
+                        print(f"Error resetting to Neutral: {e}")
+        except KeyboardInterrupt:
+            print("Shutting down...")
+        finally:
+            self.cleanup()
 
     def add_message(self, role: str, content: str) -> None: #this only saves to ram
         self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
@@ -355,8 +369,13 @@ def main():
     ai.user_input_service = "console"
     ai.chatbot_service = "test"
     ai.initialize()
-    while True:
-        asyncio.run(ai.conversation_cycle())
+    try:
+        while True:
+            asyncio.run(ai.conversation_cycle())
+    except KeyboardInterrupt:
+        print("Shutting down...")
+    finally:
+        ai.cleanup()
 
 if __name__ == "__main__":
     main()

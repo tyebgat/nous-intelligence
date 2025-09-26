@@ -46,30 +46,56 @@ python main.py
 
 ## **Configuration**
 
-There are two configuration variables that change the behavior of the program.
-this being:
-- **user_input_service**: changes what user input is being used. Either 'speech' or 'console'
-     - 'console': uses the cmd command line for input.
-     - 'speech': uses google speech recognizion, pressing spacebar makes it record for 10 seconds.
+There are 3 categories of configuration. Chatbot settings, general settings and log settings.
 
-- **chatbot_service**: changes what chabot service to use. either 'openai' or 'test'
-     - 'openai': uses chatgpt as the bot, requires an openai api key.
-     - 'test': prints a test response no matter what you input.
+- **Chatbot Settings:**
+     - "user_input_service":changes what user input is being used. Either 'speech' or 'console'.
+       - 'speech': User google speech recognition to send messages to the AI with push to talk.
+       - 'console': Uses console input to send messages to tha AI.
+     - "chatbot_service":changes what chabot service to use. either 'openai' or 'test'
+       - 'openai': Uses the OpenAI API default model is 4o-mini (API Key is required).
+       - 'test': Just prints out a predetermined message everytime.
+
+- **General Settings:**
+     - "tts_language": Changes Google tts. Either 'spanish' or 'english'.
+     - "face_detection": Toggles Face Detection. False = Off, True = On.
+
+- **Log Settings:**
+     - "detailed_logs": prints a more detailed version of the logs with full API responses for debugging. False = Off, True = On.
+     - "print_audio_devices": Toggle the print out of audio devices used in debugging to see which one is the Virtual audio cable. False = Off, True = On.
   
 
 This configuration are stored in 'settings.json' on the projects root:
-``` ruby
+``` python
 {
+    "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "console",
-    "chatbot_service": "openai"
+    "chatbot_service": "openai",
+
+    "_comment1": "------GENERAL SETTINGS-------",
+    "tts_language": "english",
+    "face_detection": true,
+
+    "_comment2": "------LOGS SETTINGS--------",
+    "detailed_logs": true,
+    "print_audio_devices": false
 }
 ```
 
 For example, if I want to use 'speech' as the user input, and 'test' as the chatbot service I would do:
-``` ruby
+``` python
 {
+    "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "speech",
-    "chatbot_service": "test"
+    "chatbot_service": "test",
+
+    "_comment1": "------GENERAL SETTINGS-------",
+    "tts_language": "english",
+    "face_detection": true,
+
+    "_comment2": "------LOGS SETTINGS--------",
+    "detailed_logs": true,
+    "print_audio_devices": false
 }
 ```
 

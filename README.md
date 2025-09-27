@@ -20,29 +20,13 @@ Ai assistant with vtuber capabilities powered by chatgpt
 
 
 ## **How to install:**
-- download code as zip and extract onto a folder
+- make sure you have installed Vb virtual audio cable
+- download the lates release
+- extract the .rar file into the path of your choosing
+- Launch main.exe
 
-- Create a .env file on the root directory of the project. This is where you put your ChatGPT API key:
-```
-OPENAI_API_KEY=your_api_here
-```
-
-- Go to either your visual studio or local windows terminal
-
-- Go to the file directory that you have the porject folder with cmd (EX: C\Users\exUser\desktop\example_project_folder) using the command: 
-```
-cd your_directory_here
-```
-
-- Install the required libraries with command: 
-```
-pip install -r requirements.txt
-```
-
-- launch main.py from terminal by typying: 
-```
-python main.py
-```
+> IMPORTANT:
+> The program will use the default recording device, so please set your prefferd mic to default before launching.
 
 ## **Configuration**
 

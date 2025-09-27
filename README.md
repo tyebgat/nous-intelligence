@@ -12,8 +12,6 @@ Ai assistant with vtuber capabilities powered by chatgpt
 
 - Vb virtual audio cable
 
-- Python 3.11 or above
-
 - Vtube Studio
 
 - An OpenAi API key

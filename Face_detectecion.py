@@ -3,6 +3,7 @@ import asyncio #to sycn everything
 import threading #to run the camera loop in a separate thread
 import time #used to apply cooldown, basically a simple ver of asyncio
 from IA import Nous #imports ai script to send messages to 
+import os
 from VtubeS_Plugin import VtubeControll
 
 class FaceDetectionVTuber:
@@ -43,10 +44,12 @@ class FaceDetectionVTuber:
             if not self.camera.isOpened(): #checks if camera is opened
                 print("Error: Could not open camera")
                 return False
+            
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            cascade_path = os.path.join(script_dir, 'Data', 'haarcascade_frontalface_default.xml')
 
-            self.face_cascade = cv2.CascadeClassifier( #loads open cv built in face detecor
-                cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-            )
+            self.face_cascade = cv2.CascadeClassifier(cascade_path)
 
             if self.face_cascade.empty(): #if it cant find the face detection file
                 print("Error: Could not load face cascade classifier")

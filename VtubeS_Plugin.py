@@ -15,7 +15,7 @@ class VtubeControll:
           plugin_info={
              "plugin_name": "NousSoul",
              "developer": "Tagb",
-             "authentication_token_path": "./noussoul_auth_token.txt" #token is stored in a txt
+             "authentication_token_path": "Data/noussoul_auth_token.txt" #token is stored in a txt
           }
      )
      self.hotkeys = {} #cache for hotkeys which will serve for emotions
@@ -34,7 +34,7 @@ class VtubeControll:
      print('Connected!')
 
      try:
-         token_path = "./noussoul_auth_token.txt" #variable to not write the path over and over
+         token_path = "Data/noussoul_auth_token.txt" #variable to not write the path over and over
         
          #always try to authenticate if token exists
          if os.path.exists(token_path):

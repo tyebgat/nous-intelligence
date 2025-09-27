@@ -31,7 +31,7 @@ class Nous:
             self.context = [
                 {
                     "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic"
+                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in english, no matter the language"
                 }
             ]
         elif self.tts_language == "spanish":
@@ -274,9 +274,9 @@ class Nous:
         try:
             #generate tts with response from chatgpt or test reponse
             if self.tts_language == "english":
-                gTTS(text=text, lang='en', slow=False, lang_check=False).save('output.wav')
+                gTTS(text=text, lang='en', slow=False, lang_check=False).save('Data/output.wav')
             elif self.tts_language == "spanish":
-                gTTS(text=text, lang='es', slow=False, lang_check=False).save('output.wav')
+                gTTS(text=text, lang='es', slow=False, lang_check=False).save('Data/output.wav')
             else:
                 print("TTS language not supported. Either english or spanish.")
         except Exception as e:
@@ -284,14 +284,14 @@ class Nous:
             self.is_speaking = False
             return 
         
-        if not os.path.exists('output.wav'): #error if the file output is not found
+        if not os.path.exists('Data/output.wav'): #error if the file output is not found
             print("error: output.wav file not created!")
             self.is_speaking = False
             return 
 
         try:
             #stores the two things sf reads return, data: raw audio data, samplerate: samplerate
-            data, samplerate = sf.read('output.wav')
+            data, samplerate = sf.read('Data/output.wav')
             self.last_audio_duration = len(data) / samplerate #formula for calculating audio duration 
 
             if self.cable_device_id is not None:
@@ -352,15 +352,15 @@ class Nous:
         self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
 
     def load_chatbot_data(self) -> None: #creates a file with add_message() adds stuff to it 
-        if os.path.isfile('./message_history.txt'): #checks if file exists
+        if os.path.isfile('Data/message_history.txt'): #checks if file exists
             try:
-                with open('message_history.txt', 'r') as file: #loads file
+                with open('Data/message_history.txt', 'r') as file: #loads file
                     self.message_history = load(file)
             except JSONDecodeError:
                 pass #if file si corrupted then just start over fresh
 
     def update_message_history(self) -> None: 
-        with open('message_history.txt', 'w') as file: #opens in write mode
+        with open('Data/message_history.txt', 'w') as file: #opens in write mode
             dump(self.message_history, file) #function from json library, saves the ptyhon dicitonary as a json
 
 

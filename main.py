@@ -4,7 +4,7 @@ from VtubeS_Plugin import VtubeControll #imports VtubeCOnbtroll class from the p
 from Face_detectecion import FaceDetectionVTuber #imports face detection script
 import json #to load settings
 
-token_path='noussoul_auth_token.txt' #store token path in a variable for ease of use
+token_path='Data/noussoul_auth_token.txt' #store token path in a variable for ease of use
 
 async def main():
     #opens the json setting

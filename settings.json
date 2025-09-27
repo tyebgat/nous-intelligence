@@ -1,6 +1,6 @@
 {
     "_comment": "----CHATBOT SETTINGS-----",
-    "user_input_service": "speech",
+    "user_input_service": "console",
     "chatbot_service": "openai",
 
     "_comment1": "------GENERAL SETTINGS-------",

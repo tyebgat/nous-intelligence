@@ -5,11 +5,11 @@ import time #used to apply cooldown, basically a simple ver of asyncio
 from IA import Nous #imports ai script to send messages to 
 import os
 from VtubeS_Plugin import VtubeControll
+import tkinter as tk
 
 class FaceDetectionVTuber:
-    def __init__(self, ai: Nous = None, vts: VtubeControll = None, tts_language: str = "english", detailed_logs = False):
+    def __init__(self, ai: Nous = None,tts_language: str = "english", detailed_logs = False):
         self.face_message_active = False
-        self.vts = vts
         self.detailed_logs = detailed_logs
         self.tts_language = tts_language
         self.ai = ai
@@ -19,6 +19,10 @@ class FaceDetectionVTuber:
         self.face_detected = False
         self.last_face_time = 0
         self.detection_cooldown = 3.0  #seconds to wait before detecting again
+        self.detection_hold_time = 5.0 #seconds for face to be detected
+        self.face_detection_start = 3.0 #timestamp
+        self.face_message_sent = False #check
+        self.last_message = ""  # Add this to track last message
         if self.tts_language == "english":
             self.face_detection_messages = [
                 "Oh, hello there! I can see you!",
@@ -35,6 +39,8 @@ class FaceDetectionVTuber:
                 "hola! que bueno verte!"
             ]
         self.current_message_index = 0
+        self.status_window = None
+        self.status_label = None
 
     def initialize_camera(self, camera_index: int = 0) -> bool:
         try:
@@ -104,6 +110,30 @@ class FaceDetectionVTuber:
             print("AI (Nous) not available to say message.")
             self.face_message_active = False
 
+    def create_status_window(self):
+        #create a separate window for status messages
+        self.status_window = tk.Tk()
+        self.status_window.title("Face Detection Status")
+        self.status_window.geometry("400x100")
+        self.status_window.attributes('-topmost', True)
+        
+        self.status_label = tk.Label(self.status_window, text="", wraplength=380)
+        self.status_label.pack(pady=20)
+        
+        def update_window():
+            if self.is_running:
+                self.status_window.update()
+                self.status_window.after(100, update_window)
+        
+        update_window()
+
+    def display_status(self, message: str):
+        #display status message in separate window"
+        if message != self.last_message:
+            if self.status_label:
+                self.status_label.config(text=f"Status: {message}")
+            self.last_message = message
+
     def camera_loop(self): #main camera loop
         while self.is_running and self.camera.isOpened(): #check if is_running and camera is opened are true
             #self.camera.read() returns two  values
@@ -111,22 +141,41 @@ class FaceDetectionVTuber:
             ret, frame = self.camera.read() #reads the current frame
 
             if not ret: #cehcks the current frame
-                print("Error: Could not read frame from camera")
+                self.display_status("Error: Could not read frame from camera")
                 break
 
             faces = self.detect_faces(frame) #detects the faces
             current_face_detected = len(faces) > 0 #gets the number of current faces detected
 
-            if current_face_detected and not self.face_detected: #if there is more than one face detected
-                self.face_detected = True
-                asyncio.run_coroutine_threadsafe( #allows for async operation on a separate thread
-                    self.handle_face_detection(), #runs the face detection
-                    self.loop #gets the async thread loop
-                )
-            elif not current_face_detected and self.face_detected: #if face is not detected
-                self.face_detected = False
-                if self.detailed_logs:
-                    print("Face no longer detected")
+            #handles timer logic
+            if current_face_detected:
+                if not self.face_detected:
+                    #start timer
+                    self.face_detected = True
+                    self.face_detection_start = time.time() #current time
+                    self.face_message_sent = False
+                    if self.detailed_logs:
+                        self.display_status("Face detected - starting timer...")
+                else:
+                    #check hold duration
+                    if (not self.face_message_sent
+                        and time.time() - self.face_detection_start >= self.detection_hold_time):
+                        # Only trigger once per continuous presence (face_message_sent prevents repeats)
+                        if self.detailed_logs:
+                            self.display_status("Face held - triggering message...")
+                        self.face_message_sent = True
+                        asyncio.run_coroutine_threadsafe(
+                            self.handle_face_detection(),
+                            self.loop
+                        )
+            else:
+                #no face in current frame
+                if self.face_detected:
+                    self.face_detected = False
+                    self.face_detection_start = 0.0
+                    self.face_message_sent = False
+                    if self.detailed_logs:
+                        self.display_status("Face no longer detected")
 
             for (x, y, w, h) in faces: #draws a rectangle on detected face
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
@@ -152,6 +201,9 @@ class FaceDetectionVTuber:
         self.is_running = True #check for camera running
         self.loop = asyncio.get_running_loop() #getws asyncio loop
 
+        # Create status window in a separate thread
+        threading.Thread(target=self.create_status_window, daemon=True).start()
+
         camera_thread = threading.Thread(target=self.camera_loop) #starts camera loop in a thread
         camera_thread.daemon = True #run in background thread
         camera_thread.start() #start thread
@@ -173,6 +225,8 @@ class FaceDetectionVTuber:
         self.is_running = False #sets check to false
         if self.camera:
             self.camera.release() #releases the camera
+        if self.status_window:
+            self.status_window.destroy()
         cv2.destroyAllWindows() #exits the camrea feed window
 
     def list_cameras(self): #print all available camera

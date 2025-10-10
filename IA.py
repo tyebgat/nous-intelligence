@@ -21,7 +21,7 @@ import wave
 import tempfile
 
 class Nous:
-    def __init__(self, vts: VtubeControll = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False) -> None:
+    def __init__(self, vts: VtubeControll = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False, use_whisper: bool = False, whisper_model_name: str = "base") -> None:
         self.audio = None  # Initialize as None, will be set in initialize()
         self.detailed_logs = detailed_logs
         self.print_adio_devices = print_audio_devices
@@ -31,14 +31,14 @@ class Nous:
             self.context = [
                 {
                     "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in english, no matter the language"
+                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in english, no matter the language. Do not use emojis in response, only text."
                 }
             ]
         elif self.tts_language == "spanish":
              self.context = [
                 {
                     "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language"
+                    "content": "You are nous, a virtual assistant with a friendly tone. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language. Do not use emojis in response, only text."
                 }
             ]
         else:
@@ -53,6 +53,10 @@ class Nous:
         self.message_history = []
         self.cable_device_id = None
         self.last_audio_duration = 0
+        #---whisper config---
+        self.use_whisper = use_whisper
+        self.whisper_model_name = whisper_model_name
+        self.whisper_model = None
 
     def initialize(self, mic_index: int = None) -> None:
         if self.print_adio_devices:
@@ -106,9 +110,7 @@ class Nous:
         if self.user_input_service == "console": #input from console
             def get_input_blocking():
                 try:
-                    print('\033[s', end='') #save cursor position
                     user_input = input("User: ")
-                    print('\033[u', end='') #restore cursor position
                     return user_input #returns input from conole
                 except Exception as e:
                     print(f"console input error: {e}")
@@ -116,122 +118,126 @@ class Nous:
             return await asyncio.to_thread(get_input_blocking)
         elif self.user_input_service == "speech":
             def get_speech_blocking():
-                print("-----Press space to start listening, release to stop----")
                 while True:
-                    if keyboard.is_pressed(' '):
-                        print("recording, release space to stop...")
-                        break
-                    else:
+                    print("-----Press space to start listening, release to stop----", flush=True)
+                    
+                    # Wait for space to be pressed
+                    while not keyboard.is_pressed(' '):
                         time.sleep(0.1)
-                
-                #audio recording parameters
-                chunk = 1024 
-                format = pyaudio.paInt16
-                channels = 1
-                rate = 16000
-
-                if self.mic.device_index is not None:
-                    device_index = self.mic.device_index
-                else:
-                    device_index = None
-
-                try:
-                    stream = self.audio.open(
-                        format=format,
-                        channels=channels,
-                        rate=rate,
-                        input=True,
-                        input_device_index=device_index,
-                        frames_per_buffer=chunk
-                    )
-                    frames = []
-
-                    while keyboard.is_pressed(' '): #record while space is pressed
-                        data = stream.read(chunk, exception_on_overflow=False)
-                        frames.append(data)
-
-                    print("recording stopped. Processing...")
-                    stream.stop_stream()
-                    stream.close()
-                    # Don't terminate PyAudio here - keep it alive for next recording
-
-                    if not frames: #If nothing was recorded
-                        print("No audio captures. Putting default response...")
-                        return "hello!"
                     
-                    #save temporary file
-                    temp_audio_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-                    temp_filename = temp_audio_file.name
-                    temp_audio_file.close()
-                    wf = wave.open(temp_filename, 'wb')
-                    wf.setnchannels(channels)
-                    wf.setsampwidth(self.audio.get_sample_size(format))
-                    wf.setframerate(rate)
-                    wf.writeframes(b''.join(frames))
-                    wf.close()
+                    print("recording, release space to stop...", flush=True)
 
-                    #use sr on the recorded file
-                    with sr.AudioFile(temp_filename) as source:
-                        audio_data = self.recogniser.record(source)
+                    #audio recording parameters
+                    chunk = 1024 
+                    format = pyaudio.paInt16
+                    channels = 1
+                    rate = 16000
 
-                        try:
-                            text = self.recogniser.recognize_google(audio_data)
-                            print(f"Text captured: {text}")
+                    if self.mic.device_index is not None:
+                        device_index = self.mic.device_index
+                    else:
+                        device_index = None
 
-                            #clena up temp file
+                    try:
+                        stream = self.audio.open(
+                            format=format,
+                            channels=channels,
+                            rate=rate,
+                            input=True,
+                            input_device_index=device_index,
+                            frames_per_buffer=chunk 
+                        )
+                        frames = []
+
+                        while keyboard.is_pressed(' '): #record while space is pressed
+                            data = stream.read(chunk, exception_on_overflow=False)
+                            frames.append(data)
+
+                        print("recording stopped. Processing...")
+                        stream.stop_stream()
+                        stream.close()
+                        #dont kill pyadudio for the love of god
+
+                        if not frames: #If nothing was recorded
+                            print("No audio captures. Try again...")
+                            continue
+                    
+                        #save temporary file
+                        temp_audio_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+                        temp_filename = temp_audio_file.name
+                        temp_audio_file.close()
+                        wf = wave.open(temp_filename, 'wb')
+                        wf.setnchannels(channels)
+                        wf.setsampwidth(self.audio.get_sample_size(format))
+                        wf.setframerate(rate)
+                        wf.writeframes(b''.join(frames))
+                        wf.close()
+
+                        #use sr on the recorded file
+                        with sr.AudioFile(temp_filename) as source:
+                            audio_data = self.recogniser.record(source)
+
                             try:
-                                os.unlink(temp_filename)
-                            except OSError:
-                                pass #fille might be deleted so ingore
+                                if self.tts_language == "spanish":
+                                    text = self.recogniser.recognize_google(audio_data, language="es-HN")
+                                else:
+                                    text = self.recogniser.recognize_google(audio_data, language="en-US")
+                                print(f"text Captured: {text}")
+
+                                #clena up temp file
+                                try:
+                                    os.unlink(temp_filename)
+                                except OSError:
+                                    pass #fille might be deleted so ingore
                 
-                            return text
-                        except sr.UnknownValueError as e:
-                            if self.detailed_logs:
-                                print(f"Unknown value error in sr: {e}")
-                            print("Could not understand audio. Putting default response")
+                                return text
+                            except sr.UnknownValueError as e:
+                                if self.detailed_logs:
+                                    print(f"Unknown value error in sr: {e}")
+                                print("Could not understand audio. Try again...")
 
-                            #clena up temp file
-                            try:
-                                os.unlink(temp_filename)
-                            except OSError:
-                                pass #fille might be deleted so ingore
+                                #clena up temp file
+                                try:
+                                    os.unlink(temp_filename)
+                                except OSError:
+                                    pass #fille might be deleted so ingore
 
-                            return "hello!"
-                        except sr.RequestError as e:
-                            if self.detailed_logs:
-                                print(f"Rquest Error in google sr: {e}")
-                            print("Request error from google. putting default response...")
+                                continue
+                            except sr.RequestError as e:
+                                if self.detailed_logs:
+                                    print(f"Rquest Error in google sr: {e}")
+                                print("Request error from google. Try again...")
 
-                            #clena up temp file
-                            try:
-                                os.unlink(temp_filename)
-                            except OSError:
-                                pass #fille might be deleted so ingore
+                                #clena up temp file
+                                try:
+                                    os.unlink(temp_filename)
+                                except OSError:
+                                    pass #fille might be deleted so ingore
                             
-                            return "hello!"
-                except Exception as e:
-                    if self.detailed_logs:
-                        print(f"unexpected error during reecording: {e}")
-                    print("Error during recording.")
-                    if self.detailed_logs:
-                        print("Cleaning up audio stream...")
-                    try:
-                        if 'stream' in locals():
-                            stream.stop_stream()
-                            stream.close()
-                    except:
-                        pass
+                                continue
+                    except Exception as e:
+                        if self.detailed_logs:
+                            print(f"unexpected error during reecording: {e}")
+                        print("Error during recording.")
+                        if self.detailed_logs:
+                            print("Cleaning up audio stream...")
+                        try:
+                            if 'stream' in locals():
+                                stream.stop_stream()
+                                stream.close()
+                        except:
+                            pass
 
-                    if self.detailed_logs: 
-                        print("Cleaning up temp file...")
-                    try:
-                        if 'temp_filename' in locals():
-                            os.unlink(temp_filename)
-                    except OSError:
-                        pass
+                        if self.detailed_logs: 
+                            print("Cleaning up temp file...")
+                        try:
+                            if 'temp_filename' in locals():
+                                os.unlink(temp_filename)
+                        except OSError:
+                            pass
                     
-                    print("Putting default response...")
-                    return "hello!"
+                        print("Please try again...")
+                        continue
             return await asyncio.to_thread(get_speech_blocking)
         else:
             print(f"unknown input service: {self.user_input_service}")

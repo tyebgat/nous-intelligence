@@ -14,7 +14,7 @@ Ai assistant with vtuber capabilities powered by chatgpt
 
 - Vtube Studio
 
-- Python 3.11 or greater
+- Python 3.11
 
 - An OpenAi API key
 

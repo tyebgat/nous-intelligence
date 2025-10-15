@@ -57,11 +57,11 @@ There are 3 categories of configuration. Chatbot settings, general settings and 
        - 'test': Just prints out a predetermined message everytime.
 
 - **General Settings:**
-     - "tts_language": Changes Google tts. Either 'spanish' or 'english'.
+     - "app_language": Changes Google tts and ai conversation loop. Either 'spanish' or 'english'.
      - "face_detection": Toggles Face Detection. False = Off, True = On.
 
 - **Log Settings:**
-     - "detailed_logs": prints a more detailed version of the logs with full API responses for debugging. False = Off, True = On.
+     - "logs": prints a more detailed version of the logs with full API responses for debugging. False = Off, True = On.
      - "print_audio_devices": Toggle the print out of audio devices used in debugging to see which one is the Virtual audio cable. False = Off, True = On.
   
 

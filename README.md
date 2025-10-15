@@ -14,13 +14,17 @@ Ai assistant with vtuber capabilities powered by chatgpt
 
 - Vtube Studio
 
+- Python 3.11
+
 - An OpenAi API key
 
 
 ## **How to install:**
 - make sure you have installed Vb virtual audio cable
+- make sure you have python installed
 - download the lates release
 - extract the .rar file into the path of your choosing
+- launch the main.cmd to set environment
 - Launch main.exe
 
 > IMPORTANT:

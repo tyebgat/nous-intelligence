@@ -5,10 +5,9 @@ import time #used to apply cooldown, basically a simple ver of asyncio
 from IA import Nous #imports ai script to send messages to 
 import os
 from VtubeS_Plugin import VtubeControll
-import tkinter as tk
 
 class FaceDetectionVTuber:
-    def __init__(self, ai: Nous = None,tts_language: str = "english", detailed_logs = False):
+    def __init__(self, ai: Nous = None, tts_language: str = "english", detailed_logs = False):
         self.face_message_active = False
         self.detailed_logs = detailed_logs
         self.tts_language = tts_language
@@ -22,7 +21,7 @@ class FaceDetectionVTuber:
         self.detection_hold_time = 5.0 #seconds for face to be detected
         self.face_detection_start = 3.0 #timestamp
         self.face_message_sent = False #check
-        self.last_message = ""  # Add this to track last message
+        self.last_message = ""  # Track last message for avoiding duplicates
         if self.tts_language == "english":
             self.face_detection_messages = [
                 "Oh, hello there! I can see you!",
@@ -39,8 +38,6 @@ class FaceDetectionVTuber:
                 "hola! que bueno verte!"
             ]
         self.current_message_index = 0
-        self.status_window = None
-        self.status_label = None
 
     def initialize_camera(self, camera_index: int = 0) -> bool:
         try:
@@ -85,97 +82,82 @@ class FaceDetectionVTuber:
         return message
 
     async def handle_face_detection(self):
-        current_time = time.time() #returns the current time
+        current_time = time.time()
 
-        if current_time - self.last_face_time < self.detection_cooldown: #cooldown to prevent spam of print messages
+        if current_time - self.last_face_time < self.detection_cooldown:
+            if self.detailed_logs:
+                print("Skipping face detection - cooldown active")
             return
         
-        #check if AI is currently speaking
-        if self.ai and self.ai.is_speaking == True:
-            print("AI is speaking or getting input, skipping face detection message...")
+        if self.ai and self.ai.is_speaking:
+            if self.detailed_logs:
+                print("AI is speaking, skipping face detection message")
             return
 
-        print("Face detected! Preparing message...")
+        if self.detailed_logs:
+            print("Face detected! Getting message...")
 
-        self.last_face_time = current_time #updates the variable with the current time
-        message = self.get_face_detection_message() #gets the face detection message
-
-        print(f"Face detected! Saying: {message}")
-        #cehcks if nous exists
+        self.last_face_time = current_time
+        message = self.get_face_detection_message()
+        
+        if self.detailed_logs:
+            print(f"Sending message to TTS: {message}")
+        
         if self.ai:
-            self.face_message_active = True
-            await self.ai.tts_say(message) #send detection message to nous tts
-            self.face_message_active = False
+            try:
+                self.face_message_active = True
+                if self.detailed_logs:
+                    print("Calling AI TTS...")
+                await self.ai.tts_say(message)
+                if self.detailed_logs:
+                    print("TTS complete")
+            except Exception as e:
+                print(f"Error in TTS: {e}")
+            finally:
+                self.face_message_active = False
         else:
             print("AI (Nous) not available to say message.")
             self.face_message_active = False
 
-    def create_status_window(self):
-        #create a separate window for status messages
-        self.status_window = tk.Tk()
-        self.status_window.title("Face Detection Status")
-        self.status_window.geometry("400x100")
-        self.status_window.attributes('-topmost', True)
-        
-        self.status_label = tk.Label(self.status_window, text="", wraplength=380)
-        self.status_label.pack(pady=20)
-        
-        def update_window():
-            if self.is_running:
-                self.status_window.update()
-                self.status_window.after(100, update_window)
-        
-        update_window()
-
-    def display_status(self, message: str):
-        #display status message in separate window"
-        if message != self.last_message:
-            if self.status_label:
-                self.status_label.config(text=f"Status: {message}")
-            self.last_message = message
-
     def camera_loop(self): #main camera loop
-        while self.is_running and self.camera.isOpened(): #check if is_running and camera is opened are true
-            #self.camera.read() returns two  values
-            #one is the frame (ret) and the other is the whole image in color (frame)
-            ret, frame = self.camera.read() #reads the current frame
+        while self.is_running and self.camera.isOpened():
+            ret, frame = self.camera.read()
 
-            if not ret: #cehcks the current frame
-                self.display_status("Error: Could not read frame from camera")
+            if not ret:
+                print("Error: Could not read frame from camera")
                 break
 
-            faces = self.detect_faces(frame) #detects the faces
-            current_face_detected = len(faces) > 0 #gets the number of current faces detected
+            faces = self.detect_faces(frame)
+            current_face_detected = len(faces) > 0
 
-            #handles timer logic
             if current_face_detected:
                 if not self.face_detected:
-                    #start timer
                     self.face_detected = True
-                    self.face_detection_start = time.time() #current time
+                    self.face_detection_start = time.time()
                     self.face_message_sent = False
                     if self.detailed_logs:
-                        self.display_status("Face detected - starting timer...")
+                        print("Face detected - starting timer...")
                 else:
-                    #check hold duration
                     if (not self.face_message_sent
                         and time.time() - self.face_detection_start >= self.detection_hold_time):
-                        # Only trigger once per continuous presence (face_message_sent prevents repeats)
                         if self.detailed_logs:
-                            self.display_status("Face held - triggering message...")
+                            print("Face held - creating coroutine...")
                         self.face_message_sent = True
-                        asyncio.run_coroutine_threadsafe(
-                            self.handle_face_detection(),
-                            self.loop
-                        )
+                        try:
+                            asyncio.run_coroutine_threadsafe(
+                                self.handle_face_detection(),
+                                self.loop
+                            ).result(timeout=5)  # Add timeout to prevent hanging
+                        except Exception as e:
+                            if self.detailed_logs:
+                                print(f"Error in face detection coroutine: {e}")
             else:
-                #no face in current frame
                 if self.face_detected:
                     self.face_detected = False
                     self.face_detection_start = 0.0
                     self.face_message_sent = False
                     if self.detailed_logs:
-                        self.display_status("Face no longer detected")
+                        print("Face no longer detected")
 
             for (x, y, w, h) in faces: #draws a rectangle on detected face
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
@@ -191,43 +173,38 @@ class FaceDetectionVTuber:
         self.stop_detection()
 
     async def start_detection(self):
-        if not self.camera or not self.face_cascade: #if camera or the face detection reference
+        if not self.camera or not self.face_cascade:
             print("Camera not initialized! Call initialize_camera() first.")
             return
 
         print("Starting face detection...")
         print("Press 'esc' in the camera window to quit")
 
-        self.is_running = True #check for camera running
-        self.loop = asyncio.get_running_loop() #getws asyncio loop
+        self.is_running = True
+        self.loop = asyncio.get_running_loop()
 
-        # Create status window in a separate thread
-        threading.Thread(target=self.create_status_window, daemon=True).start()
+        camera_thread = threading.Thread(target=self.camera_loop)
+        camera_thread.daemon = True
+        camera_thread.start()
 
-        camera_thread = threading.Thread(target=self.camera_loop) #starts camera loop in a thread
-        camera_thread.daemon = True #run in background thread
-        camera_thread.start() #start thread
-
-        try: #loop that checks if camera is running
+        try:
             while self.is_running:
                 await asyncio.sleep(0.1)
-                if not camera_thread.is_alive(): #checks if camera exists
+                if not camera_thread.is_alive():
                     break
         except KeyboardInterrupt:
             print("\nShutting down...")
         finally:
-            self.stop_detection() #stop detection if loop breaks
+            self.stop_detection()
 
     def stop_detection(self):
-        if not self.is_running: #checks if camera is running
+        if not self.is_running:
             return
         print("Stopping face detection...")
-        self.is_running = False #sets check to false
+        self.is_running = False
         if self.camera:
-            self.camera.release() #releases the camera
-        if self.status_window:
-            self.status_window.destroy()
-        cv2.destroyAllWindows() #exits the camrea feed window
+            self.camera.release()
+        cv2.destroyAllWindows()
 
     def list_cameras(self): #print all available camera
         print("Available cameras:")

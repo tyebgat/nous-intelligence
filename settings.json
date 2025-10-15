@@ -1,13 +1,13 @@
 {
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "console",
-    "chatbot_service": "openai",
+    "chatbot_service": "test",
 
     "_comment1": "------GENERAL SETTINGS-------",
-    "tts_language": "english",
-    "face_detection": false,
+    "app_language": "english",
+    "face_detection": true,
 
     "_comment2": "------LOGS SETTINGS--------",
-    "detailed_logs": true,
+    "logs": false,
     "print_audio_devices": false
 }

@@ -169,20 +169,22 @@ class VtubeControll:
 
     #fuinction detects ai response and triggers corresponding hotkey
     async def trigger_hotkey(self, name):
-     print(f"Attempting to trigger hotkey: {name}") #prints the name of the hotkey
-     if self.detailed_logs:
+     if self.detailed_logs:    
+        print(f"Attempting to trigger hotkey: {name}") #prints the name of the hotkey
         print("="*60)
         print(f"Available hotkeys: \n{list(self.hotkeys.keys())}") #prints the available hotkeys that were grabbes form the model
         print("="*60)
 
      #if a hotkey name that is triggered is not found in the model then print error message
      if name not in self.hotkeys:
-         print(f"Hotkey '{name}' not found!")
+         if self.detailed_logs:
+            print(f"Hotkey '{name}' not found!")
          return
     
      try:
          hotkey_id = self.hotkeys[name] #stores hotkey name in a variable
-         print(f"Triggering hotkey ID: {hotkey_id}")
+         if self.detailed_logs:
+            print(f"Triggering hotkey ID: {hotkey_id}")
         
          response = await self.vts.request({ #makes the api call to trigger the hotkey
              "apiName": "VTubeStudioPublicAPI",
@@ -193,9 +195,10 @@ class VtubeControll:
                  "hotkeyID": hotkey_id #the variable where I stored the hotkey name
              }
          })
-         print("="*60)
-         print(f"Hotkey trigger response: \n{response}") #prints the response of vtube studio api after trying to trigger hotkey
-         print("="*60)
+         if self.detailed_logs:
+            print("="*60)
+            print(f"Hotkey trigger response: \n{response}") #prints the response of vtube studio api after trying to trigger hotkey
+            print("="*60)
 
      #if error during api call, programn asummes connection is lost and tries to reconnect    
      except Exception as e: 
@@ -219,6 +222,7 @@ class VtubeControll:
                 print("="*60)
                 print(f"Hotkey triggered after reconnection: \n{response}") #prints that it triggered the hotkey after a reconnect and prints vtube studio's response
                 print("="*60)
+            print("Conected.")
         #if reconnect code gone wrong then print error    
         except Exception as reconnect_error:
             print(f"Failed to reconnect and trigger hotkey '{name}': {reconnect_error}")
@@ -254,10 +258,12 @@ class VtubeControll:
                 return "Neutral"
     
             dominant_emotion = emotions[counts.index(max_count)]
-            print(f"Dominant emotion: {dominant_emotion}")
+            if self.detailed_logs:
+                print(f"Dominant emotion: {dominant_emotion}")
             return dominant_emotion
         except Exception as e:
-            print(f"error in analyzing dominant emotion: {e}")
+            if self.detailed_logs:
+                print(f"error in analyzing dominant emotion: {e}")
 
 #if this file is executed directly it will run the main funtion         
 if __name__ == "__main__":

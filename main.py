@@ -15,8 +15,8 @@ async def main():
             config = json.load(f)
             user_input_service = config.get("user_input_service", "console") #gets user input
             chatbot_service = config.get("chatbot_service", "openai") #gets chatbor service
-            tts_language = config.get("tts_language", "english") #gets tts language
-            detailed_logs = config.get("detailed_logs", True)
+            tts_language = config.get("app_language", "english") #gets tts language
+            detailed_logs = config.get("logs", True)
             face_detection = config.get("face_detection", False)
             print_audio_devices = config.get("print_audio_devices", False)
             if detailed_logs:

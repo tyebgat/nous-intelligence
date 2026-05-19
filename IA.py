@@ -35,7 +35,7 @@ class Nous:
                 }
             ]
         elif self.tts_language == "spanish":
-             self.context = [
+            self.context = [
                 {
                     "role": "system",
                     "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language. Do not use emojis or format the text in your response."

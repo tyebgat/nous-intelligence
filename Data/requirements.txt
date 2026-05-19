@@ -1,30 +1,34 @@
-#should work with newer versions of python now
-aiohttp==3.8.5
-aiosignal==1.3.1
-async-timeout==4.0.3
-attrs==23.1.0
-certifi==2023.7.22
-cffi==1.15.1
-charset-normalizer==3.2.0
-frozenlist==1.4.0
-gTTS==2.3.2
-idna==3.4
-multidict==6.0.4
-numpy==2.3.0
-openai==1.102.0
-PyAudio==0.2.14
-pycparser==2.21
-pydantic==1.10.12
-Pygments==2.16.1
-python-dotenv==1.0.0
-requests==2.31.0
-six==1.16.0
-sounddevice==0.4.6
-soundfile==0.12.1
-SpeechRecognition==3.10.0
-typing_extensions==4.7.1
-urllib3==2.0.4
-yarl==1.9.2
+# requirements.txt — nous-intelligence (Python 3.13)
+# Run: pip install -r requirements.txt
+
+# ── Core / AI ──────────────────────────────────────────────────────────────
+openai>=1.102.0
+pydantic>=2.12.0
+python-dotenv>=1.0.0
+
+# ── VTube Studio ───────────────────────────────────────────────────────────
 pyvts==0.3.3
-keyboard == 0.13.5
-opencv-python == 4.12.0.88
+aiohttp>=3.10.0
+
+# ── Speech & Audio ─────────────────────────────────────────────────────────
+SpeechRecognition>=3.10.0
+PyAudio>=0.2.14
+gTTS>=2.3.2
+sounddevice>=0.5.0
+soundfile>=0.12.1
+
+# ── Face Detection ─────────────────────────────────────────────────────────
+opencv-python>=4.12.0.88
+
+# ── Numeric ────────────────────────────────────────────────────────────────
+numpy>=2.3.0
+
+# ── Input ──────────────────────────────────────────────────────────────────
+keyboard>=0.13.5
+
+# ── HTTP / networking ──────────────────────────────────────────────────────
+requests>=2.31.0
+certifi>=2024.0.0
+charset-normalizer>=3.2.0
+idna>=3.4
+urllib3>=2.0.4

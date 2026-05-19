@@ -5,7 +5,7 @@
 
     "_comment1": "------GENERAL SETTINGS-------",
     "app_language": "english",
-    "face_detection": true,
+    "face_detection": false,
 
     "_comment2": "------LOGS SETTINGS--------",
     "logs": false,

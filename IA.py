@@ -98,15 +98,16 @@ class Nous:
                 while True:
                     if self.tts_language == "english":
                         print("-----Press space to start listening, release to stop----", flush=True)
-                    print("-----Presione espacio para hablar. Suelte espacio para parar----", flush=True)
+                    elif self.tts_language == "spanish":
+                        print("-----Presione espacio para hablar. Suelte espacio para parar----", flush=True)
                     # Wait for space to be pressed
                     while not keyboard.is_pressed(' '):
                         time.sleep(0.1)
                     
                     if self.tts_language == "english":
                         print("recording, release space to stop...", flush=True)
-                    
-                    print("Grabando, suelte espacio para parar...", flush=True)
+                    elif self.tts_language == "spanish":
+                        print("Grabando, suelte espacio para parar...", flush=True)
                     #audio recording parameters
                     chunk = 1024 
                     format = pyaudio.paInt16
@@ -135,7 +136,8 @@ class Nous:
 
                         if self.tts_language == "english":
                             print("recording stopped. Processing...")
-                        print("Grabacion parada. Procesando...")
+                        elif self.tts_language == "spanish":
+                            print("Grabacion parada. Procesando...")
                         stream.stop_stream()
                         stream.close()
                         #dont kill pyadudio for the love of god
@@ -143,7 +145,8 @@ class Nous:
                         if not frames: #If nothing was recorded
                             if self.tts_language == "english":
                                 print("No audio captures. Try again...")
-                            print("Audio no caputrado. Intente denuevo...")
+                            elif self.tts_language == "spanish":
+                                print("Audio no caputrado. Intente denuevo...")
                             continue
                     
                         #save temporary file
@@ -168,7 +171,8 @@ class Nous:
                                     text = self.recogniser.recognize_google(audio_data, language="en-US")
                                 if self.tts_language == "english":
                                     print(f"text Captured: {text}")
-                                print(f"texto capturado: {text}")
+                                elif self.tts_language == "spanish":
+                                    print(f"texto capturado: {text}")
 
                                 #clena up temp file
                                 try:
@@ -182,7 +186,8 @@ class Nous:
                                     print(f"Unknown value error in sr: {e}")
                                 if self.tts_language == "english":
                                     print("Could not understand audio. Try again...")
-                                print("No se pudo entender. Intente denuevo...")
+                                elif self.tts_language == "spanish":
+                                    print("No se pudo entender. Intente denuevo...")
 
                                 #clena up temp file
                                 try:
@@ -196,7 +201,8 @@ class Nous:
                                     print(f"Rquest Error in google sr: {e}")
                                 if self.tts_language == "english":
                                     print("Request error from google. Try again...")
-                                print("Error de Google. Intente denuevo...")
+                                elif self.tts_language == "spanish":
+                                    print("Error de Google. Intente denuevo...")
 
                                 #clena up temp file
                                 try:
@@ -210,7 +216,8 @@ class Nous:
                             print(f"unexpected error during reecording: {e}")
                         if self.tts_language:
                             print("Error during recording.")
-                        print("Eror durante grabacion.")
+                        elif self.tts_language == "spanish":
+                            print("Eror durante grabacion.")
                         if self.detailed_logs:
                             print("Cleaning up audio stream...")
                         try:
@@ -229,13 +236,15 @@ class Nous:
                             pass
                         if self.tts_language == "english":
                             print("Please try again...")
-                        print("Please try again...")
+                        elif self.tts_language == "spanish":
+                            print("Please try again...")
                         continue
             return await asyncio.to_thread(get_speech_blocking)
         else:
             if self.tts_language:
                 print(f"unknown input service: {self.user_input_service}")
-            print(f"Input service desconocido: {self.user_input_service}")
+            elif self.tts_language == "spanish":
+                print(f"Input service desconocido: {self.user_input_service}")
             return ""
         
     async def tts_say(self, text: str) -> None:

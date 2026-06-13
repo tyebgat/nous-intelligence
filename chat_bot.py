@@ -1,0 +1,76 @@
+#local imports
+from json import load, dump, JSONDecodeError
+from openai import OpenAI
+import os
+from os import getenv
+
+
+class ChatBot:
+    def __init__(self, chat_bot_language: str = "english", chat_bot_service: str = "openai", detailed_logs: bool = False) -> None:
+        self.detailed_logs = detailed_logs
+        self.chat_bot_language = chat_bot_language
+        self.chatbot_service = chat_bot_service
+        #--- chatbot language set --- 
+        if self.chat_bot_language == "english":
+            self.context = [
+                {
+                    "role": "system",
+                    "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in english, no matter the language. Do not use emojis or format the text in your response."
+                }
+            ]
+        elif self.chat_bot_language == "spanish":
+            self.context = [
+                {
+                    "role": "system",
+                    "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language. Do not use emojis or format the text in your response."
+                }
+            ]
+        else: 
+            print("Chat bot can only be either 'english' or 'spanish' you have entered an unsupported language")
+        
+        self.message_history = []
+
+    def get_chatbot_response(self, prompt: str) -> str:
+        if self.chatbot_service == "openai":
+            try:
+                client = OpenAI(api_key=getenv("OPENAI_API_KEY")) #calls api key
+                self._add_message('user', prompt)
+                messages = self.context + self.message_history #chatgpt personality plus the chatbot history
+                response_obj =  client.chat.completions.create( #create chat with openai function and store it in a variable
+                    model = "gpt-4o-mini",
+                    messages=messages,
+                    temperature=0.5
+                )
+                chatgpt_response = response_obj.choices[0].message.content #in chatgpt response, it gets the first response in 'content'
+                self._add_message('assistant', chatgpt_response)
+                self._update_message_history()
+                return chatgpt_response
+            except Exception as e:
+                print(f"Opeai api error: {e}")
+                return "Api error."
+
+        elif self.chatbot_service == "test": #test answer
+            dummy_response = "Testing tts, functions great!"
+            self._add_message('user', prompt)
+            self._add_message('assistant',dummy_response)
+            self._update_message_history()
+            return dummy_response
+        else:
+            print(f"unknown chatbot service. chatbot_services {self.chatbot_service}")
+
+    def _add_message(self, role: str, content: str) -> None: #this only saves to ram
+        self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
+
+    def load_chatbot_data(self) -> None: #creates a file with add_message() adds stuff to it 
+        if os.path.isfile('Data/message_history.txt'): #checks if file exists
+            try:
+                with open('Data/message_history.txt', 'r') as file: #loads file
+                    self.message_history = load(file)
+            except JSONDecodeError:
+                pass #if file si corrupted then just start over fresh
+
+    def _update_message_history(self) -> None: 
+        with open('Data/message_history.txt', 'w') as file: #opens in write mode
+            dump(self.message_history, file) #function from json library, saves the ptyhon dicitonary as a json
+
+#---cool kids dont need a main function---

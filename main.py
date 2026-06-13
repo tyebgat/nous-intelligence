@@ -1,5 +1,6 @@
 import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
 from IA import Nous #imports nous class from the IA script
+from chat_bot import ChatBot
 from VtubeS_Plugin import VtubeControll #imports VtubeCOnbtroll class from the plugin script
 from Face_detectecion import FaceDetectionVTuber #imports face detection script
 import json #to load settings
@@ -35,7 +36,7 @@ async def main():
     
         print('Starting Vtube Studio Plugin...')
     vts = VtubeControll(detailed_logs=detailed_logs) #Creates object to use the vtube studio plugin
-
+    chat_bot = ChatBot(tts_language, chatbot_service, detailed_logs) #creates chatbot object
     #crash prevention
     try:
         print('Intializing Plugin...')
@@ -45,11 +46,10 @@ async def main():
     except Exception as e:
         print(f"Failed to initialize or authenticate: {e}")
 
-    ai = Nous(vts=vts, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices) #decalring nous class
+    ai = Nous(vts=vts, ChatBot=chat_bot, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices) #decalring nous class
 
     #set the input and chatbot service to the ones in the json file
     ai.user_input_service = user_input_service
-    ai.chatbot_service = chatbot_service
 
     print("Initializing nous...")
     ai.initialize(mic_index=None) #initializes nous

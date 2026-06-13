@@ -8,6 +8,6 @@
     "face_detection": false,
 
     "_comment2": "------LOGS SETTINGS--------",
-    "logs": false,
+    "logs": true,
     "print_audio_devices": false
 }

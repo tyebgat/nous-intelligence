@@ -1,5 +1,6 @@
 #local imports
 from VtubeS_Plugin import VtubeControll #My vtube studio plugin :3
+from chat_bot import ChatBot #imports chatbot servicess
 
 import asyncio #asynchronous lirbary that lets every IO task be in sync
 import speech_recognition as sr #handles speech recognition
@@ -7,10 +8,7 @@ from gtts import gTTS #google's text to speech
 import sounddevice as sd #library that allows audio playback to a selected device
 import soundfile as sf #library that enables creation of audio file
 import os #os library path to check existence of files
-from json import load, dump, JSONDecodeError #Library used for saving and loading chat history
 from dotenv import load_dotenv #library to load the .env file
-from openai import OpenAI #open ai library
-from os import getenv #library to open the .env file
 import threading
 import keyboard
 import time
@@ -21,45 +19,23 @@ import wave
 import tempfile
 
 class Nous:
-    def __init__(self, vts: VtubeControll = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False, use_whisper: bool = False, whisper_model_name: str = "base") -> None:
+    def __init__(self, vts: VtubeControll = None, ChatBot: ChatBot = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False) -> None:
         self.audio = None  # Initialize as None, will be set in initialize()
         self.detailed_logs = detailed_logs
         self.print_adio_devices = print_audio_devices
         self.tts_language = tts_language
-        #chatgpt personality and language check
-        if self.tts_language == "english":
-            self.context = [
-                {
-                    "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in english, no matter the language. Do not use emojis or format the text in your response."
-                }
-            ]
-        elif self.tts_language == "spanish":
-            self.context = [
-                {
-                    "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language. Do not use emojis or format the text in your response."
-                    
-                }
-            ]
-        else:
-            print("TTS language not supported. Either english or spanish.\n Lengauje de TTS no reconocido. Ingrese english o spanish.")
         #variable initialization
         self.is_speaking = False
+        self.chat_bot = ChatBot
         self.vts = vts #calls the vts plugin
-        self.chatbot_service = "openai"
         self.user_input_service = "speech"
         self.mic = None #mic for speech recognition, None means it will use default device
         self.recogniser = sr.Recognizer()
-        self.message_history = []
         self.cable_device_id = None
         self.last_audio_duration = 0
-        #---whisper config---
-        self.use_whisper = use_whisper
-        self.whisper_model_name = whisper_model_name
-        self.whisper_model = None
 
     def initialize(self, mic_index: int = None) -> None:
+        #initialize chatbot object
         if self.print_adio_devices:
             self.debug_audio_devices() #prints all available audio devices for debuggin purposes
         self.mic = sr.Microphone(device_index=mic_index)  #micrphone where audio will be played
@@ -73,7 +49,7 @@ class Nous:
         self.audio = pyaudio.PyAudio()
         
         load_dotenv()
-        self.load_chatbot_data() #loads chatbot history if it exists
+        self.chat_bot.load_chatbot_data() #loads chatbot history if it exists
 
     def cleanup(self):
         """Clean up resources when shutting down"""
@@ -261,35 +237,6 @@ class Nous:
                 print(f"unknown input service: {self.user_input_service}")
             print(f"Input service desconocido: {self.user_input_service}")
             return ""
-
-    def get_chatbot_response(self, prompt: str) -> str:
-        if self.chatbot_service == "openai":
-            try:
-                client = OpenAI(api_key=getenv("OPENAI_API_KEY")) #calls api key
-                self.add_message('user', prompt)
-                messages = self.context + self.message_history #chatgpt personality plus the chatbot history
-                response_obj =  client.chat.completions.create( #create chat with openai function and store it in a variable
-                    model = "gpt-4o-mini",
-                    messages=messages,
-                    temperature=0.5
-                )
-                chatgpt_response = response_obj.choices[0].message.content #in chatgpt response, it gets the first response in 'content'
-                self.add_message('assistant', chatgpt_response)
-                self.update_message_history()
-                return chatgpt_response
-            except Exception as e:
-                print(f"Opeai api error: {e}")
-                return "Api error."
-
-        elif self.chatbot_service == "test": #test answer
-            dummy_response = "Testing tts, functions great!"
-            self.add_message('user', prompt)
-            self.add_message('assistant',dummy_response)
-            self.update_message_history()
-            return dummy_response
-        else:
-            print(f"unknown chatbot service. chatbot_services {self.chatbot_service}")
-            return "Unknown service."
         
     async def tts_say(self, text: str) -> None:
         #chatgpt response or test response in console
@@ -357,7 +304,7 @@ class Nous:
                 user_input =  await self.get_user_input() #calls user input
                 if not user_input:
                     return ""
-                response =  self.get_chatbot_response(user_input) #gets chatgpt response or test response
+                response =  self.chat_bot.get_chatbot_response(user_input) #gets chatgpt response or test response
 
                 await self.analyze_emotion(response) #analyzes emotion in response
 
@@ -372,22 +319,6 @@ class Nous:
             print("Shutting down...")
         finally:
             self.cleanup()
-
-    def add_message(self, role: str, content: str) -> None: #this only saves to ram
-        self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
-
-    def load_chatbot_data(self) -> None: #creates a file with add_message() adds stuff to it 
-        if os.path.isfile('Data/message_history.txt'): #checks if file exists
-            try:
-                with open('Data/message_history.txt', 'r') as file: #loads file
-                    self.message_history = load(file)
-            except JSONDecodeError:
-                pass #if file si corrupted then just start over fresh
-
-    def update_message_history(self) -> None: 
-        with open('Data/message_history.txt', 'w') as file: #opens in write mode
-            dump(self.message_history, file) #function from json library, saves the ptyhon dicitonary as a json
-
 
 def main():
     ai = Nous()
@@ -404,37 +335,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-#------------MEMOS----------------------
-
-"""Help in understanding some function:
-in get_chatbot_response: response obj stores chatgpt api response, which is something like this:
-{
-  "choices": [
-    {
-      "message": {
-        "role": "assistant",
-        "content": "Hello! How can I help you today?"
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": { ... },
-  "model": "gpt-4o-mini"
-}
-"""
-
-"""
-In tts_say funciton at the beginning sf.read function returns something like this:
-(array([0.1, -0.2, 0.3, -0.1, ...]), 44100)
-these are two different values, which corresponds to the variable they are assigned to in the function.
-first is 'data' which holds the raw audio data [0.1, -0.2, 0.3, -0.1, ...]
-the other one is 'samplerate' which holeds the samplerate
-You can also do it like this:
-#result = sf.read
-#data = result[0]        # Get first item (audio data)
-#samplerate = result[1]  # Get second item (sample rate)
-here we point the result variable to each value that sf.read gives us, put python lets us put it all in one line like this
-#data, samplerate = sf.read
-"""

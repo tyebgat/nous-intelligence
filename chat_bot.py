@@ -95,6 +95,11 @@ class ChatBot:
     def load_chatbot_data(self) -> None:
         if self.remember_conversation:
             self.message_history = []
+
+            #wipe all data in message_history.txt
+            if os.path.isfile('Data/message_history.txt') and os.path.getsize('Data/message_history.txt') > 0:
+                with open('Data/message_history.txt', 'w') as file:
+                    file.write('')
             return
         if os.path.isfile('Data/message_history.txt'):
             try:

@@ -1,10 +1,11 @@
 import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
 import json #to load settings
 
-from IA import Nous #imports nous class from the IA script
+from IA import Nous
 from run_local_server import RunLocalServer
 from chat_bot import ChatBot
-from VtubeS_Plugin import VtubeControll #imports VtubeCOnbtroll class from the plugin script
+from VtubeS_Plugin import VtubeControll
+from user_input import UserInput
 
 token_path='Data/noussoul_auth_token.txt' #store token path in a variable for ease of use
 
@@ -73,10 +74,11 @@ async def main():
         except Exception as e:
             print("Failed to start local llama server: {e}")
 
-    #IA.py
-    ai = Nous(vts=vts, ChatBot=chat_bot, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices) #decalring nous class
+    #User input
+    user_input_obj = UserInput(user_input_service, detailed_logs, tts_language)
 
-    ai.user_input_service = user_input_service
+    #IA.py
+    ai = Nous(vts=vts, ChatBot=chat_bot, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj)
 
     print("Initializing nous...")
     ai.initialize(mic_index=None) #initializes nous
@@ -96,7 +98,7 @@ async def main():
             print(f"Unexpected error occured in main loop, shutting down: {e}")
 
     finally:
-        ai.cleanup()
+        user_input_obj.cleanup()
         local_server.stop_server()
 
 #if this file is executed directly it will run the main funtion

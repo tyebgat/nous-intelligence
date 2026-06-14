@@ -6,10 +6,11 @@ from os import getenv
 
 
 class ChatBot:
-    def __init__(self, chat_bot_language: str = "english", chat_bot_service: str = "openai", detailed_logs: bool = False) -> None:
+    def __init__(self, chat_bot_language: str = "english", chat_bot_service: str = "openai", detailed_logs: bool = False, model_path: str = "") -> None:
         self.detailed_logs = detailed_logs
         self.chat_bot_language = chat_bot_language
         self.chatbot_service = chat_bot_service
+        self.model_path = model_path
         #--- chatbot language set --- 
         if self.chat_bot_language == "english":
             self.context = [

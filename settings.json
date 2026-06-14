@@ -5,6 +5,7 @@
 
     "_comment1": "------GENERAL SETTINGS-------",
     "app_language": "english",
+    "model_dir": "models/llama-3.2-1b-instruct-q4_k_m.gguf",
 
     "_comment2": "------LOGS SETTINGS--------",
     "logs": false,

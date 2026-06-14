@@ -22,6 +22,7 @@ async def main():
             tts_language = config.get("app_language", "english") #gets tts language
             detailed_logs = config.get("logs", True)
             print_audio_devices = config.get("print_audio_devices", False)
+            model_dir = config.get("model_dir", "")
             if detailed_logs:
                 print("==================SETTINGS===================")
                 print(json.dumps(config, indent=4))
@@ -36,6 +37,7 @@ async def main():
         tts_language = "english"
         detailed_logs = True
         print_audio_devices = False
+        model_dir = ""
     
         print('Starting Vtube Studio Plugin...')
     
@@ -43,7 +45,7 @@ async def main():
     vts = VtubeControll(detailed_logs=detailed_logs)
 
     #Chat bot scirpt
-    chat_bot = ChatBot(tts_language, chatbot_service, detailed_logs) #creates chatbot object
+    chat_bot = ChatBot(tts_language, chatbot_service, detailed_logs, model_dir) #creates chatbot object
     
     #LLama server
     local_server = RunLocalServer(detailed_logs)

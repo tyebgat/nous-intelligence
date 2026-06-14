@@ -4,13 +4,18 @@ from openai import OpenAI
 import os
 from os import getenv
 
-
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+ORANGE = '\033[38m'
+RESET = '\033[0m'
 class ChatBot:
-    def __init__(self, chat_bot_language: str = "english", chat_bot_service: str = "openai", detailed_logs: bool = False, model_path: str = "") -> None:
+    def __init__(self, chat_bot_language: str = "english", chat_bot_service: str = "openai", detailed_logs: bool = False, model_path: str = "", remember_conversation: bool = False) -> None:
         self.detailed_logs = detailed_logs
         self.chat_bot_language = chat_bot_language
         self.chatbot_service = chat_bot_service
         self.model_path = model_path
+        self.remember_conversation = remember_conversation
         #--- chatbot language set --- 
         if self.chat_bot_language == "english":
             self.context = [
@@ -27,7 +32,7 @@ class ChatBot:
                 }
             ]
         else: 
-            print("Chat bot can only be either 'english' or 'spanish' you have entered an unsupported language")
+            print(f"{ORANGE}Chat bot can only be either 'english' or 'spanish' you have entered an unsupported language{RESET}")
         
         self.message_history = []
 
@@ -50,7 +55,7 @@ class ChatBot:
                 self._update_message_history()
                 return chatgpt_response
             except Exception as e:
-                print(f"Opeai api error: {e}")
+                print(f"{RED}Opeai api error: {e}{RESET}")
                 return "Api error."
         #-----------------------------
         #Local LLM Implementation
@@ -70,7 +75,7 @@ class ChatBot:
                 self._update_message_history()
                 return local_model_response
             except Exception as e:
-                print(f"An error has ocurred on local llm: {e}")
+                print(f"{RED}An error has ocurred on local llm: {e}{RESET}")
                 return "Local model error"
         #-----------------------------
         #Dummy response
@@ -82,21 +87,31 @@ class ChatBot:
             self._update_message_history()
             return dummy_response
         else:
-            print(f"unknown chatbot service. chatbot_services {self.chatbot_service}")
+            print(f"{ORANGE}unknown chatbot service. chatbot_services {self.chatbot_service}{RESET}")
 
     def _add_message(self, role: str, content: str) -> None: #this only saves to ram
         self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
 
-    def load_chatbot_data(self) -> None: #creates a file with add_message() adds stuff to it 
-        if os.path.isfile('Data/message_history.txt'): #checks if file exists
+    def load_chatbot_data(self) -> None:
+        if self.remember_conversation:
+            self.message_history = []
+
+            #wipe all data in message_history.txt
+            if os.path.isfile('Data/message_history.txt') and os.path.getsize('Data/message_history.txt') > 0:
+                with open('Data/message_history.txt', 'w') as file:
+                    file.write('')
+            return
+        if os.path.isfile('Data/message_history.txt'):
             try:
-                with open('Data/message_history.txt', 'r') as file: #loads file
+                with open('Data/message_history.txt', 'r') as file:
                     self.message_history = load(file)
             except JSONDecodeError:
-                pass #if file si corrupted then just start over fresh
+                pass
 
-    def _update_message_history(self) -> None: 
-        with open('Data/message_history.txt', 'w') as file: #opens in write mode
-            dump(self.message_history, file) #function from json library, saves the ptyhon dicitonary as a json
+    def _update_message_history(self) -> None:
+        if self.remember_conversation:
+            return
+        with open('Data/message_history.txt', 'w') as file:
+            dump(self.message_history, file)
 
 #---cool kids dont need a main function---

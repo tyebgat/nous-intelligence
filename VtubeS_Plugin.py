@@ -1,9 +1,13 @@
 # this code uses the pyvts librarie to make the plugin simple, shorter, and easier to read
-
 import os       # lets me control windows, used to delete, write, and read the auth token
 import pyvts    # python library especifically made to work with vtube studio api
 import asyncio  # library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
 
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+ORANGE = '\033[38m'
+RESET = '\033[0m'
 
 # avatar control class
 class VtubeControll:
@@ -20,7 +24,7 @@ class VtubeControll:
         )
         self.hotkeys = {}  # cache for hotkeys which will serve for emotions
         self.detailed_logs = detailed_logs
-        print("Plugin starto!")  # starts plugin
+        print(f"{GREEN}Plugin starto!{RESET}")
 
     # initializes the function of the authentication and hotkey fetch
     async def initialize(self):
@@ -29,16 +33,16 @@ class VtubeControll:
 
     # function for the authentication of the plugin
     async def auth_connect(self):
-        print('Trying to connect to Vtube Studio API...')
-        await self.vts.connect()  # tries to connect to vtube studio api
-        print('Connected!')
+        print(f'{YELLOW}Trying to connect to Vtube Studio API...{RESET}')
+        await self.vts.connect()
+        print(f'{GREEN}Connected!{RESET}')
 
         try:
             token_path = "Data/noussoul_auth_token.txt"  # variable to not write the path over and over
 
             # always try to authenticate if token exists
             if os.path.exists(token_path):
-                print("Found existing token, attempting authentication...")
+                print(f"{YELLOW}Found existing token, attempting authentication...{RESET}")
 
                 # reads the token in "read" mode
                 with open(token_path, 'r') as f:
@@ -60,16 +64,16 @@ class VtubeControll:
                 # checks if authentication is successfull; if not, deletes the last token and tries to make a new one
                 if (auth_response.get('messageType') == 'AuthenticationResponse' and
                         auth_response['data']['authenticated']):  # checks vtube studio response, detects if it says 'authenticate'
-                    print("Authentication successful!")
+                    print(f"{GREEN}Authentication successful!{RESET}")
                     return
                 else:
                     # if auth response was not 'authenticated' then the token is probably expired or corrupted
-                    print("Existing token invalid, requesting new one...")
+                    print(f"{ORANGE}Existing token invalid, requesting new one...{RESET}")
                     os.remove(token_path)
 
             # if token does not exist or was deleted, request new auth via vtube studio
-            print("Requesting new authentication...")
-            print("Please accept the plugin authorization popup in VTube Studio!")
+            print(f"{YELLOW}Requesting new authentication...{RESET}")
+            print(f"{YELLOW}Please accept the plugin authorization popup in VTube Studio!{RESET}")
 
             # calls the api and requests a new token
             token_response = await self.vts.request({
@@ -84,7 +88,7 @@ class VtubeControll:
             })
 
             if token_response.get('messageType') == 'APIError':  # looks in vtubes api response and checks if there's an 'APIError'
-                raise RuntimeError(f"Token request failed: {token_response['data']['message']}")
+                raise RuntimeError(f"{ORANGE}Token request failed: {token_response['data']['message']}{RESET}")
 
             # stores the token response in a variable
             auth_token = token_response['data']['authenticationToken']
@@ -108,12 +112,12 @@ class VtubeControll:
 
             if (auth_response.get('messageType') == 'AuthenticationResponse' and
                     auth_response['data']['authenticated']):
-                print("New authentication successful!")
+                print(f"{GREEN}New authentication successful!{RESET}")
             else:
                 raise RuntimeError("Authentication failed")
 
         except Exception as e:
-            print(f"Authentication error: {e}")
+            print(f"{RED}Authentication error: {e}{RESET}")
             raise
 
     # function that requests the models hotkeys
@@ -126,7 +130,7 @@ class VtubeControll:
                 "messageType": "HotkeysInCurrentModelRequest",  # requests hotkeys here
                 "requestID": "fetch_hotkeys"
             })
-            print("Hotkeys fetched")
+            print(f"{GREEN}Hotkeys fetched{RESET}")
             if self.detailed_logs:
                 print("=" * 60)
                 print("Full API response from VTS:")
@@ -134,10 +138,10 @@ class VtubeControll:
                 print("=" * 60)
 
             if "data" not in response:
-                raise RuntimeError("No 'data' in response. This might be an error message.")
+                raise RuntimeError(f"{ORANGE}No 'data' in response. This might be an error message.{RESET}")
 
             if "availableHotkeys" not in response["data"]:
-                raise RuntimeError("'data' received but no 'availableHotkeys'. Is the model properly set up?")
+                raise RuntimeError(f"{ORANGE}'data' received but no 'availableHotkeys'. Is the model properly set up?{RESET}")
 
             # puts hotkeys in a dictionary (this is where the cache comes in)
             self.hotkeys = {
@@ -150,8 +154,8 @@ class VtubeControll:
                 print("=" * 60)
 
         except Exception as e:
-            print(f"Error fetching hotkeys: {e}")
-            print("Make sure you have a model loaded in VTube Studio with configured hotkeys")
+            print(f"{RED}Error fetching hotkeys: {e}{RESET}")
+            print(f"{ORANGE}Make sure you have a model loaded in VTube Studio with configured hotkeys{RESET}")
             self.hotkeys = {}
 
         if self.detailed_logs:
@@ -160,25 +164,25 @@ class VtubeControll:
             print("=" * 60)
 
         if not self.hotkeys:
-            print("WARNING: No hotkeys found! Make sure your VTube Studio model has hotkeys configured.")
+            print(f"{ORANGE}WARNING: No hotkeys found! Make sure your VTube Studio model has hotkeys configured.{RESET}")
 
     # function detects ai response and triggers corresponding hotkey
     async def trigger_hotkey(self, name):
         if self.detailed_logs:
-            print(f"Attempting to trigger hotkey: {name}")
+            print(f"{YELLOW}Attempting to trigger hotkey: {name}{RESET}")
             print("=" * 60)
             print(f"Available hotkeys: \n{list(self.hotkeys.keys())}")
             print("=" * 60)
 
         if name not in self.hotkeys:
             if self.detailed_logs:
-                print(f"Hotkey '{name}' not found!")
+                print(f"{ORANGE}Hotkey '{name}' not found!{RESET}")
             return
 
         try:
             hotkey_id = self.hotkeys[name]
             if self.detailed_logs:
-                print(f"Triggering hotkey ID: {hotkey_id}")
+                print(f"{YELLOW}Triggering hotkey ID: {hotkey_id}{RESET}")
 
             response = await self.vts.request({
                 "apiName": "VTubeStudioPublicAPI",
@@ -195,7 +199,7 @@ class VtubeControll:
                 print("=" * 60)
 
         except Exception as e:
-            print(f"Connection lost, attempting to reconnect...")
+            print(f"{ORANGE}Connection lost, attempting to reconnect...{RESET}")
             try:
                 await self.auth_connect()
                 await self.hotkey_fetch()
@@ -214,9 +218,9 @@ class VtubeControll:
                     print("=" * 60)
                     print(f"Hotkey triggered after reconnection: \n{response}")
                     print("=" * 60)
-                print("Conected.")
+                print(f"{GREEN}Conected.{RESET}")
             except Exception as reconnect_error:
-                print(f"Failed to reconnect and trigger hotkey '{name}': {reconnect_error}")
+                print(f"{RED}Failed to reconnect and trigger hotkey '{name}': {reconnect_error}{RESET}")
 
     def analyze_dominant_emotion(self, text: str):
         try:
@@ -255,7 +259,7 @@ class VtubeControll:
 
         except Exception as e:
             if self.detailed_logs:
-                print(f"error in analyzing dominant emotion: {e}")
+                print(f"{ORANGE}error in analyzing dominant emotion: {e}{RESET}")
 
 # if this file is executed directly it will run the main function
 if __name__ == "__main__":

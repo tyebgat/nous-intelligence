@@ -7,6 +7,11 @@ import keyboard
 import time
 import os
 
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+ORANGE = '\033[38m'
+RESET = '\033[0m'
 class UserInput:
     def __init__(self, user_input_service: str = "speech", detailed_logs: bool = False, app_language: str = "english") -> None:
         self.user_input_service = user_input_service
@@ -32,7 +37,7 @@ class UserInput:
                     user_input = input("User: ")
                     return user_input
                 except Exception as e:
-                    print(f"console input error: {e}")
+                    print(f"{RED}console input error: {e}{RESET}")
                     return ""
             return await asyncio.to_thread(get_input_blocking)
         elif self.user_input_service == "speech":
@@ -46,9 +51,9 @@ class UserInput:
                         time.sleep(0.1)
 
                     if self.app_language == "english":
-                        print("recording, release space to stop...", flush=True)
+                        print(f"{YELLOW}recording, release space to stop...{RESET}", flush=True)
                     elif self.app_language == "spanish":
-                        print("Grabando, suelte espacio para parar...", flush=True)
+                        print(f"{YELLOW}Grabando, suelte espacio para parar...{RESET}", flush=True)
                     chunk = 1024
                     format = pyaudio.paInt16
                     channels = 1
@@ -75,17 +80,17 @@ class UserInput:
                             frames.append(data)
 
                         if self.app_language == "english":
-                            print("recording stopped. Processing...")
+                            print(f"{YELLOW}recording stopped. Processing...{RESET}")
                         elif self.app_language == "spanish":
-                            print("Grabacion parada. Procesando...")
+                            print(f"{YELLOW}Grabacion parada. Procesando...{RESET}")
                         stream.stop_stream()
                         stream.close()
 
                         if not frames:
                             if self.app_language == "english":
-                                print("No audio captures. Try again...")
+                                print(f"{ORANGE}No audio captures. Try again...{RESET}")
                             elif self.app_language == "spanish":
-                                print("Audio no caputrado. Intente denuevo...")
+                                print(f"{ORANGE}Audio no caputrado. Intente denuevo...{RESET}")
                             continue
 
                         temp_audio_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -107,9 +112,9 @@ class UserInput:
                                 else:
                                     text = self.recogniser.recognize_google(audio_data, language="en-US")
                                 if self.app_language == "english":
-                                    print(f"text Captured: {text}")
+                                    print(f"{GREEN}text Captured: {text}{RESET}")
                                 elif self.app_language == "spanish":
-                                    print(f"texto capturado: {text}")
+                                    print(f"{GREEN}texto capturado: {text}{RESET}")
 
                                 try:
                                     os.unlink(temp_filename)
@@ -119,11 +124,11 @@ class UserInput:
                                 return text
                             except sr.UnknownValueError as e:
                                 if self.detailed_logs:
-                                    print(f"Unknown value error in sr: {e}")
+                                    print(f"{ORANGE}Unknown value error in sr: {e}{RESET}")
                                 if self.app_language == "english":
-                                    print("Could not understand audio. Try again...")
+                                    print(f"{ORANGE}Could not understand audio. Try again...{RESET}")
                                 elif self.app_language == "spanish":
-                                    print("No se pudo entender. Intente denuevo...")
+                                    print(f"{ORANGE}No se pudo entender. Intente denuevo...{RESET}")
 
                                 try:
                                     os.unlink(temp_filename)
@@ -133,11 +138,11 @@ class UserInput:
                                 continue
                             except sr.RequestError as e:
                                 if self.detailed_logs:
-                                    print(f"Rquest Error in google sr: {e}")
+                                    print(f"{ORANGE}Rquest Error in google sr: {e}{RESET}")
                                 if self.app_language == "english":
-                                    print("Request error from google. Try again...")
+                                    print(f"{ORANGE}Request error from google. Try again...{RESET}")
                                 elif self.app_language == "spanish":
-                                    print("Error de Google. Intente denuevo...")
+                                    print(f"{ORANGE}Error de Google. Intente denuevo...{RESET}")
 
                                 try:
                                     os.unlink(temp_filename)
@@ -147,13 +152,13 @@ class UserInput:
                                 continue
                     except Exception as e:
                         if self.detailed_logs:
-                            print(f"unexpected error during reecording: {e}")
+                            print(f"{RED}unexpected error during reecording: {e}{RESET}")
                         if self.app_language:
-                            print("Error during recording.")
+                            print(f"{RED}Error during recording.{RESET}")
                         elif self.app_language == "spanish":
-                            print("Eror durante grabacion.")
+                            print(f"{RED}Eror durante grabacion.{RESET}")
                         if self.detailed_logs:
-                            print("Cleaning up audio stream...")
+                            print(f"{YELLOW}Cleaning up audio stream...{RESET}")
                         try:
                             if 'stream' in locals():
                                 stream.stop_stream()
@@ -162,21 +167,21 @@ class UserInput:
                             pass
 
                         if self.detailed_logs:
-                            print("Cleaning up temp file...")
+                            print(f"{YELLOW}Cleaning up temp file...{RESET}")
                         try:
                             if 'temp_filename' in locals():
                                 os.unlink(temp_filename)
                         except OSError:
                             pass
                         if self.app_language == "english":
-                            print("Please try again...")
+                            print(f"{ORANGE}Please try again...{RESET}")
                         elif self.app_language == "spanish":
-                            print("Please try again...")
+                            print(f"{ORANGE}Please try again...{RESET}")
                         continue
             return await asyncio.to_thread(get_speech_blocking)
         else:
             if self.app_language:
-                print(f"unknown input service: {self.user_input_service}")
+                print(f"{ORANGE}unknown input service: {self.user_input_service}{RESET}")
             elif self.app_language == "spanish":
-                print(f"Input service desconocido: {self.user_input_service}")
+                print(f"{ORANGE}Input service desconocido: {self.user_input_service}{RESET}")
             return ""

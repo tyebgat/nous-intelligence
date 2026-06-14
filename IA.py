@@ -11,6 +11,11 @@ import os
 from dotenv import load_dotenv
 import threading
 
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+ORANGE = '\033[38m'
+RESET = '\033[0m'
 class Nous:
     def __init__(self, vts: VtubeControll = None, ChatBot: ChatBot = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False, user_input: UserInput = None) -> None:
         self.detailed_logs = detailed_logs
@@ -28,9 +33,9 @@ class Nous:
             self.debug_audio_devices()
         self.cable_device_id = self.get_cable_device_id()
         if self.cable_device_id is not None:
-            print(f"VB Cable device set to id: {self.cable_device_id}")
+            print(f"{GREEN}VB Cable device set to id: {self.cable_device_id}{RESET}")
         else:
-            print("No VB cable found, lypsinc may not work.")
+            print(f"{ORANGE}No VB cable found, lypsinc may not work.{RESET}")
 
         if self.user_input:
             self.user_input.setup_mic(mic_index)
@@ -41,7 +46,6 @@ class Nous:
     def debug_audio_devices(self):
         devices = sd.query_devices() #gets a lists of all audio devices
         print("\n=== ALL AUDIO DEVICES ===")
-        #loops stores the index of each device in i, printing the following information of each audio device
         for i, device in enumerate(devices):
             print(f"[{i}] {device['name']}")
             print(f"    Max input channels: {device['max_input_channels']}")
@@ -60,13 +64,13 @@ class Nous:
                 'cable input' in name and
                 'vb-audio virtual cable' in name and
                 device['default_samplerate'] == 44100.0):
-                print(f"Found VB Cable Input: [{i}] {device['name']}")
-                return i #returns i AKA the audio device inidex/id
+                print(f"{GREEN}Found VB Cable Input: [{i}] {device['name']}{RESET}")
+                return i
         return None
 
     async def tts_say(self, text: str) -> None:
         #chatgpt response or test response in console
-        print("NOUS:" + f' {text}')
+        print(f"NOUS: {text}")
         self.is_speaking = True
             
         try:
@@ -76,14 +80,14 @@ class Nous:
             elif self.tts_language == "spanish":
                 gTTS(text=text, lang='es', slow=False, lang_check=False).save('Data/output.wav')
             else:
-                print("TTS language not supported. Either english or spanish.")
+                print(f"{ORANGE}TTS language not supported. Either english or spanish.{RESET}")
         except Exception as e:
-            print(f"Error generating TTS: {e}")
+            print(f"{RED}Error generating TTS: {e}{RESET}")
             self.is_speaking = False
             return 
         
         if not os.path.exists('Data/output.wav'): #error if the file output is not found
-            print("error: output.wav file not created!")
+            print(f"{RED}error: output.wav file not created!{RESET}")
             self.is_speaking = False
             return 
 
@@ -112,7 +116,7 @@ class Nous:
                 sd.play(data, samplerate)
                 sd.wait()
         except Exception as e:
-            print(f"Error playing audio: {e}")
+            print(f"{RED}Error playing audio: {e}{RESET}")
         finally:
             self.is_speaking =False
 
@@ -122,7 +126,7 @@ class Nous:
                 dominant_emotion = self.vts.analyze_dominant_emotion(text) #gets dominant emotion form chatgpt response
                 await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
             except Exception as e:
-                print(f"Emotion analysis error: {e}")
+                print(f"{ORANGE}Emotion analysis error: {e}{RESET}")
 
     async def conversation_cycle(self):
         try:
@@ -140,9 +144,9 @@ class Nous:
                     try:
                         await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
                     except Exception as e:
-                        print(f"Error resetting to Neutral: {e}")
+                        print(f"{ORANGE}Error resetting to Neutral: {e}{RESET}")
         except KeyboardInterrupt:
-            print("Shutting down...")
+            print(f"{ORANGE}Shutting down...{RESET}")
             raise
 
 def main():
@@ -153,7 +157,7 @@ def main():
         while True:
             asyncio.run(ai.conversation_cycle())
     except KeyboardInterrupt:
-        print("Shutting down...")
+        print(f"{ORANGE}Shutting down...{RESET}")
     finally:
         ai.user_input.cleanup()
 

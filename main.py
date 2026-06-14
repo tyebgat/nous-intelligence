@@ -87,17 +87,15 @@ async def main():
     
     except KeyboardInterrupt:
         print("Keyboard interrupt detected shutting down...")
-        ai.cleanup()
-        print("Shutting down server...")
-        local_server.stop_server()
 
-    except Exception as e: #if there is an exception stop everything
+    except Exception as e:
         print("Unexpecter error occured in main loop, shutting down...")
-        local_server.stop_server()
         if detailed_logs:
             print(f"Unexpected error occured in main loop, shutting down: {e}")
-            print("Shutting down server...")
-            local_server.stop_server()
+
+    finally:
+        ai.cleanup()
+        local_server.stop_server()
 
 #if this file is executed directly it will run the main funtion
 if __name__ == "__main__":

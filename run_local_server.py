@@ -44,7 +44,7 @@ class RunLocalServer:
         raise TimeoutError("The local server timed out or failed to start.")
     
     def stop_server(self) -> None:
-        if self.process:
+        if hasattr(self, 'process') and self.process:
             print("Shutting down local LLM...")
             self.process.terminate()
             self.process.wait()

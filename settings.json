@@ -7,6 +7,6 @@
     "app_language": "english",
 
     "_comment2": "------LOGS SETTINGS--------",
-    "logs": true,
+    "logs": false,
     "print_audio_devices": false
 }

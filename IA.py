@@ -326,8 +326,7 @@ class Nous:
                         print(f"Error resetting to Neutral: {e}")
         except KeyboardInterrupt:
             print("Shutting down...")
-        finally:
-            self.cleanup()
+            return ""
 
 def main():
     ai = Nous()

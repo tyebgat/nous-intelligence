@@ -1,11 +1,10 @@
 {
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "console",
-    "chatbot_service": "test",
+    "chatbot_service": "local",
 
     "_comment1": "------GENERAL SETTINGS-------",
     "app_language": "english",
-    "face_detection": false,
 
     "_comment2": "------LOGS SETTINGS--------",
     "logs": true,

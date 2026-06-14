@@ -31,6 +31,9 @@ class ChatBot:
         self.message_history = []
 
     def get_chatbot_response(self, prompt: str) -> str:
+        #-----------------------------
+        #Open AI response 
+        #------------------------------
         if self.chatbot_service == "openai":
             try:
                 client = OpenAI(api_key=getenv("OPENAI_API_KEY")) #calls api key
@@ -48,7 +51,29 @@ class ChatBot:
             except Exception as e:
                 print(f"Opeai api error: {e}")
                 return "Api error."
-
+        #-----------------------------
+        #Local LLM Implementation
+        #------------------------------
+        elif self.chatbot_service == "local":
+            try:
+                client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed-locally")
+                self._add_message('user', prompt)
+                messages = self.context + self.message_history
+                response_obj = client.chat.completions.create(
+                    model = "local-model",
+                    messages= messages,
+                    temperature=0.7
+                )
+                local_model_response = response_obj.choices[0].message.content
+                self._add_message('asistant', local_model_response)
+                self._update_message_history()
+                return local_model_response
+            except Exception as e:
+                print(f"An error has ocurred on local llm: {e}")
+                return "Local model error"
+        #-----------------------------
+        #Dummy response
+        #------------------------------
         elif self.chatbot_service == "test": #test answer
             dummy_response = "Testing tts, functions great!"
             self._add_message('user', prompt)

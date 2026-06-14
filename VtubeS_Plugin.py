@@ -257,73 +257,9 @@ class VtubeControll:
             if self.detailed_logs:
                 print(f"error in analyzing dominant emotion: {e}")
 
-
 # if this file is executed directly it will run the main function
 if __name__ == "__main__":
     async def main():
         vts = VtubeControll()
         await vts.initialize()
     asyncio.run(main())
-
-
-# ---------------------MEMOS---------------------
-"""
-pyvts is a wrapper that facilitates api calls.
-it returns and sends all data in json
-
-Generic vts api call:
-response = await self.vts.request({
-    "apiName": "VTubeStudioPublicAPI",      # always this value
-    "apiVersion": "1.0",                    # always this value
-    "messageType": "SpecificRequestType",   # changes based on what you want to do
-    "requestID": "unique_identifier",       # any string to identify this request
-    "data": {                               # request-specific data
-        # parameters specific to the messageType
-    }
-})
-
-To understand some of the function like the token auth logic, note that the response from vts api is this:
-{
-    "apiName": "VTubeStudioPublicAPI",
-    "apiVersion": "1.0",
-    "timestamp": 1234567890,
-    "messageType": "AuthenticationResponse",
-    "requestID": "auth_request",
-    "data": {
-        "authenticated": true,
-        "reason": "Token valid."
-    }
-}
-
-and the comprehension dictionary in hotkey fetch, it makes a dictionary with a for loop out of vts response which is like this:
-{
-    "data": {
-        "availableHotkeys": [
-            {
-                "name": "Happy",
-                "hotkeyID": "abc123",
-                "description": "Happy expression",
-                "file": "happy.exp3.json"
-            },
-            {
-                "name": "Sad",
-                "hotkeyID": "def456",
-                "description": "Sad expression",
-                "file": "sad.exp3.json"
-            },
-            {
-                "name": "Angry",
-                "hotkeyID": "ghi789",
-                "description": "Angry expression",
-                "file": "angry.exp3.json"
-            },
-            {
-                "name": "Surprised",
-                "hotkeyID": "jkl012",
-                "description": "Surprised expression",
-                "file": "surprised.exp3.json"
-            }
-        ]
-    }
-}
-"""

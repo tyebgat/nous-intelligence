@@ -1,3 +1,4 @@
+#local imports
 from VtubeS_Plugin import VtubeControll
 from chat_bot import ChatBot
 from user_input import UserInput
@@ -47,10 +48,10 @@ class Nous:
         await self.tts.tts_say(text)
 
     async def analyze_emotion(self, text: str):
-        if self.vts:
+        if self.vts: #checks if there is a vts instance
             try:
-                dominant_emotion = self.vts.analyze_dominant_emotion(text)
-                await self.vts.trigger_hotkey(dominant_emotion)
+                dominant_emotion = self.vts.analyze_dominant_emotion(text) #gets dominant emotion form chatgpt response
+                await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
             except Exception as e:
                 print(f"{ORANGE}Emotion analysis error: {e}{RESET}")
 
@@ -60,15 +61,15 @@ class Nous:
                 user_input = await self.user_input.get_user_input()
                 if not user_input:
                     return ""
-                response = self.chat_bot.get_chatbot_response(user_input)
+                response = self.chat_bot.get_chatbot_response(user_input) #gets chatgpt response or test response
 
-                await self.analyze_emotion(response)
+                await self.analyze_emotion(response) #analyzes emotion in response
 
-                await self.tts_say(response)
+                await self.tts_say(response) #waits for tts to finish
 
                 if self.vts:
                     try:
-                        await self.vts.trigger_hotkey("Neutral")
+                        await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
                     except Exception as e:
                         print(f"{ORANGE}Error resetting to Neutral: {e}{RESET}")
         except KeyboardInterrupt:

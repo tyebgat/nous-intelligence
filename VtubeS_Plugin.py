@@ -1,6 +1,7 @@
-import os
-import pyvts
-import asyncio
+# this code uses the pyvts librarie to make the plugin simple, shorter, and easier to read
+import os       # lets me control windows, used to delete, write, and read the auth token
+import pyvts    # python library especifically made to work with vtube studio api
+import asyncio  # library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -8,38 +9,46 @@ YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
 
+# avatar control class
 class VtubeControll:
 
+    # initialize
     def __init__(self, detailed_logs: bool = True):
+        # identifies the plugin so that it shows the plugin name and developer in Vtube Studio
         self.vts = pyvts.vts(
             plugin_info={
                 "plugin_name": "NousSoul",
                 "developer": "Tagb",
-                "authentication_token_path": "Data/noussoul_auth_token.txt"
+                "authentication_token_path": "Data/noussoul_auth_token.txt"  # token is stored in a txt
             }
         )
-        self.hotkeys = {}
+        self.hotkeys = {}  # cache for hotkeys which will serve for emotions
         self.detailed_logs = detailed_logs
         print(f"{GREEN}Plugin starto!{RESET}")
 
+    # initializes the function of the authentication and hotkey fetch
     async def initialize(self):
         await self.auth_connect()
-        await self.hotkey_fetch()
+        await self.hotkey_fetch()  # Comment out this function, because hotkey triggers stops lypsync for some models, if you dont mind it then leave it as is :P
 
+    # function for the authentication of the plugin
     async def auth_connect(self):
         print(f'{YELLOW}Trying to connect to Vtube Studio API...{RESET}')
         await self.vts.connect()
         print(f'{GREEN}Connected!{RESET}')
 
         try:
-            token_path = "Data/noussoul_auth_token.txt"
+            token_path = "Data/noussoul_auth_token.txt"  # variable to not write the path over and over
 
+            # always try to authenticate if token exists
             if os.path.exists(token_path):
                 print(f"{YELLOW}Found existing token, attempting authentication...{RESET}")
 
+                # reads the token in "read" mode
                 with open(token_path, 'r') as f:
-                    auth_token = f.read().strip()
+                    auth_token = f.read().strip()  # variable that's used to read the token
 
+                # calls the api with the token data
                 auth_response = await self.vts.request({
                     "apiName": "VTubeStudioPublicAPI",
                     "apiVersion": "1.0",
@@ -48,25 +57,29 @@ class VtubeControll:
                     "data": {
                         "pluginName": "NousSoul",
                         "pluginDeveloper": "Tagb",
-                        "authenticationToken": auth_token
+                        "authenticationToken": auth_token  # variable I made earlier that reads the token
                     }
                 })
 
+                # checks if authentication is successfull; if not, deletes the last token and tries to make a new one
                 if (auth_response.get('messageType') == 'AuthenticationResponse' and
-                        auth_response['data']['authenticated']):
+                        auth_response['data']['authenticated']):  # checks vtube studio response, detects if it says 'authenticate'
                     print(f"{GREEN}Authentication successful!{RESET}")
                     return
                 else:
+                    # if auth response was not 'authenticated' then the token is probably expired or corrupted
                     print(f"{ORANGE}Existing token invalid, requesting new one...{RESET}")
                     os.remove(token_path)
 
+            # if token does not exist or was deleted, request new auth via vtube studio
             print(f"{YELLOW}Requesting new authentication...{RESET}")
             print(f"{YELLOW}Please accept the plugin authorization popup in VTube Studio!{RESET}")
 
+            # calls the api and requests a new token
             token_response = await self.vts.request({
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
-                "messageType": "AuthenticationTokenRequest",
+                "messageType": "AuthenticationTokenRequest",  # this and the line below request the token
                 "requestID": "auth_token_request",
                 "data": {
                     "pluginName": "NousSoul",
@@ -74,14 +87,17 @@ class VtubeControll:
                 }
             })
 
-            if token_response.get('messageType') == 'APIError':
+            if token_response.get('messageType') == 'APIError':  # looks in vtubes api response and checks if there's an 'APIError'
                 raise RuntimeError(f"{ORANGE}Token request failed: {token_response['data']['message']}{RESET}")
 
+            # stores the token response in a variable
             auth_token = token_response['data']['authenticationToken']
 
+            # creates a file with the token response that we stored earlier
             with open(token_path, 'w') as f:
                 f.write(auth_token)
 
+            # authenticate with new token
             auth_response = await self.vts.request({
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
@@ -104,19 +120,21 @@ class VtubeControll:
             print(f"{RED}Authentication error: {e}{RESET}")
             raise
 
+    # function that requests the models hotkeys
     async def hotkey_fetch(self):
         try:
+            # calls vtube studio api to request hotkeys
             response = await self.vts.request({
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
-                "messageType": "HotkeysInCurrentModelRequest",
+                "messageType": "HotkeysInCurrentModelRequest",  # requests hotkeys here
                 "requestID": "fetch_hotkeys"
             })
             print(f"{GREEN}Hotkeys fetched{RESET}")
             if self.detailed_logs:
                 print("=" * 60)
                 print("Full API response from VTS:")
-                print(response)
+                print(response)  # prints the full response data for debugging purposes
                 print("=" * 60)
 
             if "data" not in response:
@@ -125,6 +143,7 @@ class VtubeControll:
             if "availableHotkeys" not in response["data"]:
                 raise RuntimeError(f"{ORANGE}'data' received but no 'availableHotkeys'. Is the model properly set up?{RESET}")
 
+            # puts hotkeys in a dictionary (this is where the cache comes in)
             self.hotkeys = {
                 hotkey["name"]: hotkey["hotkeyID"]
                 for hotkey in response["data"]["availableHotkeys"]
@@ -147,6 +166,7 @@ class VtubeControll:
         if not self.hotkeys:
             print(f"{ORANGE}WARNING: No hotkeys found! Make sure your VTube Studio model has hotkeys configured.{RESET}")
 
+    # function detects ai response and triggers corresponding hotkey
     async def trigger_hotkey(self, name):
         if self.detailed_logs:
             print(f"{YELLOW}Attempting to trigger hotkey: {name}{RESET}")
@@ -204,15 +224,18 @@ class VtubeControll:
 
     def analyze_dominant_emotion(self, text: str):
         try:
+            # Define emotions and their keywords
             happy_words = ["great", "happy", "yay", "joy", "awesome", "excited", "wonderful", "good", "fantastic", "amazing", "love", "perfect", "hi", "hello", "absolutely"]
             sad_words = ["sad", "cry", "depressed", "upset", "terrible", "awful", "disappointed", "sorry"]
             angry_words = ["angry", "mad", "furious", "annoyed", "hate", "stupid", "ridiculous", "frustrated"]
             surprised_words = ["surprised", "wow", "shocked", "incredible", "unbelievable", "whoa"]
 
+            # Convert text to lowercase and clean it
             text_lower = text.lower()
             words = text_lower.split()
             clean_words = [word.strip('.,!?;:"()[]') for word in words]
 
+            # Count each emotion
             happy_count = sum(1 for word in clean_words if word in happy_words)
             sad_count = sum(1 for word in clean_words if word in sad_words)
             angry_count = sum(1 for word in clean_words if word in angry_words)
@@ -221,6 +244,7 @@ class VtubeControll:
             if self.detailed_logs:
                 print(f"Emotion counts - Happy: {happy_count}, Sad: {sad_count}, Angry: {angry_count}, Surprised: {surprised_count}")
 
+            # Find the highest count
             counts = [happy_count, sad_count, angry_count, surprised_count]
             emotions = ["Happy", "Sad", "Angry", "Surprised"]
 
@@ -237,6 +261,7 @@ class VtubeControll:
             if self.detailed_logs:
                 print(f"{ORANGE}error in analyzing dominant emotion: {e}{RESET}")
 
+# if this file is executed directly it will run the main function
 if __name__ == "__main__":
     async def main():
         vts = VtubeControll()

@@ -12,7 +12,6 @@ GREEN = '\033[32m'
 YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
-
 class UserInput:
     def __init__(self, user_input_service: str = "speech", detailed_logs: bool = False, app_language: str = "english") -> None:
         self.user_input_service = user_input_service

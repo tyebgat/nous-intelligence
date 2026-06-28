@@ -1,0 +1,90 @@
+from gtts import gTTS
+import sounddevice as sd
+import soundfile as sf
+import os
+import threading
+
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+ORANGE = '\033[38m'
+RESET = '\033[0m'
+
+class TTS:
+    def __init__(self, tts_language: str = "english"):
+        self.tts_language = tts_language
+        self.cable_device_id = None
+
+    def initialize(self):
+        self.cable_device_id = self.get_cable_device_id()
+        if self.cable_device_id is not None:
+            print(f"{GREEN}VB Cable device set to id: {self.cable_device_id}{RESET}")
+        else:
+            print(f"{ORANGE}No VB cable found, lypsinc may not work.{RESET}")
+
+    def get_cable_device_id(self):
+        devices = sd.query_devices()
+        #same loop logic as the past function
+        #except this one checks if the name matches with cable input audio device
+        for i, device in enumerate(devices):
+            name = str(device['name']).lower()
+            #checks the name output and sample rate to identify the audio cable
+            if (device['max_output_channels'] > 0 and
+                'cable input' in name and
+                'vb-audio virtual cable' in name and
+                device['default_samplerate'] == 44100.0):
+                print(f"{GREEN}Found VB Cable Input: [{i}] {device['name']}{RESET}")
+                return i
+        return None
+
+    async def tts_say(self, text: str) -> None:
+        #chatgpt response or test response in console
+        print(f"NOUS: {text}")
+        self.is_speaking = True
+
+        try:
+            #generate tts with response from chatgpt or test reponse
+            if self.tts_language == "english":
+                gTTS(text=text, lang='en', slow=False, lang_check=False).save('Data/output.wav')
+            elif self.tts_language == "spanish":
+                gTTS(text=text, lang='es', slow=False, lang_check=False).save('Data/output.wav')
+            else:
+                print(f"{ORANGE}TTS language not supported. Either english or spanish.{RESET}")
+        except Exception as e:
+            print(f"{RED}Error generating TTS: {e}{RESET}")
+            self.is_speaking = False
+            return
+
+        if not os.path.exists('Data/output.wav'): #error if the file output is not found
+            print(f"{RED}error: output.wav file not created!{RESET}")
+            self.is_speaking = False
+            return
+
+        try:
+            #stores the two things sf reads return, data: raw audio data, samplerate: samplerate
+            data, samplerate = sf.read('Data/output.wav')
+            self.last_audio_duration = len(data) / samplerate #formula for calculating audio duration
+
+            if self.cable_device_id is not None:
+                def play_default(): #plays to default device
+                    sd.play(data, samplerate)
+                    sd.wait() #waits for audio to finish
+                def play_cable(): #prints to virtual cable
+                    sd.play(data, samplerate, device=self.cable_device_id) #uses our function to find the deivce id and plays it to that device
+                    sd.wait() #waits for audio to finish
+                #calls threading
+                t1 = threading.Thread(target=play_default)
+                t2 = threading.Thread(target=play_cable)
+                #starts threads
+                t1.start()
+                t2.start()
+                #ends threads
+                t1.join()
+                t2.join()
+            else: #if cable device is not found then just play it to the default device
+                sd.play(data, samplerate)
+                sd.wait()
+        except Exception as e:
+            print(f"{RED}Error playing audio: {e}{RESET}")
+        finally:
+            self.is_speaking = False

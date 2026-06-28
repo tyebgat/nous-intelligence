@@ -6,6 +6,7 @@ from run_local_server import RunLocalServer
 from chat_bot import ChatBot
 from VtubeS_Plugin import VtubeControll
 from user_input import UserInput
+from TTS import TTS
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -35,7 +36,7 @@ async def main():
             if detailed_logs:
                 print("==================SETTINGS===================")
                 print(json.dumps(config, indent=4))
-                print("="*60)
+                print("=" * 60)
     except FileNotFoundError:
         #========================
         # JSON DEFAULT SETTINGS
@@ -87,8 +88,10 @@ async def main():
     #User input
     user_input_obj = UserInput(user_input_service, detailed_logs, tts_language)
 
+    tts = TTS(tts_language=tts_language)
+
     #IA.py
-    ai = Nous(vts=vts, ChatBot=chat_bot, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj)
+    ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj, tts=tts)
 
     print(f"{YELLOW}Initializing nous...{RESET}")
     ai.initialize(mic_index=None)

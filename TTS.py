@@ -11,31 +11,16 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class TTS:
-    def __init__(self, tts_language: str = "english", print_audio_devices: bool = False):
+    def __init__(self, tts_language: str = "english"):
         self.tts_language = tts_language
-        self.print_audio_devices = print_audio_devices
-        self.is_speaking = False
-        self.last_audio_duration = 0
         self.cable_device_id = None
 
     def initialize(self):
-        if self.print_audio_devices:
-            self.debug_audio_devices()
         self.cable_device_id = self.get_cable_device_id()
         if self.cable_device_id is not None:
             print(f"{GREEN}VB Cable device set to id: {self.cable_device_id}{RESET}")
         else:
             print(f"{ORANGE}No VB cable found, lypsinc may not work.{RESET}")
-
-    def debug_audio_devices(self):
-        devices = sd.query_devices()
-        print("\n=== ALL AUDIO DEVICES ===")
-        for i, device in enumerate(devices):
-            print(f"[{i}] {device['name']}")
-            print(f"    Max input channels: {device['max_input_channels']}")
-            print(f"    Max output channels: {device['max_output_channels']}")
-            print(f"    Default sample rate: {device['default_samplerate']}")
-            print()
 
     def get_cable_device_id(self):
         devices = sd.query_devices()

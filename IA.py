@@ -1,10 +1,10 @@
-#local imports
 from VtubeS_Plugin import VtubeControll
 from chat_bot import ChatBot
 from user_input import UserInput
 from TTS import TTS
 
 import asyncio
+import sounddevice as sd
 from dotenv import load_dotenv
 
 RED = '\033[31m'
@@ -12,44 +12,29 @@ GREEN = '\033[32m'
 YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
+
 class Nous:
-    def __init__(self, vts: VtubeControll = None, ChatBot: ChatBot = None, tts_language: str = "english", detailed_logs: bool = False, print_audio_devices: bool = False, user_input: UserInput = None, tts: TTS = None) -> None:
+    def __init__(self, vts: VtubeControll = None, ChatBot: ChatBot = None, detailed_logs: bool = False, print_audio_devices: bool = False, user_input: UserInput = None, tts: TTS = None) -> None:
         self.detailed_logs = detailed_logs
-        self.tts_language = tts_language
+        self.print_audio_devices = print_audio_devices
         self.chat_bot = ChatBot
         self.vts = vts
         self.user_input = user_input
+        self.tts = tts
 
-        if tts is not None:
-            self.tts = tts
-        else:
-            self.tts = TTS(tts_language=tts_language, print_audio_devices=print_audio_devices)
-
-    @property
-    def is_speaking(self):
-        return self.tts.is_speaking
-
-    @is_speaking.setter
-    def is_speaking(self, value):
-        self.tts.is_speaking = value
-
-    @property
-    def last_audio_duration(self):
-        return self.tts.last_audio_duration
-
-    @last_audio_duration.setter
-    def last_audio_duration(self, value):
-        self.tts.last_audio_duration = value
-
-    @property
-    def cable_device_id(self):
-        return self.tts.cable_device_id
-
-    @cable_device_id.setter
-    def cable_device_id(self, value):
-        self.tts.cable_device_id = value
+    def debug_audio_devices(self):
+        devices = sd.query_devices()
+        print("\n=== ALL AUDIO DEVICES ===")
+        for i, device in enumerate(devices):
+            print(f"[{i}] {device['name']}")
+            print(f"    Max input channels: {device['max_input_channels']}")
+            print(f"    Max output channels: {device['max_output_channels']}")
+            print(f"    Default sample rate: {device['default_samplerate']}")
+            print()
 
     def initialize(self, mic_index: int = None) -> None:
+        if self.print_audio_devices:
+            self.debug_audio_devices()
         self.tts.initialize()
 
         if self.user_input:
@@ -61,7 +46,7 @@ class Nous:
     async def tts_say(self, text: str) -> None:
         await self.tts.tts_say(text)
 
-    async def analyze_emotion(self, text:str):
+    async def analyze_emotion(self, text: str):
         if self.vts:
             try:
                 dominant_emotion = self.vts.analyze_dominant_emotion(text)
@@ -72,10 +57,10 @@ class Nous:
     async def conversation_cycle(self):
         try:
             while True:
-                user_input =  await self.user_input.get_user_input()
+                user_input = await self.user_input.get_user_input()
                 if not user_input:
                     return ""
-                response =  self.chat_bot.get_chatbot_response(user_input)
+                response = self.chat_bot.get_chatbot_response(user_input)
 
                 await self.analyze_emotion(response)
 
@@ -91,8 +76,10 @@ class Nous:
             raise
 
 def main():
+    from TTS import TTS
     user_input = UserInput("console", False, "english")
-    ai = Nous(tts_language="english", user_input=user_input)
+    tts = TTS(tts_language="english")
+    ai = Nous(tts=tts, user_input=user_input)
     ai.initialize()
     try:
         while True:

@@ -1,11 +1,12 @@
-import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
-import json #to load settings
+import asyncio
+import json
 
 from IA import Nous
 from run_local_server import RunLocalServer
 from chat_bot import ChatBot
 from VtubeS_Plugin import VtubeControll
 from user_input import UserInput
+from TTS import TTS
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -13,14 +14,10 @@ YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
 
-token_path='Data/noussoul_auth_token.txt' #store token path in a variable for ease of use
+token_path = 'Data/noussoul_auth_token.txt'
 
 async def main():
-    #opens the json setting
     try:
-        #========================
-        # GET JSON CONFIGURATION
-        # ========================
         with open("settings.json", 'r') as f:
             print(f"{YELLOW}loading settings from json....{RESET}")
             config = json.load(f)
@@ -35,11 +32,8 @@ async def main():
             if detailed_logs:
                 print("==================SETTINGS===================")
                 print(json.dumps(config, indent=4))
-                print("="*60)
+                print("=" * 60)
     except FileNotFoundError:
-        #========================
-        # JSON DEFAULT SETTINGS
-        # ========================
         print(f"{ORANGE}file not found using default settings...{RESET}")
         user_input_service = "console"
         chatbot_service = "test"
@@ -49,33 +43,23 @@ async def main():
         model_dir = ""
         remember_conversation = False
         show_ollama_server_logs = False
-    
+
         print(f'{YELLOW}Starting Vtube Studio Plugin...{RESET}')
-    
-    #VTS Plugin
+
     vts = VtubeControll(detailed_logs=detailed_logs)
 
-    #Chat bot scirpt
     chat_bot = ChatBot(tts_language, chatbot_service, detailed_logs, model_dir, remember_conversation)
-    
-    #LLama server
+
     local_server = RunLocalServer(show_ollama_server_logs)
 
-    #----------------------
-    #START VTS PLUGIN
-    #----------------------
     try:
         print(f'{YELLOW}Intializing Plugin...{RESET}')
         await vts.initialize()
         print(f'{GREEN}done.{RESET}')
 
-    #if gone wrong then print out an error
     except Exception as e:
         print(f"{RED}Failed to initialize or authenticate: {e}{RESET}")
 
-    #----------------------
-    #START LLAMA SERVER 
-    #----------------------
     if chatbot_service == "local":
         try:
             print(f"{YELLOW}Initializing local Llama server{RESET}")
@@ -84,11 +68,11 @@ async def main():
         except Exception as e:
             print(f"{RED}Failed to start local llama server: {e}{RESET}")
 
-    #User input
     user_input_obj = UserInput(user_input_service, detailed_logs, tts_language)
 
-    #IA.py
-    ai = Nous(vts=vts, ChatBot=chat_bot, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj)
+    tts = TTS(tts_language=tts_language)
+
+    ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj, tts=tts)
 
     print(f"{YELLOW}Initializing nous...{RESET}")
     ai.initialize(mic_index=None)
@@ -98,7 +82,7 @@ async def main():
         ai_task = asyncio.create_task(ai.conversation_cycle())
 
         await ai_task
-    
+
     except KeyboardInterrupt:
         print(f"{ORANGE}Keyboard interrupt detected shutting down...{RESET}")
 
@@ -111,6 +95,5 @@ async def main():
         user_input_obj.cleanup()
         local_server.stop_server()
 
-#if this file is executed directly it will run the main funtion
 if __name__ == "__main__":
     asyncio.run(main())

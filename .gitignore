@@ -4,6 +4,5 @@ Data/output.wav
 Data/noussoul_auth_token.txt
 models/llama-3.2-1b-instruct-q4_k_m.gguf
 .env
-/Ollama server/
 venv/
 .venv/

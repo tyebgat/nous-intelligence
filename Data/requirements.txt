@@ -1,4 +1,4 @@
-# requirements.txt — nous-intelligence (Python 3.13)
+# requirements.txt — nous-intelligence (Python 3.11-3.13)
 # Run: pip install -r requirements.txt
 
 # ── Core / AI ──────────────────────────────────────────────────────────────

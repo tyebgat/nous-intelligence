@@ -1,99 +1,118 @@
 import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
-from IA import Nous #imports nous class from the IA script
-from VtubeS_Plugin import VtubeControll #imports VtubeCOnbtroll class from the plugin script
-from Face_detectecion import FaceDetectionVTuber #imports face detection script
 import json #to load settings
+
+from IA import Nous
+from run_local_server import RunLocalServer
+from chat_bot import ChatBot
+from VtubeS_Plugin import VtubeControll
+from user_input import UserInput
+from TTS import TTS
+
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+ORANGE = '\033[38m'
+RESET = '\033[0m'
 
 token_path='Data/noussoul_auth_token.txt' #store token path in a variable for ease of use
 
 async def main():
     #opens the json setting
     try:
-        #=====GET JSON CONFIGURATION========
+        #========================
+        # GET JSON CONFIGURATION
+        # ========================
         with open("settings.json", 'r') as f:
-            print("loading settings from json....")
+            print(f"{YELLOW}loading settings from json....{RESET}")
             config = json.load(f)
-            user_input_service = config.get("user_input_service", "console") #gets user input
-            chatbot_service = config.get("chatbot_service", "openai") #gets chatbor service
-            tts_language = config.get("app_language", "english") #gets tts language
+            user_input_service = config.get("user_input_service", "console")
+            chatbot_service = config.get("chatbot_service", "openai")
+            tts_language = config.get("app_language", "english")
             detailed_logs = config.get("logs", True)
-            face_detection = config.get("face_detection", False)
             print_audio_devices = config.get("print_audio_devices", False)
+            model_dir = config.get("model_dir", "")
+            remember_conversation = config.get("remember_conversation", False)
+            show_ollama_server_logs = config.get("show_ollama_server_logs", False)
             if detailed_logs:
                 print("==================SETTINGS===================")
                 print(json.dumps(config, indent=4))
-                print("="*60)
-    except FileNotFoundError: #if file is not found use default settings
-        #======JSON DEFAULT SETTINGS=======
-        print("file not found using default settings...")
+                print("=" * 60)
+    except FileNotFoundError:
+        #========================
+        # JSON DEFAULT SETTINGS
+        # ========================
+        print(f"{ORANGE}file not found using default settings...{RESET}")
         user_input_service = "console"
         chatbot_service = "test"
         tts_language = "english"
         detailed_logs = True
-        face_detection = False
         print_audio_devices = False
+        model_dir = ""
+        remember_conversation = False
+        show_ollama_server_logs = False
     
-        print('Starting Vtube Studio Plugin...')
-    vts = VtubeControll(detailed_logs=detailed_logs) #Creates object to use the vtube studio plugin
+        print(f'{YELLOW}Starting Vtube Studio Plugin...{RESET}')
+    
+    #VTS Plugin
+    vts = VtubeControll(detailed_logs=detailed_logs)
 
-    #crash prevention
+    #Chat bot scirpt
+    chat_bot = ChatBot(tts_language, chatbot_service, detailed_logs, model_dir, remember_conversation)
+    
+    #LLama server
+    local_server = RunLocalServer(show_ollama_server_logs)
+
+    #----------------------
+    #START VTS PLUGIN
+    #----------------------
     try:
-        print('Intializing Plugin...')
-        await vts.initialize() #initializes the vtube studio plugin
-        print('done.')
+        print(f'{YELLOW}Intializing Plugin...{RESET}')
+        await vts.initialize()
+        print(f'{GREEN}done.{RESET}')
+
     #if gone wrong then print out an error
     except Exception as e:
-        print(f"Failed to initialize or authenticate: {e}")
+        print(f"{RED}Failed to initialize or authenticate: {e}{RESET}")
 
-    ai = Nous(vts=vts, tts_language=tts_language, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices) #decalring nous class
+    #----------------------
+    #START LLAMA SERVER 
+    #----------------------
+    if chatbot_service == "local":
+        try:
+            print(f"{YELLOW}Initializing local Llama server{RESET}")
+            await local_server.launch_server(timeout=30)
+            print(f"{GREEN}Local server running{RESET}")
+        except Exception as e:
+            print(f"{RED}Failed to start local llama server: {e}{RESET}")
 
-    #set the input and chatbot service to the ones in the json file
-    ai.user_input_service = user_input_service
-    ai.chatbot_service = chatbot_service
+    #User input
+    user_input_obj = UserInput(user_input_service, detailed_logs, tts_language)
 
-    print("Initializing nous...")
-    ai.initialize(mic_index=None) #initializes nous
-    print("Nous initialized.")
+    tts = TTS(tts_language=tts_language)
 
-    if face_detection:
-        print("Initializing face detection...")
-        fvts = FaceDetectionVTuber(ai=ai, tts_language=tts_language, detailed_logs=detailed_logs) #decalres the face detection class
-        if detailed_logs:
-            fvts.list_cameras() #gets the list of
-        if not fvts.initialize_camera(camera_index=0): #initializes on index 0 (default device)
-            print("Failed to initialized camera. Check on index which devices are acttive.")
-            return
-        print("camera iniialized")
+    #IA.py
+    ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj, tts=tts)
+
+    print(f"{YELLOW}Initializing nous...{RESET}")
+    ai.initialize(mic_index=None)
+    print(f"{GREEN}Nous initialized.{RESET}")
+
+    try:
+        ai_task = asyncio.create_task(ai.conversation_cycle())
+
+        await ai_task
     
-    if not  face_detection:
-        print("starting only conversation cycle.")
-        print("="*60)
+    except KeyboardInterrupt:
+        print(f"{ORANGE}Keyboard interrupt detected shutting down...{RESET}")
 
-    if face_detection:
-        print("starting both systems...")
-        print("="*60)
-        try:
-            #creates tasks for both face and conversation loops
-            fvts_task = asyncio.create_task(fvts.start_detection())
-            ai_task = asyncio.create_task(ai.conversation_cycle())
+    except Exception as e:
+        print(f"{RED}Unexpecter error occured in main loop, shutting down...{RESET}")
+        if detailed_logs:
+            print(f"{RED}Unexpected error occured in main loop, shutting down: {e}{RESET}")
 
-            await asyncio.gather(fvts_task, ai_task, return_exceptions=True) #awaits them both at the same time
-        except Exception as e: #if there is an exception stop everything
-            print("Unexpected error occured shutting down...")
-            if detailed_logs:
-                print(f"Unexpected error occured in main loop, shutting down: {e}")
-            fvts.stop_detection()
-            print("gracefull shut down.")
-    elif not face_detection:
-        try:
-            #creates tasks for both face and conversation loops
-            ai_task = asyncio.create_task(ai.conversation_cycle())
-
-            await ai_task #awaits them both at the same time
-        except Exception as e: #if there is an exception stop everything
-            print("Unexpecter error occured in main loop, shutting down...")
-            if detailed_logs:
-                print(f"Unexpected error occured in main loop, shutting down: {e}")
+    finally:
+        user_input_obj.cleanup()
+        local_server.stop_server()
 
 #if this file is executed directly it will run the main funtion
 if __name__ == "__main__":

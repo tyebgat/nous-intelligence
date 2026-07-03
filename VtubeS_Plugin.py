@@ -2,6 +2,7 @@
 import os       # lets me control windows, used to delete, write, and read the auth token
 import pyvts    # python library especifically made to work with vtube studio api
 import asyncio  # library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
+from paths import BASE_PATH
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -19,7 +20,7 @@ class VtubeControll:
             plugin_info={
                 "plugin_name": "NousSoul",
                 "developer": "Tagb",
-                "authentication_token_path": "Data/noussoul_auth_token.txt"  # token is stored in a txt
+                "authentication_token_path": os.path.join(BASE_PATH, "Data", "noussoul_auth_token.txt")  # token is stored in a txt
             }
         )
         self.hotkeys = {}  # cache for hotkeys which will serve for emotions
@@ -38,7 +39,7 @@ class VtubeControll:
         print(f'{GREEN}Connected!{RESET}')
 
         try:
-            token_path = "Data/noussoul_auth_token.txt"  # variable to not write the path over and over
+            token_path = os.path.join(BASE_PATH, "Data", "noussoul_auth_token.txt")  # variable to not write the path over and over
 
             # always try to authenticate if token exists
             if os.path.exists(token_path):

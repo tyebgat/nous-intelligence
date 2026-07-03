@@ -1,7 +1,12 @@
-import asyncio #library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
-import json #to load settings
+import asyncio
+import json
+import os
+import colorama
+
+colorama.init()
 
 from IA import Nous
+from paths import BASE_PATH
 from run_local_server import RunLocalServer
 from chat_bot import ChatBot
 from VtubeS_Plugin import VtubeControll
@@ -14,7 +19,7 @@ YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
 
-token_path='Data/noussoul_auth_token.txt' #store token path in a variable for ease of use
+token_path=os.path.join(BASE_PATH, 'Data', 'noussoul_auth_token.txt')
 
 async def main():
     #opens the json setting
@@ -22,7 +27,7 @@ async def main():
         #========================
         # GET JSON CONFIGURATION
         # ========================
-        with open("settings.json", 'r') as f:
+        with open(os.path.join(BASE_PATH, "settings.json"), 'r') as f:
             print(f"{YELLOW}loading settings from json....{RESET}")
             config = json.load(f)
             user_input_service = config.get("user_input_service", "console")

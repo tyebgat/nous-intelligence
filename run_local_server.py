@@ -2,6 +2,7 @@ import os
 import subprocess
 import asyncio
 import httpx
+from paths import BASE_PATH
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -11,12 +12,8 @@ RESET = '\033[0m'
 
 class RunLocalServer:
     def __init__(self, show_ollama_server_logs: bool = False):
-        #gets the absolute path of the root dir
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-
-
-        self.server_exe = os.path.join(self.base_dir, "Ollama server", "llama-server.exe")
-        self.model_path = os.path.join(self.base_dir, "models", "llama-3.2-1b-instruct-q4_k_m.gguf")
+        self.server_exe = os.path.join(BASE_PATH, "Ollama server", "llama-server.exe")
+        self.model_path = os.path.join(BASE_PATH, "models", "llama-3.2-1b-instruct-q4_k_m.gguf")
         self.show_ollama_server_logs = show_ollama_server_logs
     
     async def launch_server(self, timeout: int = 30) -> None:

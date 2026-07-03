@@ -3,6 +3,7 @@ from json import load, dump, JSONDecodeError
 from openai import OpenAI
 import os
 from os import getenv
+from paths import BASE_PATH
 
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -97,13 +98,13 @@ class ChatBot:
             self.message_history = []
 
             #wipe all data in message_history.txt
-            if os.path.isfile('Data/message_history.txt') and os.path.getsize('Data/message_history.txt') > 0:
-                with open('Data/message_history.txt', 'w') as file:
+            if os.path.isfile(os.path.join(BASE_PATH, 'Data', 'message_history.txt')) and os.path.getsize(os.path.join(BASE_PATH, 'Data', 'message_history.txt')) > 0:
+                with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'w') as file:
                     file.write('')
             return
-        if os.path.isfile('Data/message_history.txt'):
+        if os.path.isfile(os.path.join(BASE_PATH, 'Data', 'message_history.txt')):
             try:
-                with open('Data/message_history.txt', 'r') as file:
+                with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'r') as file:
                     self.message_history = load(file)
             except JSONDecodeError:
                 pass
@@ -111,7 +112,7 @@ class ChatBot:
     def _update_message_history(self) -> None:
         if self.remember_conversation:
             return
-        with open('Data/message_history.txt', 'w') as file:
+        with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'w') as file:
             dump(self.message_history, file)
 
 #---cool kids dont need a main function---

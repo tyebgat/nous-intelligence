@@ -32,7 +32,12 @@ async def main():
             config = json.load(f)
             user_input_service = config.get("user_input_service", "console")
             chatbot_service = config.get("chatbot_service", "openai")
-            tts_language = config.get("app_language", "english")
+            tts_language = config.get("tts_language", "en")
+            tts_service = config.get("tts_service", "gtts")
+            openai_model = config.get("openai_model", "gpt-4o-mini")
+            openai_tts_model = config.get("openai_tts_model", "gpt-4o-mini-tts")
+            openai_tts_voice = config.get("openai_tts_voice", "ash")
+            app_language = config.get("app_language", "english")
             detailed_logs = config.get("logs", True)
             print_audio_devices = config.get("print_audio_devices", False)
             model_dir = config.get("model_dir", "")
@@ -49,7 +54,12 @@ async def main():
         print(f"{ORANGE}file not found using default settings...{RESET}")
         user_input_service = "console"
         chatbot_service = "test"
-        tts_language = "english"
+        tts_language = "en"
+        tts_service = "gtts"
+        openai_model = "gpt-4o-mini"
+        openai_tts_model = "gpt-4o-mini-tts"
+        openai_tts_voice = "ash"
+        app_language = "english"
         detailed_logs = True
         print_audio_devices = False
         model_dir = ""
@@ -62,10 +72,17 @@ async def main():
     vts = VtubeControll(detailed_logs=detailed_logs)
 
     #Chat bot scirpt
-    chat_bot = ChatBot(tts_language, chatbot_service, detailed_logs, model_dir, remember_conversation)
+    chat_bot = ChatBot(chatbot_service, openai_model, detailed_logs, model_dir, remember_conversation)
+    chat_bot.initialize()
     
     #LLama server
     local_server = RunLocalServer(show_ollama_server_logs)
+
+    #user input
+    user_input_obj = UserInput(user_input_service, detailed_logs, app_language)
+
+    #text to speech
+    tts = TTS(tts_language=tts_language, tts_service=tts_service, openai_tts_model=openai_tts_model, openai_tts_voice=openai_tts_voice)
 
     #----------------------
     #START VTS PLUGIN
@@ -89,11 +106,6 @@ async def main():
             print(f"{GREEN}Local server running{RESET}")
         except Exception as e:
             print(f"{RED}Failed to start local llama server: {e}{RESET}")
-
-    #User input
-    user_input_obj = UserInput(user_input_service, detailed_logs, tts_language)
-
-    tts = TTS(tts_language=tts_language)
 
     #IA.py
     ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj, tts=tts)

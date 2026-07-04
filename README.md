@@ -12,22 +12,26 @@ Ai assistant with vtuber capabilities powered by chatgpt
 
 - Vb virtual audio cable
 
-- Vtube Studio
+- Vtube Studio (optional)
 
 - Python 3.11
 
-- An OpenAi API key
+- An OpenAi API key (optional)
 
 
 ## **How to install:**
 - make sure you have installed Vb virtual audio cable
 - put you OPEN AI API key in the .env file.
-- Go to either your visual studio or local windows terminal
 
-- Go to the file directory that you have the porject folder with cmd (EX: C\Users\exUser\desktop\example_project_folder) using the command: 
-```
-cd your_directory_here
-```
+### Normal way
+
+- Download the latest .zip on the releases page.
+- Unzip it and run the .exe
+
+
+### Dev Install
+
+Either clone the repo or download the source code from the realese page.
 
 - Install the required libraries with command: 
 ```
@@ -46,56 +50,73 @@ python main.py
 
 ## **Configuration**
 
-There are 3 categories of configuration. Chatbot settings, general settings and log settings.
+### **Personalities**
+There are two text files on the program "personality.txt" and "openai-TTS-instructions.txt". 
 
-- **Chatbot Settings:**
-     - "user_input_service":changes what user input is being used. Either 'speech' or 'console'.
-       - 'speech': User google speech recognition to send messages to the AI with push to talk.
-       - 'console': Uses console input to send messages to tha AI.
-     - "chatbot_service":changes what chabot service to use. either 'openai' or 'test'
-       - 'openai': Uses the OpenAI API default model is 4o-mini (API Key is required).
-       - 'test': Just prints out a predetermined message everytime.
+Edit the personality.txt with however you want the AI to act.
 
-- **General Settings:**
-     - "app_language": Changes Google tts and ai conversation loop. Either 'spanish' or 'english'.
-     - "face_detection": Toggles Face Detection. False = Off, True = On.
+Edit the openai-TTS-instructions only if you are using the openai TTS service. This is where you can say in which language to have an accent and how you want it to speak.
 
-- **Log Settings:**
-     - "logs": prints a more detailed version of the logs with full API responses for debugging. False = Off, True = On.
-     - "print_audio_devices": Toggle the print out of audio devices used in debugging to see which one is the Virtual audio cable. False = Off, True = On.
-  
+### **Chatbot Settings:**
+- "user_input_service": changes what user input is being used. Either 'speech' or 'console'.
+     - 'speech': User google speech recognition to send messages to the AI with push to talk.
+     - 'console': Uses console input to send messages to tha AI.
+
+- "chatbot_service": changes what chabot service to use. either 'openai' or 'test'
+     - 'openai': Uses the open ai model of your choice. (API Key is required).
+     - 'local': Creates a llama server with the binary included in the program and then loads a gguf model. It is completely free but your pc will have to run the AI by itself the larger the model you choose the heavier on the pc.
+     - 'test': Just prints out a predetermined message everytime.
+
+- "remmeber_conversation" : changes the behaviour of the message history.
+     - 'true' : Will store all of your past messages on a .txt and will load them when the program is executed.
+     - 'false' : Will wipe the message history upon boot up. This can be helpful to reduce tokens if you are using openai.
+
+- "model_dir" : directory where the gguf model is stored. Only used when running with chatbot_service local. Put the directory of where you put your gguf models.
+
+### **Text to Speech Settings**
+- "tts_service": changes the service of tts you want to use.
+     - 'gtts' : uses google tts completely free.
+     - 'openai' : uses an openai tts_model of your choice (API key is required).
+- "tts_language" : changes the accent of the tts via language codes of ISO 639-1 (en, es, ja, zh etc...) refer to the gtts docs to the supported languages. If you want to change the openai accent language then specify it on the "openai-TTS-instructions.txt".
+
+### **Open AI Settings**
+- "openai_model" : Choose the model you want from the openAI site.
+- "openai_tts_model" : Choose the tts model from the openAI site.
+- "openai_tts_voice" : Pick a voice for the tts. Refer to the tts model you are using for your available voices.
+
+### **General Settings:**
+- "app_language": Changes the conversation cycle language (not logs yet).
+
+### **Log Settings:**
+- "logs": prints a more detailed version of the logs with full API responses for debugging. False = Off, True = On.
+- "print_audio_devices": Toggle the print out of audio devices used in debugging to see which one is the Virtual audio cable. False = Off, True = On.  
+- "show_ollama_server_logs": Only used when using the "local" chatbot service. Shows the logs of the llama server on the same console.
 
 This configuration are stored in 'settings.json' on the projects root:
 ``` python
 {
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "console",
-    "chatbot_service": "openai",
+    "chatbot_service": "local",
+    "remember_conversation": true,
+    "model_dir": "models/llama-3.2-1b-instruct-q4_k_m.gguf",
 
-    "_comment1": "------GENERAL SETTINGS-------",
-    "tts_language": "english",
-    "face_detection": true,
+    "_comment1": "------TEXT TO SPEECH SETTING-------",
+    "tts_service": "google",
+    "tts_language": "en",
 
-    "_comment2": "------LOGS SETTINGS--------",
-    "detailed_logs": true,
-    "print_audio_devices": false
-}
-```
+    "_comment1.1": "---OPEN AI SETTINGS",
+    "openai_model": "gpt-4o-mini",
+    "openai_tts_model": "gpt-4o-mini-tts",
+    "openai_tts_voice": "ash",
 
-For example, if I want to use 'speech' as the user input, and 'test' as the chatbot service I would do:
-``` python
-{
-    "_comment": "----CHATBOT SETTINGS-----",
-    "user_input_service": "speech",
-    "chatbot_service": "test",
+    "_comment2": "------GENERAL SETTINGS-------",
+    "app_language": "english",
 
-    "_comment1": "------GENERAL SETTINGS-------",
-    "tts_language": "english",
-    "face_detection": true,
-
-    "_comment2": "------LOGS SETTINGS--------",
-    "detailed_logs": true,
-    "print_audio_devices": false
+    "_comment3": "------LOGS SETTINGS--------",
+    "logs": true,
+    "print_audio_devices": false,
+    "show_ollama_server_logs": false
 }
 ```
 

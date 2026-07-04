@@ -42,7 +42,7 @@ class Nous:
             self.user_input.setup_mic(mic_index)
 
         load_dotenv()
-        self.chat_bot.load_chatbot_data()
+        self.chat_bot.initialize()
 
     async def tts_say(self, text: str) -> None:
         await self.tts.tts_say(text)
@@ -79,7 +79,7 @@ class Nous:
 def main():
     from TTS import TTS
     user_input = UserInput("console", False, "english")
-    tts = TTS(tts_language="english")
+    tts = TTS(tts_language="en")
     ai = Nous(tts=tts, user_input=user_input)
     ai.initialize()
     try:

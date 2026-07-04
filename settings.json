@@ -2,14 +2,23 @@
     "_comment": "----CHATBOT SETTINGS-----",
     "user_input_service": "console",
     "chatbot_service": "local",
-    "remember_conversation": true,
-
-    "_comment1": "------GENERAL SETTINGS-------",
-    "app_language": "english",
+    "remember_conversation": false,
     "model_dir": "models/llama-3.2-1b-instruct-q4_k_m.gguf",
 
-    "_comment2": "------LOGS SETTINGS--------",
-    "logs": true,
+    "_comment1": "------TEXT TO SPEECH SETTING-------",
+    "tts_service": "openai",
+    "tts_language": "en",
+
+    "_comment1.1": "---OPEN AI SETTINGS",
+    "openai_model": "gpt-4o-mini",
+    "openai_tts_model": "gpt-4o-mini-tts",
+    "openai_tts_voice": "marin",
+
+    "_comment2": "------GENERAL SETTINGS-------",
+    "app_language": "english",
+
+    "_comment3": "------LOGS SETTINGS--------",
+    "logs": false,
     "print_audio_devices": false,
     "show_ollama_server_logs": false
 }

@@ -11,31 +11,23 @@ YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
 class ChatBot:
-    def __init__(self, chat_bot_language: str = "english", chat_bot_service: str = "openai", detailed_logs: bool = False, model_path: str = "", remember_conversation: bool = False) -> None:
+    def __init__(self, chat_bot_service: str = "openai",openai_model: str = None, detailed_logs: bool = False, model_path: str = "", remember_conversation: bool = False) -> None:
+        self.openai_model = openai_model
         self.detailed_logs = detailed_logs
-        self.chat_bot_language = chat_bot_language
         self.chatbot_service = chat_bot_service
         self.model_path = model_path
         self.remember_conversation = remember_conversation
-        #--- chatbot language set --- 
-        if self.chat_bot_language == "english":
-            self.context = [
-                {
-                    "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in english, no matter the language. Do not use emojis or format the text in your response."
-                }
-            ]
-        elif self.chat_bot_language == "spanish":
-            self.context = [
-                {
-                    "role": "system",
-                    "content": "You are nous, a virtual assistant with a friendly and sarcastic tone, treat the user like old friends joking around. you are a woman. Answer only in small sentences. You love technology and often make jokes about it. you are enthusiastic but sometimes sarcastic. Always reply in spanish, no matter the language. Do not use emojis or format the text in your response."
-                }
-            ]
-        else: 
-            print(f"{ORANGE}Chat bot can only be either 'english' or 'spanish' you have entered an unsupported language{RESET}")
-        
         self.message_history = []
+        self.context = None
+
+    def load_chatbot_personality(self) -> list:
+        with open(os.path.join(BASE_PATH, "personality.txt"), "r") as personality:
+            text = personality.read()
+            return [{"role": "system", "content": text}]
+    
+    def initialize(self) -> None:
+        self.context = self.load_chatbot_personality()
+        self.load_chatbot_data()
 
     def get_chatbot_response(self, prompt: str) -> str:
         #-----------------------------
@@ -47,7 +39,7 @@ class ChatBot:
                 self._add_message('user', prompt)
                 messages = self.context + self.message_history #chatgpt personality plus the chatbot history
                 response_obj =  client.chat.completions.create( #create chat with openai function and store it in a variable
-                    model = "gpt-4o-mini",
+                    model = self.openai_model,
                     messages=messages,
                     temperature=0.5
                 )

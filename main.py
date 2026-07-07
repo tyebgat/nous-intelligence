@@ -30,43 +30,67 @@ async def main():
         with open(os.path.join(BASE_PATH, "settings.json"), 'r') as f:
             print(f"{YELLOW}loading settings from json....{RESET}")
             config = json.load(f)
+            # --- chatbot settings ---
             user_input_service = config.get("user_input_service", "console")
             chatbot_service = config.get("chatbot_service", "openai")
+            chatbot_name = config.get("chatbot_name", "Nous")
+            remember_conversation = config.get("remember_conversation", False)
+            model_dir = config.get("model_dir", "")
+
+            # ---- tts settings
             tts_language = config.get("tts_language", "en")
             tts_service = config.get("tts_service", "gtts")
+
+            # --- openai settings ----
             openai_model = config.get("openai_model", "gpt-4o-mini")
             openai_tts_model = config.get("openai_tts_model", "gpt-4o-mini-tts")
             openai_tts_voice = config.get("openai_tts_voice", "ash")
+
+            # --- general setting ---
             app_language = config.get("app_language", "english")
+            speech_recognition_language = config.get("speech_recognition_language", "en")
+
+            # --- logs ---
             detailed_logs = config.get("logs", True)
             print_audio_devices = config.get("print_audio_devices", False)
-            model_dir = config.get("model_dir", "")
-            remember_conversation = config.get("remember_conversation", False)
             show_ollama_server_logs = config.get("show_ollama_server_logs", False)
+
             if detailed_logs:
                 print("==================SETTINGS===================")
                 print(json.dumps(config, indent=4))
                 print("=" * 60)
+
     except FileNotFoundError:
         #========================
         # JSON DEFAULT SETTINGS
         # ========================
         print(f"{ORANGE}file not found using default settings...{RESET}")
+        # --- chatbot settings ---
         user_input_service = "console"
-        chatbot_service = "test"
+        chatbot_service = "test"     
+        chatbot_name = "Nous"
+        remember_conversation = False
+        model_dir = ""
+
+        # --- tts settings ---
         tts_language = "en"
         tts_service = "gtts"
+
+        # --- openai settings ---
         openai_model = "gpt-4o-mini"
         openai_tts_model = "gpt-4o-mini-tts"
         openai_tts_voice = "ash"
+        
+        # --- general settings ---
         app_language = "english"
+        speech_recognition_language = "en"
+
+        # --- logs settings ---
         detailed_logs = True
         print_audio_devices = False
-        model_dir = ""
-        remember_conversation = False
         show_ollama_server_logs = False
-    
-        print(f'{YELLOW}Starting Vtube Studio Plugin...{RESET}')
+
+    print(f'{YELLOW}Starting Vtube Studio Plugin...{RESET}')
     
     #VTS Plugin
     vts = VtubeControll(detailed_logs=detailed_logs)
@@ -79,10 +103,10 @@ async def main():
     local_server = RunLocalServer(show_ollama_server_logs)
 
     #user input
-    user_input_obj = UserInput(user_input_service, detailed_logs, app_language)
+    user_input = UserInput(user_input_service, speech_recognition_language ,detailed_logs, app_language)
 
     #text to speech
-    tts = TTS(tts_language=tts_language, tts_service=tts_service, openai_tts_model=openai_tts_model, openai_tts_voice=openai_tts_voice)
+    tts = TTS(tts_language=tts_language, tts_service=tts_service,  chatbot_name=chatbot_name,openai_tts_model=openai_tts_model, openai_tts_voice=openai_tts_voice)
 
     #----------------------
     #START VTS PLUGIN
@@ -108,7 +132,7 @@ async def main():
             print(f"{RED}Failed to start local llama server: {e}{RESET}")
 
     #IA.py
-    ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input_obj, tts=tts)
+    ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input, tts=tts)
 
     print(f"{YELLOW}Initializing nous...{RESET}")
     ai.initialize(mic_index=None)
@@ -128,7 +152,7 @@ async def main():
             print(f"{RED}Unexpected error occured in main loop, shutting down: {e}{RESET}")
 
     finally:
-        user_input_obj.cleanup()
+        user_input.cleanup()
         local_server.stop_server()
 
 #if this file is executed directly it will run the main funtion

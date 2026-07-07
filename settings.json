@@ -1,12 +1,13 @@
 {
     "_comment": "----CHATBOT SETTINGS-----",
-    "user_input_service": "console",
+    "user_input_service": "speech",
     "chatbot_service": "local",
+    "chatbot_name": "Servant",
     "remember_conversation": false,
     "model_dir": "models/llama-3.2-1b-instruct-q4_k_m.gguf",
 
     "_comment1": "------TEXT TO SPEECH SETTING-------",
-    "tts_service": "openai",
+    "tts_service": "gtts",
     "tts_language": "en",
 
     "_comment1.1": "---OPEN AI SETTINGS",
@@ -16,6 +17,7 @@
 
     "_comment2": "------GENERAL SETTINGS-------",
     "app_language": "english",
+    "speech_recognition_language": "es",
 
     "_comment3": "------LOGS SETTINGS--------",
     "logs": false,

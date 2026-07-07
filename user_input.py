@@ -13,7 +13,8 @@ YELLOW = '\033[33m'
 ORANGE = '\033[38m'
 RESET = '\033[0m'
 class UserInput:
-    def __init__(self, user_input_service: str = "speech", detailed_logs: bool = False, app_language: str = "english") -> None:
+    def __init__(self, user_input_service: str = "speech", speech_recognition_language: str = "en",detailed_logs: bool = False, app_language: str = "english") -> None:
+        self.speech_recognition_language = speech_recognition_language
         self.user_input_service = user_input_service
         self.detailed_logs = detailed_logs
         self.app_language = app_language
@@ -107,10 +108,7 @@ class UserInput:
                             audio_data = self.recogniser.record(source)
 
                             try:
-                                if self.app_language == "spanish":
-                                    text = self.recogniser.recognize_google(audio_data, language="es-HN")
-                                else:
-                                    text = self.recogniser.recognize_google(audio_data, language="en-US")
+                                text = self.recogniser.recognize_google(audio_data, language=self.speech_recognition_language)
                                 if self.app_language == "english":
                                     print(f"{GREEN}text Captured: {text}{RESET}")
                                 elif self.app_language == "spanish":

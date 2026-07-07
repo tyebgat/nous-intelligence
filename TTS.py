@@ -14,7 +14,8 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class TTS:
-    def __init__(self, tts_language: str = "en", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash"):
+    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous",tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash"):
+        self.chatbot_name = chatbot_name
         self.openai_tts_voice = openai_tts_voice
         self.openai_tts_model = openai_tts_model
         self.tts_service = tts_service
@@ -49,7 +50,7 @@ class TTS:
 
     async def tts_say(self, text: str) -> None:
         #response from the chatbot
-        print(f"NOUS: {text}")
+        print(f"{self.chatbot_name}: {text}")
         self.is_speaking = True
 
         output_path = os.path.join(BASE_PATH, 'Data', 'output.wav')

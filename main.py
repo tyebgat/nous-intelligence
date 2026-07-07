@@ -118,7 +118,7 @@ async def main():
 
     #if gone wrong then print out an error
     except Exception as e:
-        print(f"{RED}Failed to initialize or authenticate: {e}{RESET}")
+        print(f"{RED}Failed to start VTube Studio plugin. Is it open?: {e}{RESET}")
 
     #----------------------
     #START LLAMA SERVER 

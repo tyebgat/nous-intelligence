@@ -174,7 +174,7 @@ class UserInput:
                         if self.app_language == "english":
                             print(f"{ORANGE}Please try again...{RESET}")
                         elif self.app_language == "spanish":
-                            print(f"{ORANGE}Please try again...{RESET}")
+                            print(f"{ORANGE}Porfavor intente denuevo...{RESET}")
                         continue
             return await asyncio.to_thread(get_speech_blocking)
         else:

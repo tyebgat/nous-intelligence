@@ -109,7 +109,7 @@ async def main():
     tts = TTS(tts_language=tts_language, tts_service=tts_service,  chatbot_name=chatbot_name,openai_tts_model=openai_tts_model, openai_tts_voice=openai_tts_voice)
 
     #----------------------
-    #START VTS PLUGIN
+    #START VTS PLUGINS
     #----------------------
     try:
         print(f'{YELLOW}Intializing Plugin...{RESET}')

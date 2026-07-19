@@ -89,9 +89,9 @@ class ChatBot:
         self.message_history.append({'role': role, 'content': content})
 
     def load_chatbot_data(self) -> None:
-        if self.remember_conversation:
+        if not self.remember_conversation:
             self.message_history = []
-            if os.path.isfile(os.path.join(BASE_PATH, 'Data', 'message_history.txt')) and os.path.getsize(os.path.join(BASE_PATH, 'Data', 'message_history.txt')) > 0:
+            if os.path.isfile(os.path.join(BASE_PATH, 'Data', 'message_history.txt')):
                 with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'w') as file:
                     file.write('')
             return
@@ -103,7 +103,7 @@ class ChatBot:
                 pass
 
     def _update_message_history(self) -> None:
-        if self.remember_conversation:
+        if not self.remember_conversation:
             return
         with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'w') as file:
             dump(self.message_history, file)

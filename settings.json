@@ -1,26 +1,44 @@
 {
-    "_comment": "----CHATBOT SETTINGS-----",
-    "user_input_service": "speech",
+    "_comment_chatbot": "----CHATBOT SETTINGS-----",
+    "user_input_service": "console",
     "chatbot_service": "local",
-    "chatbot_name": "Servant",
+    "chatbot_name": "NOUS",
     "remember_conversation": false,
-    "model_dir": "models/llama-3.2-1b-instruct-q4_k_m.gguf",
+    "model_dir": "models/llama/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
 
-    "_comment1": "------TEXT TO SPEECH SETTING-------",
-    "tts_service": "gtts",
-    "tts_language": "en",
+    "_comment_wake": "------WAKE WORD SETTINGS-------",
+    "wake_word_model": "models/openwakeword/hey_jarvis_v0.1.onnx",
+    "wake_word_threshold": 0.5,
+    "wake_word_confirm_sound": true,
 
-    "_comment1.1": "---OPEN AI SETTINGS",
+    "_comment_stt": "------SPEECH TO TEXT SETTINGS-------",
+    "stt_service": "whisper",
+    "stt_device": "cpu",
+    "stt_compute_type": "int8",
+    "stt_language": "es",
+    "silence_duration": 1,
+
+    "_comment_tts": "------TEXT TO SPEECH SETTING-------",
+    "tts_service": "omnivoice",
+    "tts_language": "es",
+    "tts_voice": "af_heart",
+    "tts_speed": 1,
+    "voice_cloning": true,
+    "voice_design": false,
+
+    "_comment_omnivoice": "------OMNIVOICE TTS SETTINGS-------",
+    "omnivoice_device": "cuda",
+
+    "_comment_openai": "---OPEN AI SETTINGS---",
     "openai_model": "gpt-4o-mini",
     "openai_tts_model": "gpt-4o-mini-tts",
     "openai_tts_voice": "marin",
 
-    "_comment2": "------GENERAL SETTINGS-------",
+    "_comment_general": "------GENERAL SETTINGS-------",
     "app_language": "english",
-    "speech_recognition_language": "es",
 
-    "_comment3": "------LOGS SETTINGS--------",
-    "logs": false,
+    "_comment_logs": "------LOGS SETTINGS--------",
+    "logs": true,
     "print_audio_devices": false,
-    "show_ollama_server_logs": false
+    "show_ollama_server_logs": true
 }

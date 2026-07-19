@@ -15,7 +15,15 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class Nous:
-    def __init__(self, vts: VtubeControll = None, ChatBot: ChatBot = None, detailed_logs: bool = False, print_audio_devices: bool = False, user_input: UserInput = None, tts: TTS = None) -> None:
+    def __init__(
+        self, 
+        vts: VtubeControll = None, 
+        ChatBot: ChatBot = None, 
+        detailed_logs: bool = False, 
+        print_audio_devices: bool = False, 
+        user_input: UserInput = None,
+        tts: TTS = None) -> None:
+        
         self.detailed_logs = detailed_logs
         self.print_audio_devices = print_audio_devices
         self.chat_bot = ChatBot

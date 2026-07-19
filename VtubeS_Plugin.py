@@ -1,7 +1,6 @@
-# this code uses the pyvts librarie to make the plugin simple, shorter, and easier to read
-import os       # lets me control windows, used to delete, write, and read the auth token
-import pyvts    # python library especifically made to work with vtube studio api
-import asyncio  # library that lets me use the async and await syntax, vital for web requests (api requests basically :V)
+import os  
+import pyvts  
+import asyncio  
 from paths import BASE_PATH
 
 RED = '\033[31m'

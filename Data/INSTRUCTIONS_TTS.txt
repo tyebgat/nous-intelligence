@@ -1,0 +1,24 @@
+For PocketTTS service, add your Hugging face token to the .env file. Get one at https://huggingface.co/settings/tokens and accpet the terms at https://huggingface.co/kyutai/pocket-tts.
+
+If you do not have a Hugging face account, create one on https://huggingface.co/. and go to profile > settings > Access Tokens > Create new token > read or write > create token > copy the value and paste it in .env
+
+
+To use voice cloning with Pocket TTS / OMNIVOICE:
+1. Set "voice_cloning": true in settings.json
+2. Place a reference.wav file in this folder (Data/reference.wav)
+3. The reference audio should be 3-10 seconds of clean speech
+4. For best results, use https://podcast.adobe.com/en/enhance to clean the audio
+5. Include a transcription of the reference audio in reference.txt (only for omnivoice)
+
+If reference.wav is not found, Pocket TTS will fall back to the voice set in "tts_voice".
+If "tts_voice" is empty, it defaults to "alba".
+
+If reference.wav or reference.txt are not found, Omnivoice will fallback to auto voice.
+
+For Omnivoice Voice Design edit the contents in omnivoice-design.txt as follows:
+"Gender, pitch, accent"
+each argument separated by a comma, do not put a period "." at the end.
+
+Available built-in voices for POCKET TTS: alba, anna, azelma, bill_boerst, caro_davy, charles, cosette,
+eponine, eve, fantine, george, jane, jean, javert, marius, mary, michael, paul,
+peter_yearsley, stuart_bell, vera, giovanni, lola, juergen, rafael, estelle

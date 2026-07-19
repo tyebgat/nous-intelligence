@@ -1,10 +1,11 @@
-# requirements.txt — nous-intelligence (Python 3.11-3.13)
+# requirements.txt — nous-intelligence (Python 3.11)
 # Run: pip install -r requirements.txt
 
 # ── Core / AI ──────────────────────────────────────────────────────────────
 openai>=1.102.0
 pydantic>=2.12.0
 python-dotenv>=1.0.0
+ollama>=0.4.0
 
 # ── VTube Studio ───────────────────────────────────────────────────────────
 pyvts==0.3.3
@@ -17,8 +18,16 @@ gTTS>=2.3.2
 sounddevice>=0.5.0
 soundfile>=0.12.1
 
-# ── Face Detection ─────────────────────────────────────────────────────────
-opencv-python>=4.12.0.88
+# ── Wake Word Detection (local, offline) ──────────────────────────────────
+openwakeword>=0.6.0
+
+# ── Local STT (offline Whisper via CTranslate2) ───────────────────────────
+faster-whisper>=1.2.0
+
+# ── Local TTS (optional — install only ONE per environment) ──────────────
+# Pick ONE (each has its own requirements file with pinned deps):
+#   pip install -r requirements-pockettts.txt
+#   pip install -r requirements-omnivoice.txt
 
 # ── Numeric ────────────────────────────────────────────────────────────────
 numpy>=2.3.0

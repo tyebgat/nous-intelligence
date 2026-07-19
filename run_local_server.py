@@ -11,9 +11,9 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class RunLocalServer:
-    def __init__(self, show_ollama_server_logs: bool = False):
+    def __init__(self, show_ollama_server_logs: bool = False, model_dir: str = ""):
         self.server_exe = os.path.join(BASE_PATH, "Ollama server", "llama-server.exe")
-        self.model_path = os.path.join(BASE_PATH, "models", "llama-3.2-1b-instruct-q4_k_m.gguf")
+        self.model_path = os.path.join(BASE_PATH, model_dir) if model_dir else os.path.join(BASE_PATH, "models", "llama-3.2-1b-instruct-q4_k_m.gguf")
         self.show_ollama_server_logs = show_ollama_server_logs
     
     async def launch_server(self, timeout: int = 30) -> None:
@@ -23,13 +23,13 @@ class RunLocalServer:
             self.server_exe,
             "-m", self.model_path,
             "--port", "8080",
-            "-c", "2048"
+            "--ctx-size", "20498"
         ]
 
         #launches it as a background process
         creation_flags = 0 if self.show_ollama_server_logs else subprocess.CREATE_NO_WINDOW
         self.process = subprocess.Popen(cmd, creationflags=creation_flags)
-
+        print(f"{YELLOW} Detected model: {self.model_path}{RESET}")
         print(f"{YELLOW}Loading model into ram...{RESET}")
         async with httpx.AsyncClient() as client:
             for _ in range(timeout):

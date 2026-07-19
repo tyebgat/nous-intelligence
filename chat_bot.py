@@ -1,5 +1,5 @@
 #local imports
-from json import load, dump, JSONDecodeError
+from json import load, dump, JSONDecodeError, loads
 from openai import OpenAI
 import os
 from os import getenv
@@ -23,7 +23,7 @@ class ChatBot:
     def load_chatbot_personality(self) -> list:
         with open(os.path.join(BASE_PATH, "personality.txt"), "r") as personality:
             text = personality.read()
-            return [{"role": "system", "content": text}]
+        return [{"role": "system", "content": text}]
     
     def initialize(self) -> None:
         self.context = self.load_chatbot_personality()
@@ -35,20 +35,20 @@ class ChatBot:
         #------------------------------
         if self.chatbot_service == "openai":
             try:
-                client = OpenAI(api_key=getenv("OPENAI_API_KEY")) #calls api key
+                client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
                 self._add_message('user', prompt)
-                messages = self.context + self.message_history #chatgpt personality plus the chatbot history
-                response_obj =  client.chat.completions.create( #create chat with openai function and store it in a variable
-                    model = self.openai_model,
+                messages = self.context + self.message_history
+                response_obj = client.chat.completions.create(
+                    model=self.openai_model,
                     messages=messages,
                     temperature=0.5
                 )
-                chatgpt_response = response_obj.choices[0].message.content #in chatgpt response, it gets the first response in 'content'
+                chatgpt_response = response_obj.choices[0].message.content
                 self._add_message('assistant', chatgpt_response)
                 self._update_message_history()
                 return chatgpt_response
             except Exception as e:
-                print(f"{RED}Opeai api error: {e}{RESET}")
+                print(f"{RED}OpenAI API error: {e}{RESET}")
                 return "Api error."
         #-----------------------------
         #Local LLM Implementation
@@ -58,13 +58,16 @@ class ChatBot:
                 client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed-locally")
                 self._add_message('user', prompt)
                 messages = self.context + self.message_history
+
                 response_obj = client.chat.completions.create(
-                    model = "local-model",
-                    messages= messages,
-                    temperature=0.7
+                    model="local-model",
+                    messages=messages,
+                    temperature=0.7,
                 )
+
+                print(f"{YELLOW} AI used internal knowledge {RESET}")
                 local_model_response = response_obj.choices[0].message.content
-                self._add_message('asistant', local_model_response)
+                self._add_message('assistant', local_model_response)
                 self._update_message_history()
                 return local_model_response
             except Exception as e:
@@ -73,23 +76,21 @@ class ChatBot:
         #-----------------------------
         #Dummy response
         #------------------------------
-        elif self.chatbot_service == "test": #test answer
+        elif self.chatbot_service == "test":
             dummy_response = "Testing tts, functions great!"
             self._add_message('user', prompt)
-            self._add_message('assistant',dummy_response)
+            self._add_message('assistant', dummy_response)
             self._update_message_history()
             return dummy_response
         else:
             print(f"{ORANGE}unknown chatbot service. chatbot_services {self.chatbot_service}{RESET}")
 
-    def _add_message(self, role: str, content: str) -> None: #this only saves to ram
-        self.message_history.append({'role': role, 'content': content}) #adds messaages in history as a dictionary
+    def _add_message(self, role: str, content: str) -> None:
+        self.message_history.append({'role': role, 'content': content})
 
     def load_chatbot_data(self) -> None:
         if self.remember_conversation:
             self.message_history = []
-
-            #wipe all data in message_history.txt
             if os.path.isfile(os.path.join(BASE_PATH, 'Data', 'message_history.txt')) and os.path.getsize(os.path.join(BASE_PATH, 'Data', 'message_history.txt')) > 0:
                 with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'w') as file:
                     file.write('')
@@ -106,5 +107,3 @@ class ChatBot:
             return
         with open(os.path.join(BASE_PATH, 'Data', 'message_history.txt'), 'w') as file:
             dump(self.message_history, file)
-
-#---cool kids dont need a main function---

@@ -47,6 +47,7 @@ async def main():
             tts_speed = config.get("tts_speed", 1.0)
             voice_cloning = config.get("voice_cloning", False)
             voice_design = config.get("voice_design", False)
+            gain = config.get("gain", 1.0)
 
             # --- omnivoice settings ---
             omnivoice_device = config.get("omnivoice_device", "cuda")
@@ -58,6 +59,7 @@ async def main():
 
             # --- general setting ---
             app_language = config.get("app_language", "english")
+            play_only_cable = config.get("play_only_cable", False)
 
             # --- wake word settings ---
             wake_word_model = config.get("wake_word_model", "models/openwakeword/hey_jarvis_v0.1.tflite")
@@ -100,6 +102,7 @@ async def main():
         tts_speed = 1.0
         voice_cloning = False
         voice_design = False
+        gain = 1.0
 
         # --- omnivoice settings ---
         omnivoice_device = "cuda"
@@ -111,6 +114,7 @@ async def main():
         
         # --- general settings ---
         app_language = "english"
+        play_only_cable = False
 
         # --- wake word settings ---
         wake_word_model = "models/openwakeword/hey_jarvis_v0.1.tflite"
@@ -174,7 +178,9 @@ async def main():
         voice_cloning=voice_cloning, 
         voice_design=voice_design, 
         omnivoice_device=omnivoice_device, 
-        detailed_logs=detailed_logs
+        detailed_logs=detailed_logs,
+        play_only_cable=play_only_cable,
+        gain=gain
     )
 
     #----------------------

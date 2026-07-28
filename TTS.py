@@ -6,6 +6,8 @@ import soundfile as sf
 import scipy.io.wavfile
 import os
 from os import getenv
+import sys
+import time
 import threading
 from paths import BASE_PATH
 
@@ -26,7 +28,7 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class TTS:
-    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, omnivoice_device: str = "cuda", detailed_logs: bool = True, play_only_cable: bool = False):
+    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, omnivoice_device: str = "cuda", detailed_logs: bool = True, play_only_cable: bool = False, gain: float = 1.0):
         self.chatbot_name = chatbot_name
         self.openai_tts_voice = openai_tts_voice
         self.openai_tts_model = openai_tts_model
@@ -39,6 +41,7 @@ class TTS:
         self.omnivoice_device = omnivoice_device
         self.detailed_logs = detailed_logs
         self.play_only_cable = play_only_cable
+        self.gain = gain
         self.cable_device_id = None
         
     def load_openai_tts_personality(self) -> list:
@@ -153,11 +156,33 @@ class TTS:
                 return i
         return None
 
+    def _start_spinner(self, label="Generating TTS"):
+        self._spinner_active = True
+        chars = ['-', '\\', '|', '/']
+        def spin():
+            i = 0
+            while self._spinner_active:
+                sys.stdout.write(f"\r{YELLOW}{label} {chars[i % len(chars)]}{RESET}")
+                sys.stdout.flush()
+                time.sleep(0.1)
+                i += 1
+            sys.stdout.write(f"\r{YELLOW}{label} done.{RESET}\n")
+            sys.stdout.flush()
+        self._spinner_thread = threading.Thread(target=spin, daemon=True)
+        self._spinner_thread.start()
+
+    def _stop_spinner(self):
+        self._spinner_active = False
+        if hasattr(self, '_spinner_thread'):
+            self._spinner_thread.join()
+
     async def tts_say(self, text: str) -> None:
         print(f"{self.chatbot_name}: {text}")
         self.is_speaking = True
 
         output_path = os.path.join(BASE_PATH, 'Data', 'output.wav')
+
+        self._start_spinner()
 
         try:
             match self.tts_service:
@@ -207,9 +232,12 @@ class TTS:
                     gTTS(text=text, lang=self.tts_language, slow=False, lang_check=False).save(output_path)
 
         except Exception as e:
+            self._stop_spinner()
             print(f"{RED}Error generating TTS: {e}{RESET}")
             self.is_speaking = False
             return
+
+        self._stop_spinner()
 
         if not os.path.exists(output_path):
             print(f"{RED}error: output.wav file not created!{RESET}")
@@ -222,6 +250,10 @@ class TTS:
             silence_samples = int(samplerate * 0.15)
             silence = np.zeros(silence_samples, dtype=data.dtype)
             data = np.concatenate([silence, data])
+
+            if self.gain != 1.0:
+                data = data * self.gain
+                data = np.clip(data, -1.0, 1.0)
 
             if self.cable_device_id is not None:
                 if self.play_only_cable:

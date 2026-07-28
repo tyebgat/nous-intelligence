@@ -1,6 +1,6 @@
 {
     "_comment_chatbot": "----CHATBOT SETTINGS-----",
-    "user_input_service": "console",
+    "user_input_service": "speech",
     "chatbot_service": "local",
     "chatbot_name": "NOUS",
     "remember_conversation": false,
@@ -19,12 +19,13 @@
     "silence_duration": 1,
 
     "_comment_tts": "------TEXT TO SPEECH SETTING-------",
-    "tts_service": "omnivoice",
+    "tts_service": "gtts",
     "tts_language": "es",
-    "tts_voice": "af_heart",
+    "tts_voice": "lola",
     "tts_speed": 1,
-    "voice_cloning": true,
+    "voice_cloning": false,
     "voice_design": false,
+    "gain": 2.0,
 
     "_comment_omnivoice": "------OMNIVOICE TTS SETTINGS-------",
     "omnivoice_device": "cuda",
@@ -39,7 +40,7 @@
     "play_only_cable": true,
 
     "_comment_logs": "------LOGS SETTINGS--------",
-    "logs": true,
+    "logs": false,
     "print_audio_devices": false,
-    "show_ollama_server_logs": true
+    "show_ollama_server_logs": false
 }

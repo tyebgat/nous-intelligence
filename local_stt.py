@@ -27,10 +27,6 @@ class LocalSTT:
             self._model = None
 
     def load_model(self) -> None:
-        """Load Whisper model from Hugging Face cache (downloads on first run).
-        
-        Models are cached in ~/.cache/huggingface/hub/
-        """
         try:
             from faster_whisper import WhisperModel
 

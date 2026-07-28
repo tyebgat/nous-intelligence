@@ -131,6 +131,7 @@ For local and free solution I recommend using https://github.com/livekit/livekit
 | `stt_compute_type` | `"int8"` \| `"float16"` \| `"float32"` | Precision for Whisper inference. `"int8"`: Smallest and fastest, slight quality loss. `"float16"`: Good balance (GPU recommended). `"float32"`: Full precision, slowest, best quality. Use `"int8"` on CPU for best performance. |
 | `stt_language` | string | ISO 639-1 language code for speech recognition (en, es, etc). |
 | `silence_duration` | float | Seconds of silence before STT considers the user finished speaking. |
+| `gain` | float | Gain of the tts audio 1.0 is normal |
 
 ---
 

@@ -3,6 +3,9 @@ from json import load, dump, JSONDecodeError, loads
 from openai import OpenAI
 import os
 from os import getenv
+import sys
+import time
+import threading
 from paths import BASE_PATH
 
 RED = '\033[31m'
@@ -19,6 +22,27 @@ class ChatBot:
         self.remember_conversation = remember_conversation
         self.message_history = []
         self.context = None
+        self._spinner_active = False
+
+    def _start_spinner(self, label="Thinking"):
+        self._spinner_active = True
+        chars = ['-', '\\', '|', '/']
+        def spin():
+            i = 0
+            while self._spinner_active:
+                sys.stdout.write(f"\r{YELLOW}{label} {chars[i % len(chars)]}{RESET}")
+                sys.stdout.flush()
+                time.sleep(0.1)
+                i += 1
+            sys.stdout.write(f"\r{YELLOW}{label} done.{RESET}\n")
+            sys.stdout.flush()
+        self._spinner_thread = threading.Thread(target=spin, daemon=True)
+        self._spinner_thread.start()
+
+    def _stop_spinner(self):
+        self._spinner_active = False
+        if hasattr(self, '_spinner_thread'):
+            self._spinner_thread.join()
 
     def load_chatbot_personality(self) -> list:
         with open(os.path.join(BASE_PATH, "personality.txt"), "r") as personality:
@@ -38,16 +62,19 @@ class ChatBot:
                 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
                 self._add_message('user', prompt)
                 messages = self.context + self.message_history
+                self._start_spinner()
                 response_obj = client.chat.completions.create(
                     model=self.openai_model,
                     messages=messages,
                     temperature=0.5
                 )
+                self._stop_spinner()
                 chatgpt_response = response_obj.choices[0].message.content
                 self._add_message('assistant', chatgpt_response)
                 self._update_message_history()
                 return chatgpt_response
             except Exception as e:
+                self._stop_spinner()
                 print(f"{RED}OpenAI API error: {e}{RESET}")
                 return "Api error."
         #-----------------------------
@@ -59,18 +86,20 @@ class ChatBot:
                 self._add_message('user', prompt)
                 messages = self.context + self.message_history
 
+                self._start_spinner()
                 response_obj = client.chat.completions.create(
                     model="local-model",
                     messages=messages,
                     temperature=0.7,
                 )
+                self._stop_spinner()
 
-                print(f"{YELLOW} AI used internal knowledge {RESET}")
                 local_model_response = response_obj.choices[0].message.content
                 self._add_message('assistant', local_model_response)
                 self._update_message_history()
                 return local_model_response
             except Exception as e:
+                self._stop_spinner()
                 print(f"{RED}An error has ocurred on local llm: {e}{RESET}")
                 return "Local model error"
         #-----------------------------

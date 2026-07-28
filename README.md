@@ -162,6 +162,7 @@ For local and free solution I recommend using https://github.com/livekit/livekit
 | Setting | Type | Description |
 |---------|------|-------------|
 | `app_language` | string | Changes the conversation cycle language (not logs yet). |
+| `play_only_cable`| bool | `"true"` Will only play on cable device. `"false"` will play on both default playback device and cable device. |
 
 ---
 

@@ -26,7 +26,7 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class TTS:
-    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, omnivoice_device: str = "cuda", detailed_logs: bool = True):
+    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, omnivoice_device: str = "cuda", detailed_logs: bool = True, play_only_cable: bool = False):
         self.chatbot_name = chatbot_name
         self.openai_tts_voice = openai_tts_voice
         self.openai_tts_model = openai_tts_model
@@ -38,6 +38,7 @@ class TTS:
         self.voice_design = voice_design
         self.omnivoice_device = omnivoice_device
         self.detailed_logs = detailed_logs
+        self.play_only_cable = play_only_cable
         self.cable_device_id = None
         
     def load_openai_tts_personality(self) -> list:
@@ -223,19 +224,23 @@ class TTS:
             data = np.concatenate([silence, data])
 
             if self.cable_device_id is not None:
-                def play_default():
-                    sd.play(data, samplerate)
-                    sd.wait() 
-                def play_cable():
+                if self.play_only_cable:
                     sd.play(data, samplerate, device=self.cable_device_id)
                     sd.wait()
+                else:
+                    def play_default():
+                        sd.play(data, samplerate)
+                        sd.wait() 
+                    def play_cable():
+                        sd.play(data, samplerate, device=self.cable_device_id)
+                        sd.wait()
 
-                t1 = threading.Thread(target=play_default)
-                t2 = threading.Thread(target=play_cable)
-                t1.start()
-                t2.start()
-                t1.join()
-                t2.join()
+                    t1 = threading.Thread(target=play_default)
+                    t2 = threading.Thread(target=play_cable)
+                    t1.start()
+                    t2.start()
+                    t1.join()
+                    t2.join()
                 
             else:
                 sd.play(data, samplerate)

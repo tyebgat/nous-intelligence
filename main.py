@@ -58,6 +58,7 @@ async def main():
 
             # --- general setting ---
             app_language = config.get("app_language", "english")
+            play_only_cable = config.get("play_only_cable", False)
 
             # --- wake word settings ---
             wake_word_model = config.get("wake_word_model", "models/openwakeword/hey_jarvis_v0.1.tflite")
@@ -111,6 +112,7 @@ async def main():
         
         # --- general settings ---
         app_language = "english"
+        play_only_cable = False
 
         # --- wake word settings ---
         wake_word_model = "models/openwakeword/hey_jarvis_v0.1.tflite"
@@ -174,7 +176,8 @@ async def main():
         voice_cloning=voice_cloning, 
         voice_design=voice_design, 
         omnivoice_device=omnivoice_device, 
-        detailed_logs=detailed_logs
+        detailed_logs=detailed_logs,
+        play_only_cable=play_only_cable
     )
 
     #----------------------

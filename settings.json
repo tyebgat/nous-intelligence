@@ -36,6 +36,7 @@
 
     "_comment_general": "------GENERAL SETTINGS-------",
     "app_language": "english",
+    "play_only_cable": true,
 
     "_comment_logs": "------LOGS SETTINGS--------",
     "logs": true,

@@ -3,4 +3,4 @@ Data/message_history.txt
 Data/output.wav
 Data/noussoul_auth_token.txt
 nous-intelligence.spec
-models/llama/llama-3.2-1b-instruct-q4_k_m.gguf
+models/llama/Llama-3.2-3B-Instruct-Q4_K_M.gguf

@@ -138,7 +138,7 @@ async def stop_service():
 @app.get("/api/status")
 async def get_status():
     """Return whether the AI service is currently running."""
-    pass
+    return {"running": state.running}
 
 
 #Websocket

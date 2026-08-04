@@ -789,6 +789,15 @@ function applySettings() {
 //#########################
 //  BUTTONS
 //#########################
+function refreshStatus() {
+  fetch('/api/status')
+    .then((res) => res.json())
+    .then((data) => {
+      document.getElementById('statusDot').classList.toggle('running', data.running === true);
+    })
+    .catch(() => {});
+}
+
 document.getElementById('btnStart').addEventListener('click', () => {
   console.log('[WS] POST /api/start');
   wsSend('start', {});
@@ -924,6 +933,9 @@ document.getElementById('btnSend').addEventListener('click', () => {
 document.getElementById('chatInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('btnSend').click();
 });
+
+// Set the status dot from the server on page load.
+refreshStatus();
 </script>
 
 </body>

@@ -580,46 +580,46 @@ body {
         <label>Keep Camera Aspect Ratio <input type="checkbox" id="keepAspect"/></label>
       </div>
       <div class="tab-content" id="tab-general">
-        <label>App Language <select><option>english</option><option>spanish</option></select></label>
-        <label>Play Only Cable <input type="checkbox"/></label>
+        <label>App Language <select data-key="app_language"><option>english</option><option>spanish</option></select></label>
+        <label>Play Only Cable <input type="checkbox" data-key="play_only_cable"/></label>
       </div>
       <div class="tab-content" id="tab-chatbot">
-        <label>Input Service <select><option>console</option><option>speech</option><option>wake_word</option></select></label>
-        <label>Chatbot Service <select><option>openai</option><option>local</option><option>test</option></select></label>
-        <label>Chatbot Name <input type="text" value="NOUS"/></label>
-        <label>Remember Conversation <input type="checkbox"/></label>
-        <label>Model Directory <input type="text" placeholder="path to model"/></label>
+        <label>Input Service <select data-key="user_input_service"><option>console</option><option>speech</option><option>wake_word</option></select></label>
+        <label>Chatbot Service <select data-key="chatbot_service"><option>openai</option><option>local</option><option>test</option></select></label>
+        <label>Chatbot Name <input type="text" data-key="chatbot_name" value="NOUS"/></label>
+        <label>Remember Conversation <input type="checkbox" data-key="remember_conversation"/></label>
+        <label>Model Directory <input type="text" data-key="model_dir" placeholder="path to model"/></label>
       </div>
       <div class="tab-content" id="tab-wakeword">
-        <label>Wake Word Model <input type="text" placeholder="model path"/></label>
-        <label>Threshold <span style="display:flex;align-items:center;gap:8px;"><input type="range" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:#deded9;">0.5</span></span></label>
-        <label>Confirm Sound <input type="checkbox"/></label>
+        <label>Wake Word Model <input type="text" data-key="wake_word_model" placeholder="model path"/></label>
+        <label>Threshold <span style="display:flex;align-items:center;gap:8px;"><input type="range" data-key="wake_word_threshold" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:#deded9;">0.5</span></span></label>
+        <label>Confirm Sound <input type="checkbox" data-key="wake_word_confirm_sound"/></label>
       </div>
       <div class="tab-content" id="tab-stt">
-        <label>STT Service <select><option>whisper</option><option>google</option></select></label>
-        <label>Device <select><option>cpu</option><option>cuda</option></select></label>
-        <label>Compute Type <select><option>int8</option><option>float16</option><option>float32</option></select></label>
-        <label>Language <input type="text" value="en"/></label>
-        <label>Silence Duration <input type="number" step="0.1" value="1.5"/></label>
+        <label>STT Service <select data-key="stt_service"><option>whisper</option><option>google</option></select></label>
+        <label>Device <select data-key="stt_device"><option>cpu</option><option>cuda</option></select></label>
+        <label>Compute Type <select data-key="stt_compute_type"><option>int8</option><option>float16</option><option>float32</option></select></label>
+        <label>Language <input type="text" data-key="stt_language" value="en"/></label>
+        <label>Silence Duration <input type="number" step="0.1" data-key="silence_duration" value="1.5"/></label>
       </div>
       <div class="tab-content" id="tab-tts">
-        <label>TTS Service <select><option>gtts</option><option>openai</option><option>omnivoice</option><option>pockettts</option></select></label>
-        <label>Language <input type="text" value="en"/></label>
-        <label>Voice <input type="text" value="ash"/></label>
-        <label>Speed <input type="number" step="0.1" value="1.0"/></label>
-        <label>Gain <input type="number" step="0.1" value="1.0"/></label>
-        <label>Voice Cloning <input type="checkbox"/></label>
-        <label>Voice Design <input type="checkbox"/></label>
+        <label>TTS Service <select data-key="tts_service"><option>gtts</option><option>openai</option><option>omnivoice</option><option>pockettts</option></select></label>
+        <label>Language <input type="text" data-key="tts_language" value="en"/></label>
+        <label>Voice <input type="text" data-key="tts_voice" value="ash"/></label>
+        <label>Speed <input type="number" step="0.1" data-key="tts_speed" value="1.0"/></label>
+        <label>Gain <input type="number" step="0.1" data-key="gain" value="1.0"/></label>
+        <label>Voice Cloning <input type="checkbox" data-key="voice_cloning"/></label>
+        <label>Voice Design <input type="checkbox" data-key="voice_design"/></label>
       </div>
       <div class="tab-content" id="tab-openai">
-        <label>OpenAI Model <input type="text" value="gpt-4o-mini"/></label>
-        <label>TTS Model <input type="text" value="gpt-4o-mini-tts"/></label>
-        <label>TTS Voice <input type="text" value="ash"/></label>
+        <label>OpenAI Model <input type="text" data-key="openai_model" value="gpt-4o-mini"/></label>
+        <label>TTS Model <input type="text" data-key="openai_tts_model" value="gpt-4o-mini-tts"/></label>
+        <label>TTS Voice <input type="text" data-key="openai_tts_voice" value="ash"/></label>
       </div>
       <div class="tab-content" id="tab-logs">
-        <label>Detailed Logs <input type="checkbox"/></label>
-        <label>Print Audio Devices <input type="checkbox"/></label>
-        <label>Show LLM Server Logs <input type="checkbox"/></label>
+        <label>Detailed Logs <input type="checkbox" data-key="logs"/></label>
+        <label>Print Audio Devices <input type="checkbox" data-key="print_audio_devices"/></label>
+        <label>Show LLM Server Logs <input type="checkbox" data-key="show_ollama_server_logs"/></label>
       </div>
       <div class="tab-content" id="tab-apis">
         <label>OpenAI API Key <input type="password" value="sk-..."/></label>
@@ -728,7 +728,67 @@ function wsSend(type, payload) {
   // Placeholder: later will be replaced with actual WebSocket.send()
 }
 
-// ── Buttons ──
+// ── Settings sync ──
+let originalSettings = null;
+
+function loadSettings() {
+  fetch('/api/settings')
+    .then((res) => res.json())
+    .then((config) => {
+      originalSettings = config;
+      document.querySelectorAll('[data-key]').forEach((el) => {
+        const key = el.dataset.key;
+        if (!(key in config)) return;
+        const value = config[key];
+        if (el.type === 'checkbox') {
+          el.checked = value === true;
+        } else {
+          el.value = value;
+        }
+      });
+      // Keep accent/blur in sync with saved values (UI-only keys).
+      if (config.accent_color) document.getElementById('accentColor').value = config.accent_color;
+      if (config.blur_intensity) blurIntensity.value = config.blur_intensity;
+      if (config.keep_camera_aspect_ratio) keepAspect.checked = config.keep_camera_aspect_ratio === true;
+    })
+    .catch((err) => console.error('Failed to load settings', err));
+}
+
+function collectChangedSettings() {
+  // Only keys that exist in the backend config AND differ get sent on Apply.
+  const diff = {};
+  document.querySelectorAll('[data-key]').forEach((el) => {
+    const key = el.dataset.key;
+    if (originalSettings === null || !(key in originalSettings)) return;
+    const value = el.type === 'checkbox'
+      ? el.checked
+      : el.type === 'number'
+        ? parseFloat(el.value)
+        : el.value;
+    if (originalSettings[key] !== value) diff[key] = value;
+  });
+  return diff;
+}
+
+function applySettings() {
+  const diff = collectChangedSettings();
+  console.log('[POST] /api/settings', diff);
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(diff),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      originalSettings = data.config;
+      console.log('[POST] settings saved', data.config);
+    })
+    .catch((err) => console.error('Failed to apply settings', err));
+}
+
+//#########################
+//  BUTTONS
+//#########################
 document.getElementById('btnStart').addEventListener('click', () => {
   console.log('[WS] POST /api/start');
   wsSend('start', {});
@@ -743,7 +803,7 @@ document.getElementById('btnStop').addEventListener('click', () => {
 
 document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('settingsOverlay').classList.add('open');
-  wsSend('get_settings', {});
+  loadSettings();
 });
 
 document.getElementById('settingsClose').addEventListener('click', () => {
@@ -757,8 +817,7 @@ document.getElementById('settingsOverlay').addEventListener('click', (e) => {
 });
 
 document.getElementById('settingsApply').addEventListener('click', () => {
-  console.log('[WS] POST /api/settings — apply clicked');
-  wsSend('apply_settings', {});
+  applySettings();
   document.getElementById('settingsOverlay').classList.remove('open');
 });
 

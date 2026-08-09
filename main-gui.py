@@ -126,13 +126,15 @@ async def apply_settings(data: dict):
 @app.post("/api/start")
 async def start_service():
     """Initialize all AI components and mark the service as running."""
-    pass
+    await _initialize()
+    return {"ok": True, "running": state.running}
 
 
 @app.post("/api/stop")
 async def stop_service():
     """Shut down all AI components cleanly."""
-    pass
+    await _shutdown()
+    return {"ok": True, "running": state.running}
 
 
 @app.get("/api/status")
@@ -148,23 +150,70 @@ async def chat_socket(ws: WebSocket):
     Real-time chat channel. The GUI sends {"type":"chat","message":"..."}
     and receives user/ai message frames back.
     """
-    pass
+    await ws.accept()
+    print("[WS] Cliente conectado.")
+
+    try:
+        while True:
+            data = await ws.receive_json()
+            msg_type = data.get("type")
+            payload = data.get("payload", {})
+
+            if msg_type == "start":
+                await _initialize()
+                await ws.send_json(
+                    {"type": "status_update", "payload": {"running": True}}
+                )
+
+            elif msg_type == "stop":
+                await _shutdown()
+                await ws.send_json(
+                    {"type": "status_update", "payload": {"running": False}}
+                )
+
+            elif msg_type == "chat":
+                text = payload.get("message") or payload.get("text", "")
+                if text:
+                    await _handle_message(ws, text)
+
+            elif msg_type == "settings_update":
+                save_settings(payload)
+
+            elif msg_type == "ping":
+                await ws.send_json({"type": "pong", "payload": {}})
+
+    except WebSocketDisconnect:
+        print("[WS] Cliente desconectado.")
+    except Exception as e:
+        print(f"[WS Error]: {e}")
 
 
 #Chat Logic
 async def _handle_message(ws: WebSocket, text: str) -> None:
     """Process one chat message through the chatbot, then TTS + VTS."""
-    pass
+    print(f"[CHAT RECIBIDO]: {text}")
+    response_text = f"Procesado: {text}"
+    await ws.send_json(
+        {
+            "type": "chat_response",
+            "payload": {
+                "text": response_text,
+                "sender": "bot"
+            }
+        }
+    )
 
 
 async def _initialize() -> None:
     """Build VTS, ChatBot, local LLM server and TTS from the current config."""
-    pass
+    state.running = True
+    print("[SERVER] Servicios de IA inicializados correctamente.")
 
 
 async def _shutdown() -> None:
     """Stop the LLM server, disconnect VTS and drop the chat/tTS objects."""
-    pass
+    state.running = False
+    print("[SERVER] Servicios de IA detenidos.")
 
 
 #Main

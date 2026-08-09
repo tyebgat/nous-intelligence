@@ -725,7 +725,80 @@ document.addEventListener('mouseup', () => {
 // ── Dummy WebSocket function ──
 function wsSend(type, payload) {
   console.log(`[WS] type: ${type}`, payload);
-  // Placeholder: later will be replaced with actual WebSocket.send()
+  let socket = null;
+
+  function connectWebSocket() {
+    socket = new WebSocket('ws://localhost:8000/ws');
+
+    socket.onopen = (event) => {
+      console.log('[WS] Conexión establecida con éxito.');
+      updateStatusUI('connected');
+    };
+
+    socket.onmessage = (event) => {
+      console.log('[WS] Mensaje recibido del servidor:', event.data);
+      const data = JSON.parse(event.data);
+      handleIncomingMessage(data);
+    };
+
+    socket.onerror = (error) => {
+      console.error('[WS] Error en la conexión:', error);
+    };
+
+    socket.onclose = (event) => {
+      console.warn('[WS] Conexión cerrada. Intentando reconectar en 3 segundos...');
+      updateStatusUI('disconnected');
+      
+      setTimeout(() => {
+        connectWebSocket();
+      }, 3000);
+    };
+  }
+
+  function wsSend(type, payload) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const messageObject = {
+        type: type,
+        payload: payload,
+        timestamp: Date.now()
+      };
+
+      const jsonString = JSON.stringify(messageObject);
+
+      socket.send(jsonString);
+      console.log(`[WS Enviado] (${type}):`, payload);
+    } else {
+      console.error('[WS Error] No se pudo enviar el mensaje: La conexión no está abierta.');
+    }
+  }
+
+  function updateStatusUI(status) {
+    const statusDot = document.getElementById('statusDot');
+    if (statusDot) {
+      if (status === 'connected') {
+        statusDot.style.backgroundColor = '#00ff88';
+        statusDot.style.boxShadow = '0 0 8px #00ff88';
+      } else {
+        statusDot.style.backgroundColor = '#ff4444';
+        statusDot.style.boxShadow = '0 0 8px #ff4444';
+      }
+    }
+  }
+
+  function handleIncomingMessage(data) {
+    if (data.type === 'chat_response') {
+      const msgs = document.getElementById('chatMessages');
+      if (msgs) {
+        const bubble = document.createElement('div');
+        bubble.className = 'msg ai-msg';
+        bubble.textContent = data.payload.text;
+        msgs.appendChild(bubble);
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+    }
+  }
+
+  connectWebSocket();
 }
 
 // ── Settings sync ──

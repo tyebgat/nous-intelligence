@@ -16,6 +16,30 @@ import uvicorn
 
 from paths import BASE_PATH
 
+#Modules
+try:
+    from run_local_server import RunLocalServer
+except ImportError:
+    RunLocalServer = None
+
+try:
+    from chat_bot import ChatBot
+except ImportError:
+    ChatBot = None
+
+try:
+    from VtubeS_Plugin import VtubeControl
+except ImportError:
+    VtubeControl = None
+
+try:
+    from TTS import TTS
+except ImportError:
+    TTS = None
+
+nous_task = None
+
+
 #Global state
 class AppState:
     #Holds the runtime objects shared across requests.
@@ -25,6 +49,14 @@ class AppState:
     chat_bot = None # ChatBot instance
     local_server = None # RunLocalServer instance (local LLM)
     tts = None # TTS instance
+    nous_task = None
+    _lock = None
+
+    @property
+    def lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
 state = AppState()
 

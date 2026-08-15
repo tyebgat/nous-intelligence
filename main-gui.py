@@ -206,14 +206,84 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
 
 async def _initialize() -> None:
     """Build VTS, ChatBot, local LLM server and TTS from the current config."""
-    state.running = True
-    print("[SERVER] Servicios de IA inicializados correctamente.")
+    async with state.lock:
+        if state.running:
+            return
+
+        config = state.config if state.config else load_settings()
+        print("[SERVER] Starting AI Services...")
+
+        # 1. Local LLM Server (Optional)
+        if (
+            config.get("use_local_llm", False)
+            and "RunLocalServer" in globals()
+            and RunLocalServer is not None
+        ):
+            try:
+                state.local_server = RunLocalServer(config)
+                await asyncio.to_thread(state.local_server.start)
+                print("[SERVER] Local LLM Server running.")
+            except Exception as e:
+                print(f"[SERVER ERROR] Could not start local LLM: {e}")
+
+        # 2. ChatBot / OpenAI API
+        if "ChatBot" in globals() and ChatBot is not None:
+            try:
+                state.chat_bot = ChatBot(config)
+                print("[SERVER] ChatBot initialized.")
+            except Exception as e:
+                print(f"[SERVER ERROR] ChatBot initialization failed: {e}")
+
+        # 3. VTube Studio Plugin
+        if "VtubeControl" in globals() and VtubeControl is not None:
+            try:
+                state.vts = VtubeControl(
+                    detailed_logs=config.get("detailed_logs", True)
+                )
+                await state.vts.initialize()
+                print("[SERVER] VTube Studio connected.")
+            except Exception as e:
+                print(f"[SERVER ERROR] VTube Studio failed to connect: {e}")
+
+        # 4. Text-To-Speech Engine
+        if "TTS" in globals() and TTS is not None:
+            try:
+                state.tts = TTS(config)
+                print("[SERVER] TTS Engine ready.")
+            except Exception as e:
+                print(f"[SERVER ERROR] TTS initialization failed: {e}")
+
+        state.running = True
+        print("[SERVER] All requested AI services are online.")
 
 
 async def _shutdown() -> None:
-    """Stop the LLM server, disconnect VTS and drop the chat/tTS objects."""
-    state.running = False
-    print("[SERVER] Servicios de IA detenidos.")
+    """Stop the LLM server, disconnect VTS, and drop the ChatBot/TTS objects."""
+    async with state.lock:
+        print("[SERVER] Stopping AI services...")
+
+        # Clean VTube Studio disconnect
+        if state.vts:
+            try:
+                if hasattr(state.vts, "close"):
+                    await state.vts.close()
+            except Exception as e:
+                print(f"[VTS ERROR]: {e}")
+            state.vts = None
+
+        # Clean Local LLM stop
+        if state.local_server:
+            try:
+                if hasattr(state.local_server, "stop"):
+                    state.local_server.stop()
+            except Exception as e:
+                print(f"[LOCAL SERVER ERROR]: {e}")
+            state.local_server = None
+
+        state.chat_bot = None
+        state.tts = None
+        state.running = False
+        print("[SERVER] AI services shut down completely.")
 
 
 #Main

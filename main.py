@@ -226,7 +226,7 @@ async def main():
         user_input.setup_wake_word()
         print(f"{GREEN}Wake word model loaded.{RESET}")
 
-    if stt_service == "whisper" and user_input != "console":
+    if stt_service == "whisper" and user_input_service != "console":
         print(f"{YELLOW}Loading Whisper STT model...{RESET}")
         user_input.setup_whisper()
         print(f"{GREEN}Whisper STT model loaded.{RESET}")

@@ -19,6 +19,34 @@ body {
   overflow: hidden;
 }
 
+/* ── Splash Screen ── */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+
+.splash-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-screen img {
+  width: 55%;
+  max-width: 520px;
+  animation: splash-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes splash-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.04); opacity: 1; }
+}
+
 /* ── Background Blurs ── */
 .bg-blurs {
   position: fixed;
@@ -56,18 +84,25 @@ body {
   background: #2D2D42;
   border: 1px solid #3A3A4A;
   border-radius: 14px;
-  padding: 8px 18px;
+  padding: 5px 14px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   backdrop-filter: blur(12px);
 }
 
-.floating-bar .bar-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #deded9;
-  letter-spacing: 0.3px;
+.floating-bar .bar-logo {
+  height: 22px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.floating-bar .bar-logo img {
+  height: 31px;
+  width: auto;
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 6px rgba(1,120,172,0.35));
 }
 
 .floating-bar .bar-buttons {
@@ -79,7 +114,7 @@ body {
   background: transparent;
   border: 1px solid rgba(222,222,217,0.15);
   border-radius: 8px;
-  padding: 6px;
+  padding: 4px;
   cursor: pointer;
   color: #deded9;
   display: flex;
@@ -92,11 +127,16 @@ body {
   border-color: var(--yellow);
 }
 
+.floating-bar .bar-buttons button.active {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
 .floating-bar #btnGithub {
   background: transparent;
   border: none;
   border-radius: 8px;
-  padding: 6px;
+  padding: 4px;
   cursor: pointer;
   color: #1E1E2A;
   display: flex;
@@ -131,12 +171,23 @@ body {
   min-height: 0;
 }
 
-/* ── Chat Panel ── */
-.chat-panel {
+/* ── Side Stack (chat + terminal) ── */
+.side-stack {
   flex: 0 0 auto;
   width: 400px;
   min-width: 280px;
   max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+/* ── Chat Panel ── */
+.chat-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   background: #1E1E2A;
   border-radius: 16px;
   border: 2px solid #3A3A4A;
@@ -191,6 +242,29 @@ body {
   margin: auto;
   font-style: italic;
   font-size: 14px;
+}
+
+.chat-messages .msg {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.chat-messages .ai-msg {
+  align-self: flex-start;
+  background: #26263A;
+  border: 1px solid #3A3A4A;
+  color: #deded9;
+  border-radius: 14px 14px 14px 4px;
+}
+
+.chat-messages .stage-msg {
+  opacity: 0.65;
+  font-style: italic;
+  background: #22222E;
 }
 
 .chat-input-area {
@@ -300,13 +374,20 @@ body {
   height: 10px;
   border-radius: 50%;
   background: #e74c3c;
+  box-shadow: 0 0 6px #e74c3c;
   display: inline-block;
   margin-left: 10px;
-  transition: background 0.3s;
+  transition: background 0.3s, box-shadow 0.3s;
 }
 
-.status-dot.running {
+.status-dot.starting {
   background: var(--yellow);
+  box-shadow: 0 0 8px var(--yellow);
+}
+
+.status-dot.online {
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88;
 }
 
 /* ── Settings Panel ── */
@@ -457,6 +538,30 @@ body {
   cursor: pointer;
 }
 
+.tab-content label.textarea-field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.tab-content label.textarea-field textarea {
+  width: 100%;
+  height: 120px;
+  background: #2A2A3A;
+  border: 1px solid #3A3A4A;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #deded9;
+  font-size: 13px;
+  font-family: Consolas, Menlo, monospace;
+  resize: vertical;
+  outline: none;
+}
+
+.tab-content label.textarea-field textarea:focus {
+  border-color: var(--yellow);
+}
+
 .settings-footer {
   padding: 12px 20px;
   border-top: 1px solid #3A3A4A;
@@ -479,13 +584,172 @@ body {
 .settings-footer button:hover {
   background: #27ae60;
 }
+
+/* ── Toast Notification ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 600;
+  background: #12121A;
+  border: 1px solid #2ecc71;
+  color: #2ecc71;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* ── Terminal Panel ── */
+.terminal {
+  flex: 0 0 auto;
+  height: 220px;
+  width: 100%;
+  background: #0d0d12;
+  border: 1px solid #3A3A4A;
+  border-radius: 12px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal.visible {
+  display: flex;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #1E1E2A;
+  border-bottom: 1px solid #3A3A4A;
+  color: #deded9;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.terminal-header button {
+  background: none;
+  border: 1px solid rgba(222,222,217,0.15);
+  border-radius: 6px;
+  color: #deded9;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.terminal-header button:hover {
+  border-color: var(--yellow);
+}
+
+.terminal-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a8e6a3;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Init Overlay ── */
+.init-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 250;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.init-overlay.open {
+  display: flex;
+}
+
+.init-panel {
+  background: #1E1E2A;
+  border: 1px solid #3A3A4A;
+  border-radius: 16px;
+  width: 640px;
+  max-width: 92vw;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.init-panel h3 {
+  color: #deded9;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.init-console {
+  background: #0d0d12;
+  border: 1px solid #3A3A4A;
+  border-radius: 10px;
+  height: 320px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.init-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.init-ok {
+  display: none;
+  background: #2ecc71;
+  border: none;
+  color: #0d0d12;
+  font-weight: 600;
+  padding: 10px 26px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.init-ok.visible {
+  display: inline-block;
+}
+
+.init-ok:hover {
+  background: #27ae60;
+}
 </style>
 </head>
 <body>
 
+<div class="splash-screen" id="splashScreen">
+  <img src="/gui/Nous intelligence.png" alt="Nous Intelligence"/>
+</div>
+
 <div class="floating-bar">
   <span class="status-dot" id="statusDot"></span>
-  <span class="bar-title">NOUS INTELLIGENCE</span>
+  <span class="bar-logo" title="Nous Intelligence">
+    <img src="/gui/Nous intelligence only text.plain.svg" alt="Nous Intelligence"/>
+  </span>
   <div class="bar-buttons">
     <button id="btnStart" title="Start">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
@@ -503,6 +767,12 @@ body {
           <line x1="4" y1="4" x2="20" y2="20"/>
         </svg>
       </span>
+    </button>
+    <button id="btnTerminal" title="Terminal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 17 10 11 4 5"/>
+        <line x1="12" y1="19" x2="20" y2="19"/>
+      </svg>
     </button>
     <button id="btnSettings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -526,20 +796,31 @@ body {
   <div class="blur-spot" style="top:50%;left:50%;translate:-50% -50%;width:300px;height:300px;background:#478B8D;"></div>
 </div>
 <div class="main">
-  <!-- Chat Panel -->
-  <div class="chat-panel" id="chatPanel">
-    <div class="resize-handle" id="resizeHandle"></div>
-    <div class="chat-messages" id="chatMessages">
-      <div class="placeholder">Start the service and send a message to begin chatting.</div>
+  <div class="side-stack" id="sideStack">
+    <!-- Chat Panel -->
+    <div class="chat-panel" id="chatPanel">
+      <div class="resize-handle" id="resizeHandle"></div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="placeholder">Start the service and send a message to begin chatting.</div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="Type a message..." />
+        <button id="btnSend">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/>
+            <polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="chat-input-area">
-      <input type="text" id="chatInput" placeholder="Type a message..." />
-      <button id="btnSend">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="19" x2="12" y2="5"/>
-          <polyline points="5 12 12 5 19 12"/>
-        </svg>
-      </button>
+
+    <!-- Terminal Panel -->
+    <div class="terminal" id="terminalPanel">
+      <div class="terminal-header">
+        <span>Terminal</span>
+        <button id="terminalClear">Clear</button>
+      </div>
+      <div class="terminal-log" id="terminalLog"></div>
     </div>
   </div>
 
@@ -555,6 +836,8 @@ body {
     </div>
   </div>
 </div>
+
+<div class="toast" id="toast">Settings Applied</div>
 
 <div class="settings-overlay" id="settingsOverlay">
   <div class="settings-panel">
@@ -589,6 +872,9 @@ body {
         <label>Chatbot Name <input type="text" data-key="chatbot_name" value="NOUS"/></label>
         <label>Remember Conversation <input type="checkbox" data-key="remember_conversation"/></label>
         <label>Model Directory <input type="text" data-key="model_dir" placeholder="path to model"/></label>
+        <label class="textarea-field">Personality
+          <textarea data-file="personality" placeholder="personality.txt content"></textarea>
+        </label>
       </div>
       <div class="tab-content" id="tab-wakeword">
         <label>Wake Word Model <input type="text" data-key="wake_word_model" placeholder="model path"/></label>
@@ -610,11 +896,17 @@ body {
         <label>Gain <input type="number" step="0.1" data-key="gain" value="1.0"/></label>
         <label>Voice Cloning <input type="checkbox" data-key="voice_cloning"/></label>
         <label>Voice Design <input type="checkbox" data-key="voice_design"/></label>
+        <label class="textarea-field">Voice Design Instructions
+          <textarea data-file="voice_design" placeholder="Data/omnivoice-design.txt content"></textarea>
+        </label>
       </div>
       <div class="tab-content" id="tab-openai">
         <label>OpenAI Model <input type="text" data-key="openai_model" value="gpt-4o-mini"/></label>
         <label>TTS Model <input type="text" data-key="openai_tts_model" value="gpt-4o-mini-tts"/></label>
         <label>TTS Voice <input type="text" data-key="openai_tts_voice" value="ash"/></label>
+        <label class="textarea-field">TTS Instructions
+          <textarea data-file="tts_instructions" placeholder="openai-TTS-instructions.txt content"></textarea>
+        </label>
       </div>
       <div class="tab-content" id="tab-logs">
         <label>Detailed Logs <input type="checkbox" data-key="logs"/></label>
@@ -628,6 +920,16 @@ body {
     </div>
     <div class="settings-footer">
       <button id="settingsApply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="init-overlay" id="initOverlay">
+  <div class="init-panel">
+    <h3 id="initTitle">Starting services...</h3>
+    <div class="init-console" id="initConsole"></div>
+    <div class="init-actions">
+      <button class="init-ok" id="initOk">Ok</button>
     </div>
   </div>
 </div>
@@ -696,6 +998,7 @@ keepAspect.addEventListener('change', () => {
 
 // ── Chat Panel Resize ──
 const chatPanel = document.getElementById('chatPanel');
+const sideStack = document.getElementById('sideStack');
 const resizeHandle = document.getElementById('resizeHandle');
 let isResizing = false;
 
@@ -708,10 +1011,10 @@ resizeHandle.addEventListener('mousedown', (e) => {
 
 document.addEventListener('mousemove', (e) => {
   if (!isResizing) return;
-  const rect = chatPanel.parentElement.getBoundingClientRect();
+  const rect = sideStack.getBoundingClientRect();
   let newWidth = e.clientX - rect.left;
   newWidth = Math.max(280, Math.min(700, newWidth));
-  chatPanel.style.width = newWidth + 'px';
+  sideStack.style.width = newWidth + 'px';
 });
 
 document.addEventListener('mouseup', () => {
@@ -722,84 +1025,226 @@ document.addEventListener('mouseup', () => {
   }
 });
 
-// ── Dummy WebSocket function ──
-function wsSend(type, payload) {
-  console.log(`[WS] type: ${type}`, payload);
-  let socket = null;
+// ── WebSocket ──
+let socket = null;
+let reconnectTimer = null;
 
-  function connectWebSocket() {
-    socket = new WebSocket('ws://localhost:8000/ws');
+function wsUrl() {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws`;
+}
 
-    socket.onopen = (event) => {
-      console.log('[WS] Conexión establecida con éxito.');
-      updateStatusUI('connected');
-    };
+function connectWebSocket() {
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+  socket = new WebSocket(wsUrl());
 
-    socket.onmessage = (event) => {
-      console.log('[WS] Mensaje recibido del servidor:', event.data);
+  socket.onopen = () => {
+    console.log('[WS] Conexión establecida con éxito.');
+  };
+
+  socket.onmessage = (event) => {
+    console.log('[WS] Mensaje recibido del servidor:', event.data);
+    try {
       const data = JSON.parse(event.data);
       handleIncomingMessage(data);
-    };
+    } catch (e) {
+      console.error('[WS] No se pudo parsear el mensaje:', e);
+    }
+  };
 
-    socket.onerror = (error) => {
-      console.error('[WS] Error en la conexión:', error);
-    };
+  socket.onerror = (error) => {
+    console.error('[WS] Error en la conexión:', error);
+  };
 
-    socket.onclose = (event) => {
-      console.warn('[WS] Conexión cerrada. Intentando reconectar en 3 segundos...');
-      updateStatusUI('disconnected');
-      
-      setTimeout(() => {
-        connectWebSocket();
-      }, 3000);
+  socket.onclose = () => {
+    console.warn('[WS] Conexión cerrada. Intentando reconectar en 3 segundos...');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connectWebSocket, 3000);
+  };
+}
+
+function wsSend(type, payload) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    const messageObject = {
+      type: type,
+      payload: payload,
+      timestamp: Date.now()
     };
+    socket.send(JSON.stringify(messageObject));
+    console.log(`[WS Enviado] (${type}):`, payload);
+  } else {
+    console.error('[WS Error] No se pudo enviar el mensaje: La conexión no está abierta.');
+    connectWebSocket();
   }
+}
 
-  function wsSend(type, payload) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      const messageObject = {
-        type: type,
-        payload: payload,
-        timestamp: Date.now()
-      };
+function setServiceStatus(status) {
+  // status: 'off' (red) | 'starting' (yellow) | 'online' (green)
+  const statusDot = document.getElementById('statusDot');
+  if (!statusDot) return;
+  statusDot.classList.remove('starting', 'online');
+  if (status === 'starting') statusDot.classList.add('starting');
+  else if (status === 'online') statusDot.classList.add('online');
+}
 
-      const jsonString = JSON.stringify(messageObject);
+// ── Init panel / terminal logging ──
+const initOverlay = document.getElementById('initOverlay');
+const initConsole = document.getElementById('initConsole');
+const terminalLog = document.getElementById('terminalLog');
 
-      socket.send(jsonString);
-      console.log(`[WS Enviado] (${type}):`, payload);
-    } else {
-      console.error('[WS Error] No se pudo enviar el mensaje: La conexión no está abierta.');
+// Renders ANSI color codes (\x1b[31m, etc.) as colored spans for the web terminal.
+const ANSI_COLORS = {
+  30: '#000000', 31: '#ff5555', 32: '#50fa7b', 33: '#f1fa8c',
+  34: '#8be9fd', 35: '#ff79c6', 36: '#4ad2d2', 37: '#f8f8f2',
+  90: '#777777', 91: '#ff6e6e', 92: '#69ff94', 93: '#ffffa5',
+  94: '#d6acff', 95: '#ff92df', 96: '#a4ffff', 97: '#ffffff'
+};
+
+function ansiToHtml(line) {
+  line = String(line).replace(/\r/g, '');
+  const escaped = line
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  const re = /\x1b\[([0-9;]*)m/g;
+  let out = '';
+  let cur = null;
+  let last = 0;
+  let m;
+  while ((m = re.exec(escaped)) !== null) {
+    out += escaped.slice(last, m.index);
+    last = re.lastIndex;
+    const seq = m[1] ? m[1].split(';') : ['0'];
+    let next = cur;
+    for (const c of seq) {
+      if (c === '0' || c === '') next = null;
+      else if (c === '38') next = '#FFA500'; // orange used by the codebase
+      else if (ANSI_COLORS[c]) next = ANSI_COLORS[c];
+    }
+    if (next !== cur) {
+      if (cur) out += '</span>';
+      if (next) out += `<span style="color:${next};">`;
+      cur = next;
     }
   }
+  out += escaped.slice(last);
+  if (cur) out += '</span>';
+  return out;
+}
 
-  function updateStatusUI(status) {
-    const statusDot = document.getElementById('statusDot');
-    if (statusDot) {
-      if (status === 'connected') {
-        statusDot.style.backgroundColor = '#00ff88';
-        statusDot.style.boxShadow = '0 0 8px #00ff88';
+function appendLog(line) {
+  const raw = String(line);
+  const html = ansiToHtml(raw);
+  if (terminalLog) {
+    terminalLog.innerHTML += html + '\n';
+    terminalLog.scrollTop = terminalLog.scrollHeight;
+  }
+  if (initOverlay && initOverlay.classList.contains('open') && initConsole) {
+    initConsole.innerHTML += html + '\n';
+    initConsole.scrollTop = initConsole.scrollHeight;
+  }
+  if (raw.indexOf('All requested AI services are online') !== -1) {
+    showInitOk();
+  }
+}
+
+function openInitPanel() {
+  if (initConsole) initConsole.textContent = '';
+  const ok = document.getElementById('initOk');
+  if (ok) ok.classList.remove('visible');
+  initOverlay.classList.add('open');
+}
+
+function showInitOk() {
+  const ok = document.getElementById('initOk');
+  if (ok) ok.classList.add('visible');
+}
+
+function closeInitPanel() {
+  initOverlay.classList.remove('open');
+}
+
+// ── Splash screen ──
+const splashScreen = document.getElementById('splashScreen');
+
+function hideSplash() {
+  if (!splashScreen || splashScreen.classList.contains('hidden')) return;
+  splashScreen.classList.add('hidden');
+  setTimeout(() => { splashScreen.style.display = 'none'; }, 700);
+}
+
+(function playSplash() {
+  const audio = new Audio('/gui/Splash-screen.mp3');
+  let hidden = false;
+  const hideOnce = () => {
+    if (hidden) return;
+    hidden = true;
+    hideSplash();
+  };
+  audio.addEventListener('ended', hideOnce);
+  audio.addEventListener('error', hideOnce);
+  audio.play().catch(() => {
+    // Autoplay blocked: keep the splash visible for a moment, then move on.
+    setTimeout(hideOnce, 3000);
+  });
+  // Safety net so the splash never lingers forever.
+  setTimeout(hideOnce, 15000);
+})();
+
+if (splashScreen) {
+  splashScreen.addEventListener('click', hideSplash);
+}
+
+let stagedMsg = null;
+
+function getOrCreateStagedBubble() {
+  const msgs = document.getElementById('chatMessages');
+  if (!msgs) return null;
+  if (stagedMsg && stagedMsg.isConnected) return stagedMsg;
+  const bubble = document.createElement('div');
+  bubble.className = 'msg ai-msg stage-msg';
+  bubble.textContent = '...';
+  msgs.appendChild(bubble);
+  msgs.scrollTop = msgs.scrollHeight;
+  stagedMsg = bubble;
+  return bubble;
+}
+
+function handleIncomingMessage(data) {
+  if (data.type === 'chat_stage') {
+    // Temporary feedback bubble that gets replaced once the AI is done.
+    const bubble = getOrCreateStagedBubble();
+    if (bubble) bubble.textContent = data.payload.text;
+  } else if (data.type === 'chat_response') {
+    const msgs = document.getElementById('chatMessages');
+    if (msgs) {
+      if (stagedMsg && stagedMsg.isConnected) {
+        // Replace the temporary stage bubble with the real answer.
+        stagedMsg.textContent = data.payload.text;
+        stagedMsg.classList.remove('stage-msg');
+        stagedMsg = null;
       } else {
-        statusDot.style.backgroundColor = '#ff4444';
-        statusDot.style.boxShadow = '0 0 8px #ff4444';
-      }
-    }
-  }
-
-  function handleIncomingMessage(data) {
-    if (data.type === 'chat_response') {
-      const msgs = document.getElementById('chatMessages');
-      if (msgs) {
         const bubble = document.createElement('div');
         bubble.className = 'msg ai-msg';
         bubble.textContent = data.payload.text;
         msgs.appendChild(bubble);
-        msgs.scrollTop = msgs.scrollHeight;
       }
+      msgs.scrollTop = msgs.scrollHeight;
     }
+  } else if (data.type === 'log') {
+    // Server/uvicorn print forwarded to the init console and terminal.
+    appendLog(data.payload.line);
+  } else if (data.type === 'status_update') {
+    setServiceStatus(data.payload.running === true ? 'online' : 'off');
+    // Init finished -> let the user close the panel.
+    if (data.payload.running === true) showInitOk();
   }
-
-  connectWebSocket();
 }
+
+connectWebSocket();
 
 // ── Settings sync ──
 let originalSettings = null;
@@ -825,6 +1270,42 @@ function loadSettings() {
       if (config.keep_camera_aspect_ratio) keepAspect.checked = config.keep_camera_aspect_ratio === true;
     })
     .catch((err) => console.error('Failed to load settings', err));
+}
+
+// Load the editable text files (personality, TTS instructions, voice design).
+function loadTextFiles() {
+  document.querySelectorAll('[data-file]').forEach((el) => {
+    const name = el.dataset.file;
+    fetch('/api/text/' + name)
+      .then((res) => res.json())
+      .then((data) => { el.value = data.text || ''; })
+      .catch((err) => console.error('Failed to load text file', name, err));
+  });
+}
+
+function saveTextFiles() {
+  document.querySelectorAll('[data-file]').forEach((el) => {
+    const name = el.dataset.file;
+    fetch('/api/text/' + name, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: el.value }),
+    }).catch((err) => console.error('Failed to save text file', name, err));
+  });
+}
+
+// ── Settings applied toast ──
+let toastTimer = null;
+
+function showToast() {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  try {
+    new Audio('/gui/notif.mp3').play();
+  } catch (e) { /* audio not available */ }
 }
 
 function collectChangedSettings() {
@@ -866,26 +1347,44 @@ function refreshStatus() {
   fetch('/api/status')
     .then((res) => res.json())
     .then((data) => {
-      document.getElementById('statusDot').classList.toggle('running', data.running === true);
+      setServiceStatus(data.running === true ? 'online' : 'off');
     })
-    .catch(() => {});
+    .catch(() => setServiceStatus('off'));
 }
 
 document.getElementById('btnStart').addEventListener('click', () => {
   console.log('[WS] POST /api/start');
+  setServiceStatus('starting');
+  openInitPanel();
   wsSend('start', {});
-  document.getElementById('statusDot').classList.add('running');
 });
 
 document.getElementById('btnStop').addEventListener('click', () => {
   console.log('[WS] POST /api/stop');
+  setServiceStatus('off');
   wsSend('stop', {});
-  document.getElementById('statusDot').classList.remove('running');
 });
+
+// ── Terminal toggle ──
+const btnTerminal = document.getElementById('btnTerminal');
+const terminalPanel = document.getElementById('terminalPanel');
+
+btnTerminal.addEventListener('click', () => {
+  const visible = terminalPanel.classList.toggle('visible');
+  btnTerminal.classList.toggle('active', visible);
+});
+
+document.getElementById('terminalClear').addEventListener('click', () => {
+  if (terminalLog) terminalLog.textContent = '';
+});
+
+// ── Init panel OK button ──
+document.getElementById('initOk').addEventListener('click', closeInitPanel);
 
 document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('settingsOverlay').classList.add('open');
   loadSettings();
+  loadTextFiles();
 });
 
 document.getElementById('settingsClose').addEventListener('click', () => {
@@ -900,7 +1399,9 @@ document.getElementById('settingsOverlay').addEventListener('click', (e) => {
 
 document.getElementById('settingsApply').addEventListener('click', () => {
   applySettings();
+  saveTextFiles();
   document.getElementById('settingsOverlay').classList.remove('open');
+  showToast();
 });
 
 // ── TTS service conditional disabling ──

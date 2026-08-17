@@ -1,0 +1,29 @@
+/* Dark theme, AMOLED — pure black background */
+:root {
+  --accent: #E4D329;
+  --bg: #000000;
+  --panel: #1E1E2A;
+  --panel-2: #22222E;
+  --chat-bg: #181825;
+  --ai-msg-bg: #26263A;
+  --bar-bg: #2D2D42;
+  --input-bg: #2A2A3A;
+  --btn-bg: #3A3A4A;
+  --btn-bg-hover: #4A4A5A;
+  --border: #3A3A4A;
+  --border-soft: rgba(222,222,217,0.15);
+  --text: #deded9;
+  --text-muted: #5a5a6a;
+  --text-label: #b0b0ba;
+  --terminal-bg: #000000;
+  --terminal-text: #a8e6a3;
+  --console-text: #c9d1d9;
+  --success: #2ecc71;
+  --success-hover: #27ae60;
+  --shadow: rgba(0,0,0,0.4);
+}
+
+/* AMOLED: hide the decorative background shapes for a pure black look. */
+.bg-blurs .blur-spot {
+  display: none;
+}

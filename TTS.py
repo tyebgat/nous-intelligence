@@ -262,7 +262,8 @@ class TTS:
                 else:
                     def play_default():
                         sd.play(data, samplerate)
-                        sd.wait() 
+                        sd.wait()
+
                     def play_cable():
                         sd.play(data, samplerate, device=self.cable_device_id)
                         sd.wait()
@@ -273,7 +274,6 @@ class TTS:
                     t2.start()
                     t1.join()
                     t2.join()
-                
             else:
                 sd.play(data, samplerate)
                 sd.wait()

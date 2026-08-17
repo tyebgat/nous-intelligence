@@ -42,7 +42,7 @@ class LocalSTT:
             print(f"{RED}Failed to load Whisper STT model: {e}{RESET}")
             raise
 
-    def transcribe(self, frames: list) -> str:
+    def transcribe(self, frames: list, vad_filter: bool = True) -> str:
         if not frames:
             return ""
 
@@ -54,7 +54,7 @@ class LocalSTT:
                 audio_np,
                 beam_size=5,
                 language=self.language if self.language else None,
-                vad_filter=True
+                vad_filter=vad_filter
             )
 
             text = " ".join(segment.text.strip() for segment in segments)

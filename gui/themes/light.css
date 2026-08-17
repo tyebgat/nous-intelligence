@@ -1,0 +1,24 @@
+/* Light theme */
+:root {
+  --accent: #E4D329;
+  --bg: #e9edf3;
+  --panel: #ffffff;
+  --panel-2: #f0f3f8;
+  --chat-bg: #e3e8f0;
+  --ai-msg-bg: #dbe3ee;
+  --bar-bg: #ffffff;
+  --input-bg: #ffffff;
+  --btn-bg: #d7dee9;
+  --btn-bg-hover: #c3ccda;
+  --border: #c6cedb;
+  --border-soft: rgba(15,23,42,0.12);
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-label: #475569;
+  --terminal-bg: #0f172a;
+  --terminal-text: #86efac;
+  --console-text: #dbeafe;
+  --success: #16a34a;
+  --success-hover: #15803d;
+  --shadow: rgba(15,23,42,0.18);
+}

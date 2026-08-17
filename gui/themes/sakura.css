@@ -1,0 +1,24 @@
+/* Sakura pink theme */
+:root {
+  --accent: #f472b6;
+  --bg: #1a1017;
+  --panel: #241722;
+  --panel-2: #2b1b28;
+  --chat-bg: #20131c;
+  --ai-msg-bg: #332130;
+  --bar-bg: #2b1b28;
+  --input-bg: #332130;
+  --btn-bg: #3d2a38;
+  --btn-bg-hover: #4d3649;
+  --border: #4a3444;
+  --border-soft: rgba(244,114,182,0.15);
+  --text: #fce7f3;
+  --text-muted: #a57696;
+  --text-label: #c9a3bd;
+  --terminal-bg: #140b12;
+  --terminal-text: #f9a8d4;
+  --console-text: #fbcfe8;
+  --success: #f472b6;
+  --success-hover: #ec4899;
+  --shadow: rgba(0,0,0,0.5);
+}

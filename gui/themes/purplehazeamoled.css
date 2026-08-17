@@ -1,0 +1,29 @@
+/* Purple Haze theme, AMOLED — pure black background */
+:root {
+  --accent: #8b5cf6;
+  --bg: #000000;
+  --panel: #171130;
+  --panel-2: #1d1540;
+  --chat-bg: #110c26;
+  --ai-msg-bg: #241a48;
+  --bar-bg: #1d1540;
+  --input-bg: #1d1540;
+  --btn-bg: #2b2055;
+  --btn-bg-hover: #382a6d;
+  --border: #382b6e;
+  --border-soft: rgba(139,92,246,0.18);
+  --text: #e6e0f5;
+  --text-muted: #6f6690;
+  --text-label: #a78bfa;
+  --terminal-bg: #000000;
+  --terminal-text: #a78bfa;
+  --console-text: #c4b5fd;
+  --success: #8b5cf6;
+  --success-hover: #7c3aed;
+  --shadow: rgba(0,0,0,0.5);
+}
+
+/* AMOLED: hide the decorative background shapes for a pure black look. */
+.bg-blurs .blur-spot {
+  display: none;
+}

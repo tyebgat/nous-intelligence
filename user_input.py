@@ -1,4 +1,5 @@
 import asyncio
+import numpy as np
 import speech_recognition as sr
 import pyaudio
 import wave
@@ -37,10 +38,20 @@ class UserInput:
         self.stt_language = stt_language
         self.detailed_logs = detailed_logs
         self.app_language = app_language
+        self.silence_duration = silence_duration
         self.mic = None
         self.audio = None
         self.recogniser = sr.Recognizer()
         self._running = True
+
+        # Event-driven (GUI) voice input state
+        self._speech_active = False
+        self._utterance_buffer = []
+        self.listening = False
+        self._listen_buffer = b""
+        self._got_speech = False
+        self._silent_seconds = 0.0
+        self._energy_threshold = 300
 
         self.wake_word = WakeWordListener(
             model_path=wake_word_model_path,
@@ -71,8 +82,121 @@ class UserInput:
             return
         self.local_stt.load_model()
 
+    def resample16k(self, pcm: bytes, src_rate: int = 16000) -> bytes:
+        """Resample raw int16 PCM from src_rate down to 16 kHz for STT/wake word."""
+        if not pcm or src_rate == 16000:
+            return pcm
+        try:
+            audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
+            target_len = max(1, int(round(len(audio) * 16000 / src_rate)))
+            x_old = np.arange(len(audio))
+            x_new = np.linspace(0, len(audio) - 1, target_len)
+            return np.interp(x_new, x_old, audio).astype(np.int16).tobytes()
+        except Exception as e:
+            if self.detailed_logs:
+                print(f"{RED}Resample error: {e}{RESET}")
+            return pcm
+
+    #=============================================
+    # EVENT-DRIVEN INPUT (used by the GUI)
+    #=============================================
+    def start_utterance(self) -> None:
+        """Begin buffering a push-to-talk utterance (non-blocking)."""
+        self._utterance_buffer = []
+        self._speech_active = True
+
+    def add_audio(self, pcm: bytes) -> None:
+        """Append a chunk of raw int16 PCM (16 kHz mono) to the active utterance."""
+        if self._speech_active and pcm:
+            self._utterance_buffer.append(pcm)
+
+    def buffered_bytes(self) -> int:
+        """Total raw bytes currently buffered for the active utterance."""
+        return sum(len(c) for c in self._utterance_buffer)
+
+    def utterance_frames(self) -> list:
+        """Copy of the currently buffered frames (does not consume them)."""
+        return list(self._utterance_buffer)
+
+    def utterance_stats(self, frames: list = None) -> dict:
+        """Peak / RMS amplitude of the buffered audio (diagnostics)."""
+        frames = self._utterance_buffer if frames is None else frames
+        if not frames:
+            return {"chunks": 0, "bytes": 0, "seconds": 0.0, "peak": 0.0, "rms": 0.0}
+        audio = np.frombuffer(b"".join(frames), dtype=np.int16)
+        n = int(audio.size)
+        if n == 0:
+            return {"chunks": len(frames), "bytes": 0, "seconds": 0.0, "peak": 0.0, "rms": 0.0}
+        peak = float(np.max(np.abs(audio)))
+        rms = float(np.sqrt(np.mean(audio.astype(np.float32) ** 2)))
+        return {"chunks": len(frames), "bytes": n * 2, "seconds": n / 16000.0, "peak": peak, "rms": rms}
+
+    def dump_utterance(self, path: str, frames: list = None) -> None:
+        """Write the buffered audio to a 16 kHz mono WAV for debugging."""
+        frames = self._utterance_buffer if frames is None else frames
+        if not frames:
+            return
+        with wave.open(path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(16000)
+            wf.writeframes(b"".join(frames))
+
+    def end_utterance(self) -> str:
+        """Stop buffering and transcribe the push-to-talk utterance."""
+        self._speech_active = False
+        frames = self._utterance_buffer
+        self._utterance_buffer = []
+        return self._transcribe_frames(frames)
+
+    def feed_wake_audio(self, pcm: bytes) -> bool:
+        """Feed a PCM chunk to the wake word model; True when it is detected."""
+        return self.wake_word.process_audio(pcm)
+
+    def start_listening(self) -> None:
+        """Begin recording after the wake word; silence detection auto-stops it."""
+        self._listen_buffer = b""
+        self._got_speech = False
+        self._silent_seconds = 0.0
+        self.listening = True
+
+    def add_listen_audio(self, pcm: bytes) -> bool:
+        """Feed PCM while listening. Returns True once the user stops talking."""
+        if not pcm:
+            return False
+        self._listen_buffer += pcm
+        audio_chunk = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
+        rms = float(np.sqrt(np.mean(audio_chunk ** 2))) if audio_chunk.size else 0.0
+        chunk_seconds = len(pcm) / 2 / 16000.0
+        if rms > self._energy_threshold:
+            self._got_speech = True
+            self._silent_seconds = 0.0
+        elif self._got_speech:
+            self._silent_seconds += chunk_seconds
+            if self._silent_seconds >= self.silence_duration:
+                return True
+        return False
+
+    def stop_listening(self) -> str:
+        """Stop the post-wake-word recording and transcribe what was heard."""
+        self.listening = False
+        buffer = self._listen_buffer
+        self._listen_buffer = b""
+        self._got_speech = False
+        self._silent_seconds = 0.0
+        frames = [buffer] if buffer else []
+        return self._transcribe_frames(frames)
+
+    def _transcribe_frames(self, frames: list, vad_filter: bool = True) -> str:
+        if not frames:
+            return ""
+        if self.stt_service == "whisper":
+            if self.local_stt._model is None:
+                self.setup_whisper()
+            return self.local_stt.transcribe(frames, vad_filter=vad_filter)
+        return self._transcribe_with_google(frames)
+
     def _transcribe_with_google(self, frames: list) -> str:
-        format = pyaudio.paInt16
         channels = 1
         rate = 16000
         temp_audio_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -80,7 +204,7 @@ class UserInput:
         temp_audio_file.close()
         wf = wave.open(temp_filename, 'wb')
         wf.setnchannels(channels)
-        wf.setsampwidth(self.audio.get_sample_size(format))
+        wf.setsampwidth(2)  # paInt16 = 2 bytes
         wf.setframerate(rate)
         wf.writeframes(b''.join(frames))
         wf.close()
@@ -99,6 +223,10 @@ class UserInput:
 
     def cleanup(self) -> None:
         self._running = False
+        self._speech_active = False
+        self.listening = False
+        self._utterance_buffer = []
+        self._listen_buffer = b""
         self.wake_word.cleanup()
         self.local_stt.cleanup()
         if self.audio:

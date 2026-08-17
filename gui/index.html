@@ -4,19 +4,94 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nous Intelligence</title>
+<link rel="icon" type="image/svg+xml" href="/gui/icon.svg"/>
 <style>
-:root { --yellow: #E4D329; }
+:root {
+  --accent: #E4D329;
+  --bg: #12121A;
+  --panel: #1E1E2A;
+  --panel-2: #22222E;
+  --chat-bg: #181825;
+  --ai-msg-bg: #26263A;
+  --bar-bg: #2D2D42;
+  --input-bg: #2A2A3A;
+  --btn-bg: #3A3A4A;
+  --btn-bg-hover: #4A4A5A;
+  --border: #3A3A4A;
+  --border-soft: rgba(222,222,217,0.15);
+  --text: #deded9;
+  --text-muted: #5a5a6a;
+  --text-label: #b0b0ba;
+  --terminal-bg: #0d0d12;
+  --terminal-text: #a8e6a3;
+  --console-text: #c9d1d9;
+  --success: #2ecc71;
+  --success-hover: #27ae60;
+  --shadow: rgba(0,0,0,0.4);
+}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #12121A;
-  color: #12121A;
+  background: var(--bg);
+  color: var(--bg);
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* ── Initialize Screen ── */
+.init-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+
+.init-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.init-screen .init-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
+  text-align: center;
+}
+
+.init-screen .init-title {
+  color: #deded9;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.init-screen #btnInitialize {
+  background: #000;
+  border: 1px solid #8b5cf6;
+  border-radius: 12px;
+  padding: 14px 48px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #a78bfa;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 0 0 14px rgba(139,92,246,0.6), inset 0 0 10px rgba(139,92,246,0.25);
+  transition: box-shadow 0.2s, transform 0.2s, color 0.2s;
+}
+
+.init-screen #btnInitialize:hover {
+  color: #c4b5fd;
+  box-shadow: 0 0 22px rgba(139,92,246,0.9), inset 0 0 14px rgba(139,92,246,0.4);
+  transform: translateY(-1px);
 }
 
 /* ── Splash Screen ── */
@@ -37,14 +112,15 @@ body {
 }
 
 .splash-screen img {
-  width: 55%;
-  max-width: 520px;
-  animation: splash-pulse 1.2s ease-in-out infinite alternate;
+  width: 78%;
+  max-width: 760px;
+  opacity: 0;
+  animation: splash-grow 2.6s ease-out forwards;
 }
 
-@keyframes splash-pulse {
-  0% { transform: scale(1); opacity: 0.9; }
-  100% { transform: scale(1.04); opacity: 1; }
+@keyframes splash-grow {
+  0%   { transform: scale(0.55); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ── Background Blurs ── */
@@ -81,8 +157,8 @@ body {
   left: 12px;
   right: 12px;
   z-index: 100;
-  background: #2D2D42;
-  border: 1px solid #3A3A4A;
+  background: var(--bar-bg);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 5px 14px;
   display: flex;
@@ -112,11 +188,11 @@ body {
 
 .floating-bar .bar-buttons button {
   background: transparent;
-  border: 1px solid rgba(222,222,217,0.15);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 4px;
   cursor: pointer;
-  color: #deded9;
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,12 +200,12 @@ body {
 }
 
 .floating-bar .bar-buttons button:hover {
-  border-color: var(--yellow);
+  border-color: var(--accent);
 }
 
 .floating-bar .bar-buttons button.active {
-  border-color: var(--yellow);
-  color: var(--yellow);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .floating-bar #btnGithub {
@@ -138,7 +214,7 @@ body {
   border-radius: 8px;
   padding: 4px;
   cursor: pointer;
-  color: #1E1E2A;
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -147,7 +223,7 @@ body {
 
 .floating-bar #btnGithub:hover {
   border: none;
-  color: var(--yellow);
+  color: var(--accent);
 }
 
 .floating-bar #btnGithub svg {
@@ -188,13 +264,33 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  background: #1E1E2A;
+  background: var(--panel);
   border-radius: 16px;
-  border: 2px solid #3A3A4A;
+  border: 2px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+#btnClearChat {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  z-index: 5;
+  background: rgba(42,42,58,0.85);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+#btnClearChat:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 .resize-handle {
@@ -214,7 +310,7 @@ body {
   right: 1px;
   width: 3px;
   height: 40px;
-  background: #3A3A4A;
+  background: var(--border);
   border-radius: 2px;
   transform: translateY(-50%);
   transition: background 0.2s;
@@ -222,7 +318,7 @@ body {
 
 .resize-handle:hover::after,
 .resize-handle.active::after {
-  background: var(--yellow);
+  background: var(--accent);
 }
 
 .chat-messages {
@@ -233,11 +329,11 @@ body {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  background: #181825;
+  background: var(--chat-bg);
 }
 
 .chat-messages .placeholder {
-  color: #5a5a6a;
+  color: var(--text-muted);
   text-align: center;
   margin: auto;
   font-style: italic;
@@ -251,76 +347,76 @@ body {
   font-size: 14px;
   line-height: 1.4;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .chat-messages .ai-msg {
   align-self: flex-start;
-  background: #26263A;
-  border: 1px solid #3A3A4A;
-  color: #deded9;
+  background: var(--ai-msg-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
   border-radius: 14px 14px 14px 4px;
-}
-
-.chat-messages .stage-msg {
-  opacity: 0.65;
-  font-style: italic;
-  background: #22222E;
 }
 
 .chat-input-area {
   padding: 12px 16px 16px;
   display: flex;
   gap: 10px;
-  border-top: 1px solid #3A3A4A;
+  border-top: 1px solid var(--border);
 }
 
-.chat-input-area input {
+.chat-input-area textarea {
   flex: 1;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid #3A3A4A;
-  background: #2A2A3A;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
   font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
   outline: none;
-  color: #deded9;
+  color: var(--text);
+  resize: none;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
-.chat-input-area input::placeholder {
-  color: #5a5a6a;
+.chat-input-area textarea::placeholder {
+  color: var(--text-muted);
 }
 
-.chat-input-area input:focus {
-  border-color: var(--yellow);
+.chat-input-area textarea:focus {
+  border-color: var(--accent);
 }
 
 .chat-input-area button {
-  background: #3A3A4A;
+  background: var(--border);
   border: none;
   border-radius: 10px;
   padding: 10px 12px;
   cursor: pointer;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   transition: background 0.2s;
 }
 
 .chat-input-area button:hover {
-  background: #4A4A5A;
+  background: var(--btn-bg-hover);
 }
 
 .chat-input-area button svg {
   width: 20px;
   height: 20px;
-  color: #deded9;
+  color: var(--text);
 }
 
 /* ── Camera Panel ── */
 .camera-panel {
   flex: 1;
-  background: #1E1E2A;
+  background: var(--panel);
   border-radius: 16px;
-  border: 2px solid #3A3A4A;
+  border: 2px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -350,7 +446,7 @@ body {
 
 .camera-placeholder {
   text-align: center;
-  color: #555;
+  color: var(--text-muted);
 }
 
 .camera-placeholder.hidden {
@@ -381,8 +477,8 @@ body {
 }
 
 .status-dot.starting {
-  background: var(--yellow);
-  box-shadow: 0 0 8px var(--yellow);
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .status-dot.online {
@@ -406,8 +502,8 @@ body {
 }
 
 .settings-panel {
-  background: #1E1E2A;
-  border: 1px solid #3A3A4A;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 16px;
   width: 780px;
   max-height: 92vh;
@@ -421,22 +517,22 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #3A3A4A;
+  border-bottom: 1px solid var(--border);
   font-weight: 600;
   font-size: 16px;
-  color: #deded9;
+  color: var(--text);
 }
 
 .settings-header button {
   background: none;
   border: none;
-  color: #5a5a6a;
+  color: var(--text-muted);
   font-size: 22px;
   cursor: pointer;
 }
 
 .settings-header button:hover {
-  color: #deded9;
+  color: var(--text);
 }
 
 .settings-tabs {
@@ -453,19 +549,19 @@ body {
   border-bottom: 2px solid transparent;
   padding: 6px 10px;
   cursor: pointer;
-  color: #5a5a6a;
+  color: var(--text-muted);
   font-size: 11px;
   white-space: nowrap;
   transition: color 0.2s, border-color 0.2s;
 }
 
 .settings-tabs .tab:hover {
-  color: #deded9;
+  color: var(--text);
 }
 
 .settings-tabs .tab.active {
-  color: var(--yellow);
-  border-bottom-color: var(--yellow);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .settings-body {
@@ -489,18 +585,18 @@ body {
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: #b0b0ba;
+  color: var(--text-label);
   gap: 12px;
 }
 
 .tab-content label input[type="text"],
 .tab-content label input[type="number"],
 .tab-content label select {
-  background: #2A2A3A;
-  border: 1px solid #3A3A4A;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
-  color: #deded9;
+  color: var(--text);
   font-size: 13px;
   width: 180px;
   outline: none;
@@ -509,18 +605,57 @@ body {
 .tab-content label input[type="text"]:focus,
 .tab-content label input[type="number"]:focus,
 .tab-content label select:focus {
-  border-color: var(--yellow);
+  border-color: var(--accent);
 }
 
 .tab-content label input[type="checkbox"] {
-  accent-color: var(--yellow);
+  accent-color: var(--accent);
   width: 16px;
   height: 16px;
 }
 
 .tab-content label input[type="range"] {
   width: 140px;
-  accent-color: var(--yellow);
+  accent-color: var(--accent);
+}
+
+.tab-content .path-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.tab-content .path-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+
+.tab-content .path-row input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+.tab-content .path-row button {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab-content .path-row button:hover {
+  border-color: var(--accent);
 }
 
 .tab-content label.disabled {
@@ -532,7 +667,7 @@ body {
   width: 40px;
   height: 30px;
   padding: 0;
-  border: 1px solid #3A3A4A;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: none;
   cursor: pointer;
@@ -547,11 +682,11 @@ body {
 .tab-content label.textarea-field textarea {
   width: 100%;
   height: 120px;
-  background: #2A2A3A;
-  border: 1px solid #3A3A4A;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 10px;
-  color: #deded9;
+  color: var(--text);
   font-size: 13px;
   font-family: Consolas, Menlo, monospace;
   resize: vertical;
@@ -559,18 +694,18 @@ body {
 }
 
 .tab-content label.textarea-field textarea:focus {
-  border-color: var(--yellow);
+  border-color: var(--accent);
 }
 
 .settings-footer {
   padding: 12px 20px;
-  border-top: 1px solid #3A3A4A;
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
 }
 
 .settings-footer button {
-  background: #2ecc71;
+  background: var(--success);
   border: none;
   border-radius: 8px;
   padding: 8px 24px;
@@ -582,7 +717,7 @@ body {
 }
 
 .settings-footer button:hover {
-  background: #27ae60;
+  background: var(--success-hover);
 }
 
 /* ── Toast Notification ── */
@@ -591,31 +726,113 @@ body {
   bottom: 24px;
   right: 24px;
   z-index: 600;
-  background: #12121A;
-  border: 1px solid #2ecc71;
-  color: #2ecc71;
+  background: var(--bg);
+  border: 1px solid var(--success);
+  color: var(--success);
   padding: 12px 22px;
   border-radius: 10px;
   font-weight: 600;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.3s, transform 0.3s;
   pointer-events: none;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 20px var(--shadow);
 }
 
 .toast.show {
   opacity: 1;
   transform: translateY(0);
 }
+
+.toast .loader {
+  display: none;
+}
+
+.toast.busy {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.toast.busy .loader {
+  display: inline-block;
+}
+
+/* Spinner loader (shown beside "Generating..." messages) */
+.loader {
+  --color-1: #A7E0E9;
+  --color-2: #2F4EC6;
+  --size: 0.6px;
+
+  width: calc(48 * var(--size));
+  height: calc(48 * var(--size));
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  border: calc(3 * var(--size)) solid;
+  border-color: var(--color-1) var(--color-1) transparent;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+  flex-shrink: 0;
+}
+
+.loader::after {
+  content: '';
+  box-sizing: border-box;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  border: calc(3 * var(--size)) solid;
+  border-color: transparent var(--color-2) var(--color-2);
+  width: calc(24 * var(--size));
+  height: calc(24 * var(--size));
+  border-radius: 50%;
+  animation: rotationBack 0.5s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes rotationBack {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+/* Three-dots loader (shown in the chat bubble while generating) */
+.typing-dots {
+  display: inline-block;
+  width: 60px;
+  aspect-ratio: 4;
+  --_g: no-repeat radial-gradient(circle closest-side,var(--text) 90%,#0000);
+  background:
+    var(--_g) 0%   50%,
+    var(--_g) 50%  50%,
+    var(--_g) 100% 50%;
+  background-size: calc(100%/3) 100%;
+  animation: l7 1s infinite linear;
+}
+
+@keyframes l7 {
+  33% { background-size: calc(100%/3) 0%,   calc(100%/3) 100%, calc(100%/3) 100%; }
+  50% { background-size: calc(100%/3) 100%, calc(100%/3) 0%,   calc(100%/3) 100%; }
+  66% { background-size: calc(100%/3) 100%, calc(100%/3) 100%, calc(100%/3) 0%; }
+}
 /* ── Terminal Panel ── */
 .terminal {
   flex: 0 0 auto;
   height: 220px;
   width: 100%;
-  background: #0d0d12;
-  border: 1px solid #3A3A4A;
+  background: var(--terminal-bg);
+  border: 1px solid var(--border);
   border-radius: 12px;
   display: none;
   flex-direction: column;
@@ -631,9 +848,9 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 8px 14px;
-  background: #1E1E2A;
-  border-bottom: 1px solid #3A3A4A;
-  color: #deded9;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
@@ -641,16 +858,16 @@ body {
 
 .terminal-header button {
   background: none;
-  border: 1px solid rgba(222,222,217,0.15);
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
-  color: #deded9;
+  color: var(--text);
   padding: 2px 8px;
   cursor: pointer;
   font-size: 12px;
 }
 
 .terminal-header button:hover {
-  border-color: var(--yellow);
+  border-color: var(--accent);
 }
 
 .terminal-log {
@@ -660,9 +877,63 @@ body {
   font-family: Consolas, Menlo, monospace;
   font-size: 12px;
   line-height: 1.5;
-  color: #a8e6a3;
+  color: var(--terminal-text);
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* ── Warning Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 420px;
+  max-width: 92vw;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-actions button {
+  background: var(--success);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-actions button:hover {
+  background: var(--success-hover);
 }
 
 /* ── Init Overlay ── */
@@ -681,8 +952,8 @@ body {
 }
 
 .init-panel {
-  background: #1E1E2A;
-  border: 1px solid #3A3A4A;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 16px;
   width: 640px;
   max-width: 92vw;
@@ -693,14 +964,14 @@ body {
 }
 
 .init-panel h3 {
-  color: #deded9;
+  color: var(--text);
   font-size: 15px;
   font-weight: 600;
 }
 
 .init-console {
-  background: #0d0d12;
-  border: 1px solid #3A3A4A;
+  background: var(--terminal-bg);
+  border: 1px solid var(--border);
   border-radius: 10px;
   height: 320px;
   overflow-y: auto;
@@ -708,7 +979,7 @@ body {
   font-family: Consolas, Menlo, monospace;
   font-size: 12px;
   line-height: 1.6;
-  color: #c9d1d9;
+  color: var(--console-text);
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -720,9 +991,9 @@ body {
 
 .init-ok {
   display: none;
-  background: #2ecc71;
+  background: var(--success);
   border: none;
-  color: #0d0d12;
+  color: var(--terminal-bg);
   font-weight: 600;
   padding: 10px 26px;
   border-radius: 10px;
@@ -735,11 +1006,42 @@ body {
 }
 
 .init-ok:hover {
-  background: #27ae60;
+  background: var(--success-hover);
 }
 </style>
+<link id="themeStylesheet" rel="stylesheet" href="/gui/themes/dark.css"/>
+<script>
+// Load the saved theme early to avoid a flash of the wrong theme. If the
+// "Disable Splash Screen" setting is enabled, hide the initialize and splash
+// screens right away so the app boots straight into the main GUI.
+fetch('/api/settings').then(r => r.json()).then(c => {
+  const theme = c.theme || 'dark';
+  const link = document.getElementById('themeStylesheet');
+  if (link) link.href = '/gui/themes/' + theme + '.css';
+  if (c.disable_splash === true) {
+    const skipIntro = () => {
+      const init = document.getElementById('initScreen');
+      const splash = document.getElementById('splashScreen');
+      if (init) { init.classList.add('hidden'); init.style.display = 'none'; }
+      if (splash) { splash.classList.add('hidden'); splash.style.display = 'none'; }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', skipIntro);
+    } else {
+      skipIntro();
+    }
+  }
+}).catch(() => {});
+</script>
 </head>
 <body>
+
+<div class="init-screen" id="initScreen">
+  <div class="init-box">
+    <h1 class="init-title">Initialize Nous Intelligence</h1>
+    <button id="btnInitialize">Initialize</button>
+  </div>
+</div>
 
 <div class="splash-screen" id="splashScreen">
   <img src="/gui/Nous intelligence.png" alt="Nous Intelligence"/>
@@ -800,11 +1102,12 @@ body {
     <!-- Chat Panel -->
     <div class="chat-panel" id="chatPanel">
       <div class="resize-handle" id="resizeHandle"></div>
+      <button id="btnClearChat" title="Clear chat">Clear</button>
       <div class="chat-messages" id="chatMessages">
         <div class="placeholder">Start the service and send a message to begin chatting.</div>
       </div>
       <div class="chat-input-area">
-        <input type="text" id="chatInput" placeholder="Type a message..." />
+        <textarea id="chatInput" rows="1" placeholder="Type a message... (Alt+Enter for new line)"></textarea>
         <button id="btnSend">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="19" x2="12" y2="5"/>
@@ -837,7 +1140,10 @@ body {
   </div>
 </div>
 
-<div class="toast" id="toast">Settings Applied</div>
+<div class="toast" id="toast">
+  <span class="loader"></span>
+  <span id="toastText">Settings Applied</span>
+</div>
 
 <div class="settings-overlay" id="settingsOverlay">
   <div class="settings-panel">
@@ -858,27 +1164,54 @@ body {
     </div>
     <div class="settings-body">
       <div class="tab-content active" id="tab-appearance">
-        <label>Accent Color <input type="color" id="accentColor" value="#E4D329"/></label>
-        <label>Background Blur Intensity <input type="range" id="blurIntensity" min="0" max="200" value="120"/></label>
-        <label>Keep Camera Aspect Ratio <input type="checkbox" id="keepAspect"/></label>
+        <label>Theme <select data-key="theme">
+          <optgroup label="Dark">
+            <option value="dark">Dark</option>
+            <option value="darkamoled">Dark (AMOLED)</option>
+          </optgroup>
+          <optgroup label="Light">
+            <option value="light">Light</option>
+          </optgroup>
+          <optgroup label="Midnight">
+            <option value="midnight">Midnight</option>
+            <option value="midnightamoled">Midnight (AMOLED)</option>
+          </optgroup>
+          <optgroup label="Sakura">
+            <option value="sakura">Sakura</option>
+            <option value="sakuraamoled">Sakura (AMOLED)</option>
+          </optgroup>
+          <optgroup label="Purple Haze">
+            <option value="purplehaze">Purple Haze</option>
+            <option value="purplehazeamoled">Purple Haze (AMOLED)</option>
+          </optgroup>
+        </select></label>
+        <label>Disable Splash Screen <input type="checkbox" data-key="disable_splash"/></label>
+        <label>Background Blur Intensity <input type="range" id="blurIntensity" data-key="blur_intensity" min="0" max="200" value="120"/></label>
+        <label>Keep Camera Aspect Ratio <input type="checkbox" id="keepAspect" data-key="keep_camera_aspect_ratio"/></label>
       </div>
       <div class="tab-content" id="tab-general">
         <label>App Language <select data-key="app_language"><option>english</option><option>spanish</option></select></label>
         <label>Play Only Cable <input type="checkbox" data-key="play_only_cable"/></label>
+        <label>Microphone
+          <span style="display:flex;gap:6px;align-items:center;">
+            <select id="audioDeviceSelect" data-key="audio_device"><option value="">System Default</option></select>
+            <button id="refreshDevicesBtn" type="button" title="Refresh device list" style="padding:2px 8px;font-size:13px;cursor:pointer;">&#8635;</button>
+          </span>
+        </label>
       </div>
       <div class="tab-content" id="tab-chatbot">
         <label>Input Service <select data-key="user_input_service"><option>console</option><option>speech</option><option>wake_word</option></select></label>
         <label>Chatbot Service <select data-key="chatbot_service"><option>openai</option><option>local</option><option>test</option></select></label>
         <label>Chatbot Name <input type="text" data-key="chatbot_name" value="NOUS"/></label>
         <label>Remember Conversation <input type="checkbox" data-key="remember_conversation"/></label>
-        <label>Model Directory <input type="text" data-key="model_dir" placeholder="path to model"/></label>
+        <label>Model Directory <span class="path-row"><input type="text" data-key="model_dir" placeholder="path to model"/><button type="button" class="browse-btn" data-for="model_dir" data-type="file" data-ext="gguf">...</button></span></label>
         <label class="textarea-field">Personality
           <textarea data-file="personality" placeholder="personality.txt content"></textarea>
         </label>
       </div>
       <div class="tab-content" id="tab-wakeword">
-        <label>Wake Word Model <input type="text" data-key="wake_word_model" placeholder="model path"/></label>
-        <label>Threshold <span style="display:flex;align-items:center;gap:8px;"><input type="range" data-key="wake_word_threshold" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:#deded9;">0.5</span></span></label>
+        <label>Wake Word Model <span class="path-row"><input type="text" data-key="wake_word_model" placeholder="model path"/><button type="button" class="browse-btn" data-for="wake_word_model" data-type="file" data-ext="onnx,tflite">...</button></span></label>
+        <label>Threshold <span style="display:flex;align-items:center;gap:8px;"><input type="range" data-key="wake_word_threshold" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:var(--text);">0.5</span></span></label>
         <label>Confirm Sound <input type="checkbox" data-key="wake_word_confirm_sound"/></label>
       </div>
       <div class="tab-content" id="tab-stt">
@@ -895,6 +1228,10 @@ body {
         <label>Speed <input type="number" step="0.1" data-key="tts_speed" value="1.0"/></label>
         <label>Gain <input type="number" step="0.1" data-key="gain" value="1.0"/></label>
         <label>Voice Cloning <input type="checkbox" data-key="voice_cloning"/></label>
+        <label>Reference Wav <span class="path-row"><input type="text" data-key="reference_wav" placeholder="path to reference.wav"/><button type="button" class="browse-btn" data-for="reference_wav" data-type="file" data-ext="wav">...</button></span></label>
+        <label class="textarea-field">Reference Wav Transcripts
+          <textarea data-file="reference" placeholder="Data/reference.txt content"></textarea>
+        </label>
         <label>Voice Design <input type="checkbox" data-key="voice_design"/></label>
         <label class="textarea-field">Voice Design Instructions
           <textarea data-file="voice_design" placeholder="Data/omnivoice-design.txt content"></textarea>
@@ -924,6 +1261,15 @@ body {
   </div>
 </div>
 
+<div class="modal-overlay" id="warningOverlay">
+  <div class="modal-panel">
+    <div class="modal-text" id="warningText"></div>
+    <div class="modal-actions">
+      <button id="warningOk">Ok</button>
+    </div>
+  </div>
+</div>
+
 <div class="init-overlay" id="initOverlay">
   <div class="init-panel">
     <h3 id="initTitle">Starting services...</h3>
@@ -948,7 +1294,7 @@ async function startCamera() {
     await video.play();
     video.classList.add('active');
     document.getElementById('cameraPlaceholder').classList.add('hidden');
-    btnCamera.style.borderColor = 'var(--yellow)';
+    btnCamera.style.borderColor = 'var(--accent)';
     cameraSlash.style.display = 'none';
   } catch (err) {
     console.log('Camera not available:', err.message);
@@ -971,12 +1317,6 @@ function stopCamera() {
 btnCamera.addEventListener('click', () => {
   if (cameraStream) { stopCamera(); }
   else { startCamera(); }
-});
-
-// ── Accent Color ──
-const accentPicker = document.getElementById('accentColor');
-accentPicker.addEventListener('input', () => {
-  document.documentElement.style.setProperty('--yellow', accentPicker.value);
 });
 
 // ── Blur Intensity ──
@@ -1065,7 +1405,7 @@ function connectWebSocket() {
   };
 }
 
-function wsSend(type, payload) {
+function wsSend(type, payload, quiet = false) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     const messageObject = {
       type: type,
@@ -1073,9 +1413,9 @@ function wsSend(type, payload) {
       timestamp: Date.now()
     };
     socket.send(JSON.stringify(messageObject));
-    console.log(`[WS Enviado] (${type}):`, payload);
+    if (!quiet) console.log(`[WS Enviado] (${type}):`, payload);
   } else {
-    console.error('[WS Error] No se pudo enviar el mensaje: La conexión no está abierta.');
+    if (!quiet) console.error('[WS Error] No se pudo enviar el mensaje: La conexión no está abierta.');
     connectWebSocket();
   }
 }
@@ -1167,7 +1507,8 @@ function closeInitPanel() {
   initOverlay.classList.remove('open');
 }
 
-// ── Splash screen ──
+// ── Initialize / Splash screen ──
+const initScreen = document.getElementById('initScreen');
 const splashScreen = document.getElementById('splashScreen');
 
 function hideSplash() {
@@ -1176,7 +1517,18 @@ function hideSplash() {
   setTimeout(() => { splashScreen.style.display = 'none'; }, 700);
 }
 
-(function playSplash() {
+function startSplash() {
+  if (!splashScreen) return;
+  // Restart the logo tween so it plays from the beginning each time the splash
+  // is shown, even if the user lingered on the initialize screen.
+  const logo = splashScreen.querySelector('img');
+  if (logo) {
+    logo.style.animation = 'none';
+    void logo.offsetWidth;
+    logo.style.animation = '';
+  }
+  if (initScreen) initScreen.classList.add('hidden');
+  // User gesture here lets the browser allow audio playback.
   const audio = new Audio('/gui/Splash-screen.mp3');
   let hidden = false;
   const hideOnce = () => {
@@ -1187,60 +1539,96 @@ function hideSplash() {
   audio.addEventListener('ended', hideOnce);
   audio.addEventListener('error', hideOnce);
   audio.play().catch(() => {
-    // Autoplay blocked: keep the splash visible for a moment, then move on.
+    // If audio still fails, keep the splash visible for a moment, then move on.
     setTimeout(hideOnce, 3000);
   });
   // Safety net so the splash never lingers forever.
   setTimeout(hideOnce, 15000);
-})();
-
-if (splashScreen) {
-  splashScreen.addEventListener('click', hideSplash);
 }
+
+const btnInitialize = document.getElementById('btnInitialize');
+if (btnInitialize) btnInitialize.addEventListener('click', startSplash);
+if (splashScreen) splashScreen.addEventListener('click', hideSplash);
 
 let stagedMsg = null;
 
-function getOrCreateStagedBubble() {
+function getOrCreateTypingBubble() {
   const msgs = document.getElementById('chatMessages');
   if (!msgs) return null;
   if (stagedMsg && stagedMsg.isConnected) return stagedMsg;
   const bubble = document.createElement('div');
-  bubble.className = 'msg ai-msg stage-msg';
-  bubble.textContent = '...';
+  bubble.className = 'msg ai-msg';
+  const dots = document.createElement('span');
+  dots.className = 'typing-dots';
+  bubble.appendChild(dots);
   msgs.appendChild(bubble);
   msgs.scrollTop = msgs.scrollHeight;
   stagedMsg = bubble;
   return bubble;
 }
 
+function replaceTypingBubble(text) {
+  const msgs = document.getElementById('chatMessages');
+  if (!msgs) return;
+  if (stagedMsg && stagedMsg.isConnected) {
+    // Replace the typing indicator with the real answer.
+    stagedMsg.textContent = text;
+    stagedMsg = null;
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg ai-msg';
+    bubble.textContent = text;
+    msgs.appendChild(bubble);
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
 function handleIncomingMessage(data) {
   if (data.type === 'chat_stage') {
-    // Temporary feedback bubble that gets replaced once the AI is done.
-    const bubble = getOrCreateStagedBubble();
-    if (bubble) bubble.textContent = data.payload.text;
-  } else if (data.type === 'chat_response') {
-    const msgs = document.getElementById('chatMessages');
-    if (msgs) {
-      if (stagedMsg && stagedMsg.isConnected) {
-        // Replace the temporary stage bubble with the real answer.
-        stagedMsg.textContent = data.payload.text;
-        stagedMsg.classList.remove('stage-msg');
-        stagedMsg = null;
-      } else {
-        const bubble = document.createElement('div');
-        bubble.className = 'msg ai-msg';
-        bubble.textContent = data.payload.text;
-        msgs.appendChild(bubble);
-      }
-      msgs.scrollTop = msgs.scrollHeight;
+    const stage = data.payload.stage;
+    if (stage === 'thinking') {
+      // Typing dots bubble + "Generating response" notification.
+      getOrCreateTypingBubble();
+      showToast('Generating response', { busy: true, duration: 0 });
+    } else if (stage === 'voice') {
+      showToast('Generating TTS', { busy: true, duration: 0 });
     }
+  } else if (data.type === 'chat_response') {
+    replaceTypingBubble(data.payload.text);
+    // If TTS never started, drop the "Generating response" notification now.
+    if (toastMode === 'Generating response') hideToast();
+  } else if (data.type === 'tts_done') {
+    // Voice playback finished -> drop the "Generating TTS" notification.
+    hideToast();
   } else if (data.type === 'log') {
     // Server/uvicorn print forwarded to the init console and terminal.
     appendLog(data.payload.line);
+  } else if (data.type === 'speech_result') {
+    const text = (data.payload.text || '').trim();
+    hideToast();
+    if (text) {
+      sendChatMessage(text);
+    } else {
+      showToast('Could not understand audio. Try again.');
+    }
+  } else if (data.type === 'wake_detected') {
+    showToast('Listening...', { duration: 0 });
   } else if (data.type === 'status_update') {
-    setServiceStatus(data.payload.running === true ? 'online' : 'off');
+    const running = data.payload.running === true;
+    setServiceStatus(running ? 'online' : 'off');
+    serviceRunning = running;
+    if (data.payload.voice_mode !== undefined) {
+      inputService = data.payload.voice_mode || 'console';
+      updateInputPlaceholder();
+    }
     // Init finished -> let the user close the panel.
-    if (data.payload.running === true) showInitOk();
+    if (running) {
+      showInitOk();
+      if (inputService === 'wake_word') startWakeStream();
+      else if (inputService === 'speech') requestMic();
+    } else {
+      releaseMic();
+    }
   }
 }
 
@@ -1248,15 +1636,19 @@ connectWebSocket();
 
 // ── Settings sync ──
 let originalSettings = null;
+let themeUserSelected = false;
 
 function loadSettings() {
-  fetch('/api/settings')
+  return fetch('/api/settings')
     .then((res) => res.json())
     .then((config) => {
       originalSettings = config;
+      inputService = config.user_input_service || 'console';
+      updateInputPlaceholder();
       document.querySelectorAll('[data-key]').forEach((el) => {
         const key = el.dataset.key;
         if (!(key in config)) return;
+        if (themeUserSelected && key === 'theme') return;
         const value = config[key];
         if (el.type === 'checkbox') {
           el.checked = value === true;
@@ -1264,12 +1656,33 @@ function loadSettings() {
           el.value = value;
         }
       });
-      // Keep accent/blur in sync with saved values (UI-only keys).
-      if (config.accent_color) document.getElementById('accentColor').value = config.accent_color;
-      if (config.blur_intensity) blurIntensity.value = config.blur_intensity;
-      if (config.keep_camera_aspect_ratio) keepAspect.checked = config.keep_camera_aspect_ratio === true;
+      // Apply the saved appearance settings, but never override a theme the
+      // user has already picked in the dropdown.
+      if (!themeUserSelected) applyTheme(config.theme || 'dark');
+      updateBlur();
+      // Refresh service-dependent grey-out states now that the saved values are
+      // loaded (setting .value programmatically does not fire 'change' events).
+      if (typeof updateTtsDisabled === 'function') updateTtsDisabled();
+      if (typeof updateChatbotDisabled === 'function') updateChatbotDisabled();
+      if (typeof updateSttDisabled === 'function') updateSttDisabled();
     })
     .catch((err) => console.error('Failed to load settings', err));
+}
+
+// Apply the selected theme by swapping the stylesheet.
+function applyTheme(name) {
+  const link = document.getElementById('themeStylesheet');
+  if (!link || !name) return;
+  link.href = '/gui/themes/' + name + '.css';
+}
+
+// Live-preview the theme when the dropdown changes.
+const themeSelect = document.querySelector('[data-key="theme"]');
+if (themeSelect) {
+  themeSelect.addEventListener('change', (e) => {
+    applyTheme(e.target.value);
+    themeUserSelected = true;
+  });
 }
 
 // Load the editable text files (personality, TTS instructions, voice design).
@@ -1294,18 +1707,269 @@ function saveTextFiles() {
   });
 }
 
-// ── Settings applied toast ──
+// ── Toast notification ──
 let toastTimer = null;
+let toastMode = null; // null | 'response' | 'tts'
 
-function showToast() {
+function showToast(text, opts = {}) {
   const toast = document.getElementById('toast');
-  if (!toast) return;
+  const label = document.getElementById('toastText');
+  if (!toast || !label) return;
+  const { busy = false, duration = 2500 } = opts;
+  toastMode = busy ? text : null;
+  label.textContent = text;
+  toast.classList.toggle('busy', busy);
   toast.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  if (duration > 0) {
+    toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+  }
+}
+
+function hideToast() {
+  toastMode = null;
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.classList.remove('show');
+    toast.classList.remove('busy');
+  }
+}
+
+// ── Voice input (speech / wake word) ──
+let inputService = 'console';
+let serviceRunning = false;
+
+let micStream = null;
+let micCtx = null;
+let micSource = null;
+let micProcessor = null;
+let speechActive = false;
+let wakeStreamActive = false;
+
+function updateInputPlaceholder() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  if (inputService === 'speech') {
+    input.disabled = true;
+    input.placeholder = 'Hold Space to talk...';
+  } else if (inputService === 'wake_word') {
+    input.disabled = true;
+    input.placeholder = 'Say the wake word then speak...';
+  } else {
+    input.disabled = false;
+    input.placeholder = 'Type a message... (Alt+Enter for new line)';
+  }
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function populateAudioDevices() {
+  const select = document.getElementById('audioDeviceSelect');
+  if (!select) return;
   try {
-    new Audio('/gui/notif.mp3').play();
-  } catch (e) { /* audio not available */ }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter(d => d.kind === 'audioinput');
+    const saved = originalSettings?.audio_device || select.value || '';
+    select.innerHTML = '<option value="">System Default</option>';
+    inputs.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Device ${d.deviceId.slice(0, 8)}`;
+      select.appendChild(opt);
+    });
+    select.value = saved;
+    console.log('[Mic] Device list:', inputs.length, 'input(s)');
+  } catch (err) {
+    console.warn('[Mic] Cannot enumerate devices:', err);
+  }
+}
+
+async function requestMic() {
+  if (micStream) return true;
+  const select = document.getElementById('audioDeviceSelect');
+  const deviceId = select?.value || '';
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia(
+      deviceId ? { audio: { deviceId: { exact: deviceId } } } : { audio: true }
+    );
+    const track = micStream.getAudioTracks()[0];
+    console.log('[Mic] Using:', track?.label, '| muted:', track?.muted, '| enabled:', track?.enabled);
+    return true;
+  } catch (err) {
+    console.warn('[Mic] Access denied or device unavailable:', err);
+    showToast('Microphone access denied');
+    return false;
+  }
+}
+
+function ensureAudioContext() {
+  // Browsers gate audio on a user gesture: create/resume the context while the
+  // key press / click is being handled, or onaudioprocess never fires and no
+  // audio is sent to the server.
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  if (!micCtx) {
+    try {
+      micCtx = new AC({ sampleRate: 16000 });
+    } catch (err) {
+      micCtx = new AC();
+    }
+  }
+  if (micCtx.state === 'suspended') micCtx.resume();
+  return !!micCtx;
+}
+
+function startAudioProcessor(onChunk) {
+  if (!micStream || micProcessor) return null;
+  if (!ensureAudioContext()) return null;
+  if (micCtx.state === 'suspended') {
+    // Safety net: resume on the next interaction if a browser ignored us.
+    const resumeOnGesture = () => {
+      if (micCtx && micCtx.state === 'suspended') micCtx.resume();
+    };
+    document.addEventListener('pointerdown', resumeOnGesture, { once: true });
+    document.addEventListener('keydown', resumeOnGesture, { once: true });
+  }
+  micSource = micCtx.createMediaStreamSource(micStream);
+  micProcessor = micCtx.createScriptProcessor(4096, 1, 1);
+  // Keep the graph running (so onaudioprocess fires) without audible feedback.
+  const mute = micCtx.createGain();
+  mute.gain.value = 0;
+  micProcessor.onaudioprocess = (e) => {
+    const input = e.inputBuffer.getChannelData(0);
+    const int16 = new Int16Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    onChunk(new Uint8Array(int16.buffer));
+  };
+  micSource.connect(micProcessor);
+  micProcessor.connect(mute);
+  mute.connect(micCtx.destination);
+  return micCtx.sampleRate || 16000;
+}
+
+function stopAudioProcessor() {
+  if (micProcessor) {
+    try { micProcessor.disconnect(); } catch (e) {}
+    micProcessor = null;
+  }
+  if (micSource) {
+    try { micSource.disconnect(); } catch (e) {}
+    micSource = null;
+  }
+}
+
+function releaseMic() {
+  speechActive = false;
+  wakeStreamActive = false;
+  stopAudioProcessor();
+  if (micStream) {
+    micStream.getTracks().forEach((t) => t.stop());
+    micStream = null;
+  }
+  if (micCtx) {
+    micCtx.close().catch(() => {});
+    micCtx = null;
+  }
+}
+
+function setRecordingVisual(on) {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  input.style.borderColor = on ? 'var(--accent)' : '';
+  if (on) input.placeholder = 'Listening... release Space to send';
+  else updateInputPlaceholder();
+}
+
+async function startPushToTalk() {
+  if (speechActive) return;
+  ensureAudioContext();
+  const ok = await requestMic();
+  if (!ok) return;
+  populateAudioDevices();
+  speechActive = true;
+  setRecordingVisual(true);
+  const rate = startAudioProcessor((pcm) => {
+    if (speechActive) wsSend('mic', { event: 'audio', data: bytesToBase64(pcm) }, true);
+  });
+  wsSend('mic', { event: 'init', rate: rate || 16000 });
+  wsSend('mic', { event: 'start' });
+}
+
+function stopPushToTalk() {
+  if (!speechActive) return;
+  speechActive = false;
+  setRecordingVisual(false);
+  stopAudioProcessor();
+  wsSend('mic', { event: 'stop' });
+}
+
+async function startWakeStream() {
+  if (wakeStreamActive) return;
+  ensureAudioContext();
+  const ok = await requestMic();
+  if (!ok) return;
+  wakeStreamActive = true;
+  const rate = startAudioProcessor((pcm) => {
+    if (!wakeStreamActive) return;
+    wsSend('mic', { event: 'audio', data: bytesToBase64(pcm) }, true);
+  });
+  wsSend('mic', { event: 'init', rate: rate || 16000 });
+}
+
+function stopWakeStream() {
+  wakeStreamActive = false;
+  stopAudioProcessor();
+}
+
+function ensureVoiceStreamStarted() {
+  if (inputService === 'wake_word' && serviceRunning && !wakeStreamActive) {
+    startWakeStream();
+  }
+}
+
+// ── Push-to-talk: hold Space to talk ──
+document.addEventListener('keydown', (e) => {
+  if (e.key !== ' ' || e.repeat) return;
+  if (inputService !== 'speech' || !serviceRunning) return;
+  const t = document.activeElement;
+  if (t && t !== document.body && t.id !== 'chatInput') return;
+  const chatInputEl = document.getElementById('chatInput');
+  if (t === chatInputEl && chatInputEl.value.trim().length > 0) return;
+  e.preventDefault();
+  startPushToTalk();
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.key !== ' ') return;
+  if (speechActive) {
+    e.preventDefault();
+    stopPushToTalk();
+  }
+});
+
+// Stop a stuck push-to-talk if the window loses focus while recording.
+window.addEventListener('blur', () => {
+  if (speechActive) stopPushToTalk();
+});
+
+document.addEventListener('pointerdown', ensureVoiceStreamStarted);
+
+const inputServiceSelect = document.querySelector('[data-key="user_input_service"]');
+if (inputServiceSelect) {
+  inputServiceSelect.addEventListener('change', () => {
+    inputService = inputServiceSelect.value;
+    updateInputPlaceholder();
+  });
 }
 
 function collectChangedSettings() {
@@ -1335,6 +1999,10 @@ function applySettings() {
     .then((res) => res.json())
     .then((data) => {
       originalSettings = data.config;
+      if (data.config && data.config.user_input_service) {
+        inputService = data.config.user_input_service;
+        updateInputPlaceholder();
+      }
       console.log('[POST] settings saved', data.config);
     })
     .catch((err) => console.error('Failed to apply settings', err));
@@ -1347,7 +2015,16 @@ function refreshStatus() {
   fetch('/api/status')
     .then((res) => res.json())
     .then((data) => {
-      setServiceStatus(data.running === true ? 'online' : 'off');
+      const running = data.running === true;
+      serviceRunning = running;
+      if (data.voice_mode !== undefined) {
+        inputService = data.voice_mode || 'console';
+        updateInputPlaceholder();
+      }
+      setServiceStatus(running ? 'online' : 'off');
+      if (running && inputService === 'wake_word') startWakeStream();
+      else if (running && inputService === 'speech') requestMic();
+      else if (!running) releaseMic();
     })
     .catch(() => setServiceStatus('off'));
 }
@@ -1382,9 +2059,31 @@ document.getElementById('terminalClear').addEventListener('click', () => {
 document.getElementById('initOk').addEventListener('click', closeInitPanel);
 
 document.getElementById('btnSettings').addEventListener('click', () => {
+  activateSettingsTab('appearance');
   document.getElementById('settingsOverlay').classList.add('open');
-  loadSettings();
-  loadTextFiles();
+  loadSettings().then(() => {
+    loadTextFiles();
+    populateAudioDevices();
+  });
+});
+
+document.getElementById('refreshDevicesBtn').addEventListener('click', (e) => {
+  e.preventDefault();
+  populateAudioDevices();
+});
+
+document.querySelectorAll('.browse-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.type || 'file';
+    const ext = btn.dataset.ext || '';
+    const input = btn.parentElement.querySelector('input[type="text"]');
+    fetch('/api/browse?type=' + encodeURIComponent(type) + '&ext=' + encodeURIComponent(ext))
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.path && input) input.value = data.path;
+      })
+      .catch((err) => console.error('Browse failed', err));
+  });
 });
 
 document.getElementById('settingsClose').addEventListener('click', () => {
@@ -1401,8 +2100,30 @@ document.getElementById('settingsApply').addEventListener('click', () => {
   applySettings();
   saveTextFiles();
   document.getElementById('settingsOverlay').classList.remove('open');
-  showToast();
+  showToast('Settings Applied');
+  try {
+    new Audio('/gui/notif.mp3').play();
+  } catch (e) { /* audio not available */ }
 });
+
+// ── Warning modal ──
+function showWarning(message, okText) {
+  const text = document.getElementById('warningText');
+  const ok = document.getElementById('warningOk');
+  if (text) text.textContent = message;
+  if (ok) ok.textContent = okText || 'Ok';
+  const overlay = document.getElementById('warningOverlay');
+  if (overlay) overlay.classList.add('open');
+}
+
+const warningOverlay = document.getElementById('warningOverlay');
+if (warningOverlay) {
+  const ok = document.getElementById('warningOk');
+  if (ok) ok.addEventListener('click', () => warningOverlay.classList.remove('open'));
+  warningOverlay.addEventListener('click', (e) => {
+    if (e.target === warningOverlay) warningOverlay.classList.remove('open');
+  });
+}
 
 // ── TTS service conditional disabling ──
 const ttsService = document.querySelector('#tab-tts select');
@@ -1471,12 +2192,24 @@ if (sttService) {
   updateSttDisabled();
 }
 
+function activateSettingsTab(name) {
+  document.querySelectorAll('.settings-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const t = document.querySelector('.settings-tabs .tab[data-tab="' + name + '"]');
+  if (t) t.classList.add('active');
+  const c = document.getElementById('tab-' + name);
+  if (c) c.classList.add('active');
+}
+
 document.querySelectorAll('.settings-tabs .tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.settings-tabs .tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    // While AI services are running, only the appearance tab is editable.
+    if (serviceRunning && tab.dataset.tab !== 'appearance') {
+      showWarning('You can only change these settings when AI services are not running', 'Ok');
+      activateSettingsTab('appearance');
+      return;
+    }
+    activateSettingsTab(tab.dataset.tab);
   });
 });
 
@@ -1484,9 +2217,21 @@ document.getElementById('btnGithub').addEventListener('click', () => {
   window.open('https://github.com/tyebgat/nous-intelligence', '_blank');
 });
 
-document.getElementById('btnSend').addEventListener('click', () => {
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim();
+// ── Clear chat ──
+document.getElementById('btnClearChat').addEventListener('click', () => {
+  const msgs = document.getElementById('chatMessages');
+  if (!msgs) return;
+  msgs.innerHTML = '';
+  const ph = document.createElement('div');
+  ph.className = 'placeholder';
+  ph.textContent = 'Start the service and send a message to begin chatting.';
+  msgs.appendChild(ph);
+  stagedMsg = null;
+  hideToast();
+});
+
+function sendChatMessage(msg) {
+  msg = String(msg || '').trim();
   if (!msg) return;
 
   console.log(`[WS] chat message: "${msg}"`);
@@ -1496,16 +2241,24 @@ document.getElementById('btnSend').addEventListener('click', () => {
   msgs.querySelector('.placeholder')?.remove();
 
   const bubble = document.createElement('div');
-  bubble.style.cssText = 'align-self:flex-end;background:#12121A;color:#deded9;padding:10px 14px;border-radius:14px 14px 4px 14px;max-width:80%;word-wrap:break-word;font-size:14px;';
+  bubble.style.cssText = 'align-self:flex-end;background:var(--panel);color:var(--text);padding:10px 14px;border-radius:14px 14px 4px 14px;max-width:80%;word-wrap:break-word;white-space:pre-wrap;font-size:14px;';
   bubble.textContent = msg;
   msgs.appendChild(bubble);
   msgs.scrollTop = msgs.scrollHeight;
+}
 
+document.getElementById('btnSend').addEventListener('click', () => {
+  const input = document.getElementById('chatInput');
+  sendChatMessage(input.value);
   input.value = '';
 });
 
 document.getElementById('chatInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('btnSend').click();
+  // Enter sends; Alt+Enter (or Shift+Enter) inserts a new line.
+  if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('btnSend').click();
+  }
 });
 
 // Set the status dot from the server on page load.

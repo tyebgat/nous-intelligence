@@ -1,5 +1,6 @@
 
 import asyncio
+import base64
 import json
 import logging
 import sys
@@ -38,6 +39,11 @@ try:
 except ImportError:
     TTS = None
 
+try:
+    from user_input import UserInput
+except ImportError:
+    UserInput = None
+
 nous_task = None
 
 RED = '\033[31m'
@@ -56,6 +62,7 @@ class AppState:
     chat_bot = None # ChatBot instance
     local_server = None # RunLocalServer instance (local LLM)
     tts = None # TTS instance
+    user_input = None # UserInput instance (speech / wake word)
     nous_task = None
     _lock = None
 
@@ -69,6 +76,9 @@ state = AppState()
 
 #Connected WebSocket clients
 clients = set()
+
+#Sample rate reported by each client's browser mic (for resampling to 16 kHz).
+mic_rate = {}
 
 
 async def _broadcast(message: dict) -> None:
@@ -208,6 +218,41 @@ gui_dir = Path(BASE_PATH) / "gui"
 gui_dir.mkdir(exist_ok=True)
 
 
+@app.get("/api/browse")
+async def browse_path(type: str = "folder", ext: str = ""):
+    """Open a tkinter file/folder dialog and return the selected path."""
+    import subprocess, sys
+
+    lines = [
+        "import tkinter as tk",
+        "from tkinter import filedialog",
+        "root = tk.Tk()",
+        "root.withdraw()",
+        'root.attributes("-topmost", True)',
+    ]
+    if type == "folder":
+        lines.append('path = filedialog.askdirectory(title="Select Folder")')
+    else:
+        if ext:
+            ext_list = [e.strip() for e in ext.split(",")]
+            ft = ", ".join(f'("{e.upper()} files", "*.{e}")' for e in ext_list)
+            lines.append(
+                f'path = filedialog.askopenfilename(title="Select File", '
+                f'filetypes=[{ft}, ("All files", "*.*")])'
+            )
+        else:
+            lines.append('path = filedialog.askopenfilename(title="Select File")')
+    lines.append("root.destroy()")
+    lines.append("print(path)")
+
+    script = "\n".join(lines)
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True, text=True, timeout=300,
+    )
+    return {"path": result.stdout.strip()}
+
+
 @app.get("/")
 async def index():
     """Serve the GUI page."""
@@ -241,6 +286,7 @@ TEXT_FILES = {
     "personality": Path(BASE_PATH) / "personality.txt",
     "tts_instructions": Path(BASE_PATH) / "openai-TTS-instructions.txt",
     "voice_design": Path(BASE_PATH) / "Data" / "omnivoice-design.txt",
+    "reference": Path(BASE_PATH) / "Data" / "reference.txt",
 }
 
 
@@ -288,7 +334,8 @@ async def stop_service():
 @app.get("/api/status")
 async def get_status():
     """Return whether the AI service is currently running."""
-    return {"running": state.running}
+    voice_mode = state.user_input.user_input_service if state.user_input else None
+    return {"running": state.running, "voice_mode": voice_mode}
 
 
 #Websocket
@@ -312,21 +359,25 @@ async def chat_socket(ws: WebSocket):
                 await _initialize()
                 # Let queued log broadcasts flush before signaling completion.
                 await asyncio.sleep(0.01)
+                voice_mode = state.user_input.user_input_service if state.user_input else None
                 await ws.send_json(
-                    {"type": "status_update", "payload": {"running": True}}
+                    {"type": "status_update", "payload": {"running": True, "voice_mode": voice_mode}}
                 )
 
             elif msg_type == "stop":
                 await _shutdown()
                 await asyncio.sleep(0.01)
                 await ws.send_json(
-                    {"type": "status_update", "payload": {"running": False}}
+                    {"type": "status_update", "payload": {"running": False, "voice_mode": None}}
                 )
 
             elif msg_type == "chat":
                 text = payload.get("message") or payload.get("text", "")
                 if text:
                     await _handle_message(ws, text)
+
+            elif msg_type == "mic":
+                await _handle_mic(ws, payload)
 
             elif msg_type == "settings_update":
                 save_settings(payload)
@@ -340,6 +391,7 @@ async def chat_socket(ws: WebSocket):
         _log(f"[WS Error]: {e}")
     finally:
         clients.discard(ws)
+        mic_rate.pop(ws, None)
 
 
 #Chat Logic
@@ -352,9 +404,10 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
     """
     Process one chat message independently through the pipeline:
     chatbot response -> VTS emotion -> TTS playback.
-    Slow/blocking stages (TTS audio) run in a thread so they never freeze
-    the WebSocket. Temporary "stage" messages are shown while the AI works
-    (thinking, then generating TTS), and the real answer is sent last.
+    Slow/blocking stages (TTS audio) run in a background task so they never
+    freeze the WebSocket. The GUI shows "Generating response" / "Generating TTS"
+    notifications while each stage runs, and a "tts_done" message is sent when
+    the voice playback finishes.
     """
     _log(f"[CHAT RECIBIDO]: {text}")
 
@@ -400,6 +453,11 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             except Exception as e:
                 _log(f"{RED}[TTS ERROR]: {e}{RESET}")
             finally:
+                try:
+                    # Tell the GUI to drop the "Generating TTS" notification.
+                    await ws.send_json({"type": "tts_done", "payload": {}})
+                except Exception:
+                    pass
                 # Reset the avatar emotion after speaking
                 if state.vts is not None:
                     try:
@@ -407,9 +465,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
                     except Exception as e:
                         _log(f"{ORANGE}[VTS NEUTRAL ERROR]: {e}{RESET}")
 
-        # Wait for the voice to finish so the "Generating TTS..." stage message
-        # is actually visible in the chat panel before the answer is shown.
-        await _speak_and_reset()
+        asyncio.create_task(_speak_and_reset())
 
     # Final answer replaces the temporary messages, playback continues behind it.
     await ws.send_json(
@@ -421,6 +477,94 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             }
         }
     )
+
+
+async def _handle_mic(ws: WebSocket, payload: dict) -> None:
+    """
+    Handle audio chunks streamed from the browser's microphone.
+    The browser captures raw PCM, base64-encodes it, and the server resamples
+    it to 16 kHz then feeds it to the configured STT / wake word pipeline.
+
+    Event flow:
+      speech (push-to-talk):  init -> start -> audio* -> stop
+      wake_word:              init -> audio* (continuous stream)
+    """
+    ui = state.user_input
+    if ui is None:
+        return
+
+    event = payload.get("event")
+
+    if event == "init":
+        try:
+            mic_rate[ws] = int(payload.get("rate") or 16000)
+        except (TypeError, ValueError):
+            mic_rate[ws] = 16000
+        return
+
+    # Push-to-talk control events carry no audio data, so handle them first.
+    if ui.user_input_service == "speech":
+        if event == "start":
+            ui.start_utterance()
+            return
+        if event == "stop":
+            try:
+                frames = ui.utterance_frames()
+                stats = ui.utterance_stats(frames)
+                if stats["chunks"]:
+                    _log(f"{YELLOW}[VOICE] Received {stats['chunks']} chunks, {stats['bytes']} bytes "
+                         f"(~{stats['seconds']:.2f}s) | Peak {stats['peak']:.0f}, RMS {stats['rms']:.0f}{RESET}")
+                    dump_path = os.path.join(BASE_PATH, "debug_utterance.wav")
+                    await asyncio.to_thread(ui.dump_utterance, dump_path, frames)
+                    _log(f"{YELLOW}[VOICE] Saved audio to {dump_path}{RESET}")
+                else:
+                    _log(f"{YELLOW}[VOICE] Stop received, but NO audio chunks arrived.{RESET}")
+
+                text = await asyncio.to_thread(ui._transcribe_frames, frames, True)
+                if not text and ui.stt_service == "whisper" and ui.local_stt._model is not None:
+                    _log(f"{YELLOW}[VOICE] VAD filtered everything; retrying without VAD...{RESET}")
+                    text = await asyncio.to_thread(ui._transcribe_frames, frames, False)
+                ui.end_utterance()  # clear the buffer
+
+                if text:
+                    _log(f"{GREEN}[VOICE TEXT]: {text}{RESET}")
+                else:
+                    _log(f"{ORANGE}[VOICE] No speech detected.{RESET}")
+                await ws.send_json({"type": "speech_result", "payload": {"text": text}})
+            except Exception as e:
+                _log(f"{RED}[VOICE INPUT ERROR]: {e}{RESET}")
+            return
+
+    raw = base64.b64decode(payload.get("data") or "")
+    if not raw:
+        return
+
+    rate = mic_rate.get(ws, 16000)
+    pcm = ui.resample16k(raw, rate)
+
+    try:
+        if ui.user_input_service == "speech":
+            if event == "audio":
+                ui.add_audio(pcm)
+
+        elif ui.user_input_service == "wake_word":
+            if not ui.listening:
+                if ui.feed_wake_audio(pcm):
+                    ui.start_listening()
+                    _log(f"{GREEN}[WAKE WORD] Detected. Listening...{RESET}")
+                    if ui.wake_word.confirm_sound:
+                        await asyncio.to_thread(ui.wake_word.play_confirm_sound)
+                    await ws.send_json({"type": "wake_detected", "payload": {}})
+            else:
+                if ui.add_listen_audio(pcm):
+                    text = await asyncio.to_thread(ui.stop_listening)
+                    if text:
+                        _log(f"{GREEN}[VOICE TEXT]: {text}{RESET}")
+                    else:
+                        _log(f"{ORANGE}[VOICE] No speech detected.{RESET}")
+                    await ws.send_json({"type": "speech_result", "payload": {"text": text}})
+    except Exception as e:
+        _log(f"{RED}[VOICE INPUT ERROR]: {e}{RESET}")
 
 
 async def _initialize() -> None:
@@ -507,6 +651,37 @@ async def _initialize() -> None:
                 _log(f"{RED}[SERVER ERROR] VTube Studio failed to connect: {e}{RESET}")
                 state.vts = None
 
+        # 5. Voice input (speech / wake word)
+        if "UserInput" in globals() and UserInput is not None:
+            try:
+                ui_service = config.get("user_input_service", "console")
+                if ui_service in ("speech", "wake_word"):
+                    _log(f"{YELLOW}[SERVER] Initializing voice input ({ui_service})...{RESET}")
+                    state.user_input = UserInput(
+                        user_input_service=ui_service,
+                        detailed_logs=config.get("logs", True),
+                        app_language=config.get("app_language", "english"),
+                        wake_word_model_path=os.path.join(
+                            BASE_PATH,
+                            config.get("wake_word_model", "models/openwakeword/hey_jarvis_v0.1.onnx"),
+                        ),
+                        wake_word_threshold=config.get("wake_word_threshold", 0.5),
+                        wake_word_confirm_sound=config.get("wake_word_confirm_sound", True),
+                        stt_service=config.get("stt_service", "whisper"),
+                        stt_device=config.get("stt_device", "cpu"),
+                        stt_compute_type=config.get("stt_compute_type", "int8"),
+                        stt_language=config.get("stt_language", "en"),
+                        silence_duration=config.get("silence_duration", 1.5),
+                    )
+                    if ui_service == "wake_word":
+                        await asyncio.to_thread(state.user_input.setup_wake_word)
+                    if config.get("stt_service", "whisper") == "whisper":
+                        await asyncio.to_thread(state.user_input.setup_whisper)
+                    _log(f"{GREEN}[SERVER] Voice input ready.{RESET}")
+            except Exception as e:
+                _log(f"{RED}[SERVER ERROR] Voice input initialization failed: {e}{RESET}")
+                state.user_input = None
+
         state.running = True
         _log(f"{GREEN}[SERVER] All requested AI services are online.{RESET}")
 
@@ -543,6 +718,16 @@ async def _shutdown() -> None:
 
         state.chat_bot = None
         state.tts = None
+
+        # Clean voice input
+        if state.user_input:
+            try:
+                state.user_input.cleanup()
+                _log(f"{GREEN}[SERVER] Voice input stopped.{RESET}")
+            except Exception as e:
+                _log(f"{RED}[USER INPUT ERROR]: {e}{RESET}")
+            state.user_input = None
+
         state.running = False
         _log(f"{GREEN}[SERVER] AI services shut down completely.{RESET}")
 

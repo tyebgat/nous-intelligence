@@ -1,0 +1,24 @@
+/* Midnight blue theme */
+:root {
+  --accent: #60a5fa;
+  --bg: #0b1020;
+  --panel: #131b36;
+  --panel-2: #182143;
+  --chat-bg: #0e152b;
+  --ai-msg-bg: #1c2649;
+  --bar-bg: #182143;
+  --input-bg: #131b36;
+  --btn-bg: #22305c;
+  --btn-bg-hover: #2d3f74;
+  --border: #2b3a6b;
+  --border-soft: rgba(96,165,250,0.15);
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-label: #94a3b8;
+  --terminal-bg: #070b18;
+  --terminal-text: #7dd3fc;
+  --console-text: #bae6fd;
+  --success: #34d399;
+  --success-hover: #10b981;
+  --shadow: rgba(0,0,0,0.5);
+}

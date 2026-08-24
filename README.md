@@ -1,4 +1,4 @@
-# **Nous Intelligence**
+<img width="1920" height="1080" alt="Nous intelligence" src="https://github.com/user-attachments/assets/9222de31-e5cd-4796-9c4d-b155ed6d4c75" />
 
 Nous Intelligence is a fully customizable AI that can connect to a Vtube Studio model, you can either use cloud services or run it with local models.
 
@@ -64,6 +64,13 @@ python main.py
 > The program will use the default recording device, so please set your prefferd mic to default before launching.
 
 ## **Screenshot**
+<img width="1332" height="835" alt="nous screenshot 1" src="https://github.com/user-attachments/assets/35b37572-b8aa-4954-bc15-13d5c01e18ca" />
+<img width="1343" height="841" alt="nous screenshot 2" src="https://github.com/user-attachments/assets/a0b1a8d1-2d94-4e74-8f90-1cde70b50a21" />
+<img width="1345" height="835" alt="nous screenshot 3" src="https://github.com/user-attachments/assets/f3aaa33a-9d39-48a5-99e4-27998b58fe6c" />
+<img width="1325" height="837" alt="nous screenshot 5" src="https://github.com/user-attachments/assets/d47d51ee-6c22-432d-8d46-773c81d32cef" />
+<img width="1328" height="840" alt="nous screenshot 6" src="https://github.com/user-attachments/assets/ec29d860-ff07-4506-a3b6-0f8986e4801a" />
+
+
 
 ## **System Requirements**
 

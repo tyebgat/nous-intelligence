@@ -6,3 +6,5 @@ nous-intelligence.spec
 models/llama/Llama-3.2-3B-Instruct-Q4_K_M.gguf
 debug_utterance.wav
 /llama-server-CUDA
+*.spec
+*.ps1

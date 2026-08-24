@@ -1,0 +1,5 @@
+# requirements-pockettts.txt — Pocket TTS backend (voice cloning included)
+# Run: pip install -r requirements-pockettts.txt
+
+pocket-tts>=2.1.0
+scipy>=1.10.0

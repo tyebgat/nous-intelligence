@@ -15,7 +15,15 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class Nous:
-    def __init__(self, vts: VtubeControll = None, ChatBot: ChatBot = None, detailed_logs: bool = False, print_audio_devices: bool = False, user_input: UserInput = None, tts: TTS = None) -> None:
+    def __init__(
+        self, 
+        vts: VtubeControll = None, 
+        ChatBot: ChatBot = None, 
+        detailed_logs: bool = False, 
+        print_audio_devices: bool = False, 
+        user_input: UserInput = None,
+        tts: TTS = None) -> None:
+        
         self.detailed_logs = detailed_logs
         self.print_audio_devices = print_audio_devices
         self.chat_bot = ChatBot
@@ -47,13 +55,26 @@ class Nous:
     async def tts_say(self, text: str) -> None:
         await self.tts.tts_say(text)
 
-    async def analyze_emotion(self, text: str):
-        if self.vts: #checks if there is a vts instance
+    async def analyze_emotion(self, text: str, detected_emotion: str | None = None):
+        if self.vts:
             try:
-                dominant_emotion = self.vts.analyze_dominant_emotion(text) #gets dominant emotion form chatgpt response
-                await self.vts.trigger_hotkey(dominant_emotion) #triggers the hotkey corresponding to dominant emotion
+                # trust the chatbot's structured label when present, otherwise
+                # fall back to the keyword analyzer
+                dominant_emotion = detected_emotion or self.vts.analyze_dominant_emotion(text)
+                await self.vts.trigger_hotkey(dominant_emotion)
             except Exception as e:
                 print(f"{ORANGE}Emotion analysis error: {e}{RESET}")
+
+    def _vts_trigger_callback(self, emotion_name: str):
+        """Sync callback for TTS playback hooks; schedules the hotkey trigger."""
+        def _trigger():
+            if not self.vts:
+                return
+            try:
+                asyncio.get_running_loop().create_task(self.vts.trigger_hotkey(emotion_name))
+            except RuntimeError:
+                pass
+        return _trigger
 
     async def conversation_cycle(self):
         try:
@@ -61,17 +82,23 @@ class Nous:
                 user_input = await self.user_input.get_user_input()
                 if not user_input:
                     return ""
-                response = self.chat_bot.get_chatbot_response(user_input) #gets chatgpt response or test response
+                response, emotion = self.chat_bot.get_chatbot_response(user_input)
 
-                await self.analyze_emotion(response) #analyzes emotion in response
+                # resolve which emotion fits, but only emote while speaking
+                pending_emotion = emotion or (
+                    self.vts.analyze_dominant_emotion(response) if self.vts else None
+                )
 
-                await self.tts_say(response) #waits for tts to finish
+                if self.tts and self.vts and pending_emotion:
+                    self.tts.on_playback_start = self._vts_trigger_callback(pending_emotion)
+                    self.tts.on_playback_end = self._vts_trigger_callback("Neutral")
 
-                if self.vts:
-                    try:
-                        await self.vts.trigger_hotkey("Neutral") #after tts is finish turn clear hotkeys
-                    except Exception as e:
-                        print(f"{ORANGE}Error resetting to Neutral: {e}{RESET}")
+                try:
+                    await self.tts_say(response)
+                finally:
+                    if self.tts:
+                        self.tts.on_playback_start = None
+                        self.tts.on_playback_end = None
         except KeyboardInterrupt:
             print(f"{ORANGE}Shutting down...{RESET}")
             raise

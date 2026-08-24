@@ -1,0 +1,49 @@
+/* ── Background Blurs ── */
+.bg-blurs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.blur-spot {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.3;
+  filter: blur(120px);
+  animation: drift 8s ease-in-out infinite alternate;
+}
+
+.blur-spot:nth-child(2) { animation-duration: 10s; animation-delay: -2s; }
+.blur-spot:nth-child(3) { animation-duration: 7s; animation-delay: -4s; }
+.blur-spot:nth-child(4) { animation-duration: 9s; animation-delay: -1s; }
+.blur-spot:nth-child(5) { animation-duration: 11s; animation-delay: -3s; }
+
+@keyframes drift {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(40px); }
+}
+
+/* ── Main Layout ── */
+.main {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  gap: 20px;
+  padding: 68px 20px 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Side Stack (chat + terminal) ── */
+.side-stack {
+  flex: 0 0 auto;
+  width: 400px;
+  min-width: 280px;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}

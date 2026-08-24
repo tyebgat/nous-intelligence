@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nous Intelligence</title>
+<link rel="icon" type="image/svg+xml" href="/gui/icon.svg"/>
+<link rel="stylesheet" href="/gui/css/base.css"/>
+<link rel="stylesheet" href="/gui/css/init-screen.css"/>
+<link rel="stylesheet" href="/gui/css/layout.css"/>
+<link rel="stylesheet" href="/gui/css/floating-bar.css"/>
+<link rel="stylesheet" href="/gui/css/camera.css"/>
+<link rel="stylesheet" href="/gui/css/chat.css"/>
+<link rel="stylesheet" href="/gui/css/terminal.css"/>
+<link rel="stylesheet" href="/gui/css/settings.css"/>
+<link rel="stylesheet" href="/gui/css/toast.css"/>
+<link rel="stylesheet" href="/gui/css/modal.css"/>
+<link id="themeStylesheet" rel="stylesheet" href="/gui/themes/dark.css"/>
+<script>
+// Load the saved theme early to avoid a flash of the wrong theme. If the
+// "Disable Splash Screen" setting is enabled, hide the initialize and splash
+// screens right away so the app boots straight into the main GUI.
+fetch('/api/settings').then(r => r.json()).then(c => {
+  const theme = c.theme || 'dark';
+  window.__appLanguage = c.app_language || 'english';
+  const link = document.getElementById('themeStylesheet');
+  if (link) link.href = '/gui/themes/' + theme + '.css';
+  if (c.disable_splash === true) {
+    const skipIntro = () => {
+      const init = document.getElementById('initScreen');
+      const splash = document.getElementById('splashScreen');
+      if (init) { init.classList.add('hidden'); init.style.display = 'none'; }
+      if (splash) { splash.classList.add('hidden'); splash.style.display = 'none'; }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', skipIntro);
+    } else {
+      skipIntro();
+    }
+  }
+}).catch(() => {});
+</script>
+</head>
+<body>
+
+<div class="init-screen" id="initScreen">
+  <div class="init-box">
+    <h1 class="init-title" data-i18n="init_title">Initialize Nous Intelligence</h1>
+    <button id="btnInitialize" data-i18n="init_btn">Initialize</button>
+  </div>
+</div>
+
+<div class="splash-screen" id="splashScreen">
+  <img src="/gui/Nous intelligence.png" alt="Nous Intelligence"/>
+</div>
+
+<div class="floating-bar">
+  <span class="status-dot" id="statusDot"></span>
+  <span class="bar-logo" title="Nous Intelligence">
+    <img src="/gui/Nous intelligence only text.plain.svg" alt="Nous Intelligence"/>
+  </span>
+  <div class="bar-buttons">
+    <button id="btnStart" data-i18n-title="title_start" title="Start">
+      <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+    </button>
+    <button id="btnStop" data-i18n-title="title_stop" title="Stop">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+    </button>
+    <button id="btnCamera" data-i18n-title="title_camera" title="Camera">
+      <span style="position:relative;display:flex;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <svg id="cameraSlash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="position:absolute;inset:0;">
+          <line x1="4" y1="4" x2="20" y2="20"/>
+        </svg>
+      </span>
+    </button>
+    <button id="btnTerminal" data-i18n-title="title_terminal" title="Terminal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 17 10 11 4 5"/>
+        <line x1="12" y1="19" x2="20" y2="19"/>
+      </svg>
+    </button>
+    <button id="btnSettings" data-i18n-title="title_settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+  <button id="btnGithub" data-i18n-title="title_github" title="GitHub" style="margin-left:auto;">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  </button>
+</div>
+
+<div class="bg-blurs">
+  <div class="blur-spot" style="top:10%;left:-15%;width:500px;height:500px;background:#0D0B61;"></div>
+  <div class="blur-spot" style="bottom:5%;left:-10%;width:400px;height:400px;background:#0D0B61;"></div>
+  <div class="blur-spot" style="top:20%;right:-12%;width:450px;height:450px;background:#E4D329;"></div>
+  <div class="blur-spot" style="bottom:30%;right:-8%;width:350px;height:350px;background:#E4D329;"></div>
+  <div class="blur-spot" style="top:50%;left:50%;translate:-50% -50%;width:300px;height:300px;background:#478B8D;"></div>
+</div>
+<div class="main">
+  <div class="side-stack" id="sideStack">
+    <!-- Chat Panel -->
+    <div class="chat-panel" id="chatPanel">
+      <div class="resize-handle" id="resizeHandle"></div>
+      <button id="btnClearChat" data-i18n="chat_clear" title="Clear chat">Clear</button>
+      <div class="chat-messages" id="chatMessages">
+        <div class="placeholder" data-i18n="chat_placeholder_start">Start the service and send a message to begin chatting.</div>
+      </div>
+      <div class="busy-warning" id="busyWarning" data-i18n="busy_warning">Please, wait for the AI to finish before putting another message.</div>
+      <div class="chat-input-area">
+        <textarea id="chatInput" rows="1" data-i18n-placeholder="chat_placeholder_type" placeholder="Type a message... (Alt+Enter for new line)"></textarea>
+        <button id="btnSend">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/>
+            <polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Terminal Panel -->
+    <div class="terminal" id="terminalPanel">
+      <div class="terminal-header">
+        <span data-i18n="terminal">Terminal</span>
+        <button id="terminalClear" data-i18n="chat_clear">Clear</button>
+      </div>
+      <div class="terminal-log" id="terminalLog"></div>
+    </div>
+  </div>
+
+  <!-- Camera Panel -->
+  <div class="camera-panel" id="cameraPanel">
+    <video id="cameraFeed" autoplay playsinline muted></video>
+    <div class="camera-placeholder" id="cameraPlaceholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <p data-i18n="camera_feed">Camera Feed</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <span data-i18n="settings">Settings</span>
+      <button id="settingsClose">&times;</button>
+    </div>
+    <div class="settings-tabs" id="settingsTabs">
+      <button class="tab active" data-tab="appearance" data-i18n="tab_appearance">Appearance</button>
+      <button class="tab" data-tab="general" data-i18n="tab_general">General</button>
+      <button class="tab" data-tab="chatbot" data-i18n="tab_chatbot">Chatbot</button>
+      <button class="tab" data-tab="wakeword" data-i18n="tab_wakeword">Wake Word</button>
+      <button class="tab" data-tab="stt" data-i18n="tab_stt">Speech to Text</button>
+      <button class="tab" data-tab="tts" data-i18n="tab_tts">Text to Speech</button>
+      <button class="tab" data-tab="openai" data-i18n="tab_openai">OpenAI</button>
+      <button class="tab" data-tab="logs" data-i18n="tab_logs">Logs</button>
+      <button class="tab" data-tab="apis" data-i18n="tab_apis">APIs</button>
+    </div>
+    <div class="settings-body">
+      <div class="tab-content active" id="tab-appearance">
+        <label data-tip-i18n="tip_theme"><span data-i18n="lbl_theme">Theme</span> <select data-key="theme">
+          <optgroup label="Dark">
+            <option value="dark">Dark</option>
+            <option value="darkamoled">Dark (AMOLED)</option>
+          </optgroup>
+          <optgroup label="Light">
+            <option value="light">Light</option>
+          </optgroup>
+          <optgroup label="Midnight">
+            <option value="midnight">Midnight</option>
+            <option value="midnightamoled">Midnight (AMOLED)</option>
+          </optgroup>
+          <optgroup label="Sakura">
+            <option value="sakura">Sakura</option>
+            <option value="sakuraamoled">Sakura (AMOLED)</option>
+          </optgroup>
+          <optgroup label="Purple Haze">
+            <option value="purplehaze">Purple Haze</option>
+            <option value="purplehazeamoled">Purple Haze (AMOLED)</option>
+          </optgroup>
+        </select></label>
+        <label data-tip-i18n="tip_disable_splash"><span data-i18n="lbl_disable_splash">Disable Splash Screen</span> <input type="checkbox" data-key="disable_splash"/></label>
+        <label data-tip-i18n="tip_blur_intensity"><span data-i18n="lbl_blur_intensity">Background Blur Intensity</span> <input type="range" id="blurIntensity" data-key="blur_intensity" min="0" max="200" value="120"/></label>
+        <label data-tip-i18n="tip_keep_aspect"><span data-i18n="lbl_keep_aspect">Keep Camera Aspect Ratio</span> <input type="checkbox" id="keepAspect" data-key="keep_camera_aspect_ratio"/></label>
+        <label data-tip="Maximum resolution requested from the camera. The browser will pick the closest supported mode.">Camera Resolution <select data-key="camera_resolution">
+          <option value="640x360">360p (640x360)</option>
+          <option value="854x480">480p (854x480)</option>
+          <option value="1280x720">720p (1280x720)</option>
+          <option value="1920x1080" selected>1080p (1920x1080)</option>
+          <option value="2560x1440">1440p (2560x1440)</option>
+        </select></label>
+      </div>
+      <div class="tab-content" id="tab-general">
+        <label data-tip-i18n="tip_app_language"><span data-i18n="lbl_app_language">App Language</span> <select data-key="app_language"><option>english</option><option>spanish</option></select></label>
+        <label data-tip-i18n="tip_play_only_cable"><span data-i18n="lbl_play_only_cable">Play Only Cable</span> <input type="checkbox" data-key="play_only_cable"/></label>
+        <label data-tip-i18n="tip_microphone"><span data-i18n="lbl_microphone">Microphone</span>
+          <span style="display:flex;gap:6px;align-items:center;">
+            <select id="audioDeviceSelect" data-key="audio_device"><option value="" data-i18n="system_default">System Default</option></select>
+            <button id="refreshDevicesBtn" type="button" title="Refresh device list" style="padding:2px 8px;font-size:13px;cursor:pointer;">&#8635;</button>
+          </span>
+        </label>
+      </div>
+      <div class="tab-content" id="tab-chatbot">
+        <label data-tip-i18n="tip_input_service"><span data-i18n="lbl_input_service">Input Service</span> <select data-key="user_input_service"><option>console</option><option>speech</option><option>wake_word</option></select></label>
+        <label data-tip-i18n="tip_chatbot_service"><span data-i18n="lbl_chatbot_service">Chatbot Service</span> <select data-key="chatbot_service"><option>openai</option><option>local</option><option>test</option></select></label>
+        <label data-tip-i18n="tip_chatbot_name"><span data-i18n="lbl_chatbot_name">Chatbot Name</span> <input type="text" data-key="chatbot_name" value="NOUS"/></label>
+        <label data-tip-i18n="tip_remember_conversation"><span data-i18n="lbl_remember_conversation">Remember Conversation</span> <input type="checkbox" data-key="remember_conversation"/></label>
+        <label data-tip-i18n="tip_model_dir"><span data-i18n="lbl_model_dir">Model Directory</span> <span class="path-row"><input type="text" data-key="model_dir" placeholder="path to model"/><button type="button" class="browse-btn" data-for="model_dir" data-type="file" data-ext="gguf">...</button></span></label>
+        <label data-tip-i18n="tip_llama_server_device"><span data-i18n="lbl_llama_server_device">Llama Server Device</span> <select data-key="llama_server_device"><option>cpu</option><option>cuda</option></select></label>
+        <label class="textarea-field" data-tip-i18n="tip_personality"><span data-i18n="lbl_personality">Personality</span>
+          <textarea data-file="personality" placeholder="personality.txt content"></textarea>
+        </label>
+      </div>
+      <div class="tab-content" id="tab-wakeword">
+        <label data-tip-i18n="tip_wake_model"><span data-i18n="lbl_wake_model">Wake Word Model</span> <span class="path-row"><input type="text" data-key="wake_word_model" placeholder="model path"/><button type="button" class="browse-btn" data-for="wake_word_model" data-type="file" data-ext="onnx,tflite">...</button></span></label>
+        <label data-tip-i18n="tip_threshold"><span data-i18n="lbl_threshold">Threshold</span> <span style="display:flex;align-items:center;gap:8px;"><input type="range" data-key="wake_word_threshold" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:var(--text);">0.5</span></span></label>
+        <label data-tip-i18n="tip_confirm_sound"><span data-i18n="lbl_confirm_sound">Confirm Sound</span> <input type="checkbox" data-key="wake_word_confirm_sound"/></label>
+      </div>
+      <div class="tab-content" id="tab-stt">
+        <label data-tip-i18n="tip_stt_service"><span data-i18n="lbl_stt_service">STT Service</span> <select data-key="stt_service"><option>whisper</option><option>google</option></select></label>
+        <label data-tip-i18n="tip_device"><span data-i18n="lbl_device">Device</span> <select data-key="stt_device"><option>cpu</option><option>cuda</option></select></label>
+        <label data-tip-i18n="tip_compute_type"><span data-i18n="lbl_compute_type">Compute Type</span> <select data-key="stt_compute_type"><option>int8</option><option>float16</option><option>float32</option></select></label>
+        <label data-tip-i18n="tip_stt_language"><span data-i18n="lbl_language">Language</span> <input type="text" data-key="stt_language" value="en"/></label>
+        <label data-tip-i18n="tip_silence_duration"><span data-i18n="lbl_silence_duration">Silence Duration</span> <input type="number" min="0" step="0.1" data-key="silence_duration" value="1.5"/></label>
+      </div>
+      <div class="tab-content" id="tab-tts">
+        <label data-tip-i18n="tip_tts_service"><span data-i18n="lbl_tts_service">TTS Service</span> <select data-key="tts_service"><option>gtts</option><option>openai</option><option>omnivoice</option><option>pockettts</option></select></label>
+        <label data-tip-i18n="tip_tts_language"><span data-i18n="lbl_language">Language</span> <input type="text" data-key="tts_language" value="en"/></label>
+        <label data-tip-i18n="tip_tts_voice"><span data-i18n="lbl_voice">Voice</span> <input type="text" data-key="tts_voice" value="ash"/></label>
+        <label data-tip-i18n="tip_speed"><span data-i18n="lbl_speed">Speed</span> <input type="number" min="0" step="0.1" data-key="tts_speed" value="1.0"/></label>
+        <label data-tip-i18n="tip_gain"><span data-i18n="lbl_gain">Gain</span> <input type="number" min="0" step="0.1" data-key="gain" value="1.0"/></label>
+        <label data-tip-i18n="tip_voice_cloning"><span data-i18n="lbl_voice_cloning">Voice Cloning</span> <input type="checkbox" data-key="voice_cloning"/></label>
+        <label data-tip-i18n="tip_reference_wav"><span data-i18n="lbl_reference_wav">Reference Wav</span> <span class="path-row"><input type="text" data-key="reference_wav" placeholder="path to reference.wav"/><button type="button" class="browse-btn" data-for="reference_wav" data-type="file" data-ext="wav">...</button></span></label>
+        <label class="textarea-field" data-tip-i18n="tip_reference_transcripts"><span data-i18n="lbl_reference_transcripts">Reference Wav Transcripts</span>
+          <textarea data-file="reference" placeholder="Data/reference.txt content"></textarea>
+        </label>
+        <label data-tip-i18n="tip_voice_design"><span data-i18n="lbl_voice_design">Voice Design</span> <input type="checkbox" data-key="voice_design"/></label>
+        <label class="textarea-field" data-tip-i18n="tip_voice_design_instructions"><span data-i18n="lbl_voice_design_instructions">Voice Design Instructions</span>
+          <textarea data-file="voice_design" placeholder="Data/omnivoice-design.txt content"></textarea>
+        </label>
+      </div>
+      <div class="tab-content" id="tab-openai">
+        <label data-tip-i18n="tip_openai_model"><span data-i18n="lbl_openai_model">OpenAI Model</span> <input type="text" data-key="openai_model" value="gpt-4o-mini"/></label>
+        <label data-tip-i18n="tip_openai_tts_model"><span data-i18n="lbl_openai_tts_model">TTS Model</span> <input type="text" data-key="openai_tts_model" value="gpt-4o-mini-tts"/></label>
+        <label data-tip-i18n="tip_openai_tts_voice"><span data-i18n="lbl_openai_tts_voice">TTS Voice</span> <input type="text" data-key="openai_tts_voice" value="ash"/></label>
+        <label class="textarea-field" data-tip-i18n="tip_tts_instructions"><span data-i18n="lbl_tts_instructions">TTS Instructions</span>
+          <textarea data-file="tts_instructions" placeholder="openai-TTS-instructions.txt content"></textarea>
+        </label>
+      </div>
+      <div class="tab-content" id="tab-logs">
+        <label data-tip-i18n="tip_detailed_logs"><span data-i18n="lbl_detailed_logs">Detailed Logs</span> <input type="checkbox" data-key="logs"/></label>
+        <label data-tip-i18n="tip_print_audio_devices"><span data-i18n="lbl_print_audio_devices">Print Audio Devices</span> <input type="checkbox" data-key="print_audio_devices"/></label>
+        <label data-tip-i18n="tip_show_llm_logs"><span data-i18n="lbl_show_llm_logs">Show LLM Server Logs</span> <input type="checkbox" data-key="show_ollama_server_logs"/></label>
+      </div>
+      <div class="tab-content" id="tab-apis">
+        <label data-tip-i18n="tip_openai_key"><span data-i18n="lbl_openai_key">OpenAI API Key</span> <input type="password" data-env-key="OPENAI_API_KEY" placeholder="sk-..."/></label>
+        <label data-tip-i18n="tip_hf_token"><span data-i18n="lbl_hf_token">HF Token</span> <input type="password" data-env-key="HF_TOKEN" placeholder="hf_..."/></label>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <button id="settingsApply" data-i18n="apply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="warningOverlay">
+  <div class="modal-panel">
+    <div class="modal-text" id="warningText"></div>
+    <div class="modal-actions">
+      <button id="warningOk">Ok</button>
+    </div>
+  </div>
+</div>
+
+<div class="init-overlay" id="initOverlay">
+  <div class="init-panel">
+    <h3 id="initTitle" data-i18n="starting_services">Starting services...</h3>
+    <div class="init-console" id="initConsole"></div>
+    <div class="init-actions">
+      <button class="init-ok" id="initOk" data-i18n="ok">Ok</button>
+    </div>
+  </div>
+</div>
+
+<script src="/gui/js/toast.js"></script>
+<script src="/gui/js/i18n.js"></script>
+<script src="/gui/js/websocket.js"></script>
+<script src="/gui/js/terminal.js"></script>
+<script src="/gui/js/camera.js"></script>
+<script src="/gui/js/chat.js"></script>
+<script src="/gui/js/voice.js"></script>
+<script src="/gui/js/settings.js"></script>
+<script src="/gui/js/app.js"></script>
+
+</body>
+</html>

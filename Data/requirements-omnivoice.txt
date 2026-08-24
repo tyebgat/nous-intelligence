@@ -1,0 +1,11 @@
+# requirements-omnivoice.txt — OmniVoice TTS backend (voice cloning + voice design)
+# Run: pip install -r requirements-omnivoice.txt
+# Requires NVIDIA GPU with CUDA 12.8+
+
+# Step 1: PyTorch with CUDA
+torch==2.8.0+cu128
+torchaudio==2.8.0+cu128
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+# Step 2: OmniVoice from GitHub (latest)
+git+https://github.com/k2-fsa/OmniVoice.git

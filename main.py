@@ -2,7 +2,9 @@ import asyncio
 import json
 import os
 import colorama
+from dotenv import load_dotenv
 
+load_dotenv()
 colorama.init()
 
 from IA import Nous
@@ -22,6 +24,7 @@ RESET = '\033[0m'
 token_path=os.path.join(BASE_PATH, 'Data', 'noussoul_auth_token.txt')
 
 async def main():
+    print(f"{YELLOW} Loading settings json...{RESET}")
     #opens the json setting
     try:
         #========================
@@ -36,10 +39,19 @@ async def main():
             chatbot_name = config.get("chatbot_name", "Nous")
             remember_conversation = config.get("remember_conversation", False)
             model_dir = config.get("model_dir", "")
+            llama_server_device = config.get("llama_server_device", "cuda")
 
             # ---- tts settings
             tts_language = config.get("tts_language", "en")
             tts_service = config.get("tts_service", "gtts")
+            tts_voice = config.get("tts_voice", "ash")
+            tts_speed = config.get("tts_speed", 1.0)
+            voice_cloning = config.get("voice_cloning", False)
+            voice_design = config.get("voice_design", False)
+            gain = config.get("gain", 1.0)
+
+            # --- omnivoice settings ---
+            omnivoice_device = config.get("omnivoice_device", "cuda")
 
             # --- openai settings ----
             openai_model = config.get("openai_model", "gpt-4o-mini")
@@ -48,7 +60,19 @@ async def main():
 
             # --- general setting ---
             app_language = config.get("app_language", "english")
-            speech_recognition_language = config.get("speech_recognition_language", "en")
+            play_only_cable = config.get("play_only_cable", False)
+
+            # --- wake word settings ---
+            wake_word_model = config.get("wake_word_model", "models/openwakeword/hey_jarvis_v0.1.tflite")
+            wake_word_threshold = config.get("wake_word_threshold", 0.5)
+            wake_word_confirm_sound = config.get("wake_word_confirm_sound", True)
+
+            # --- local stt settings ---
+            stt_service = config.get("stt_service", "whisper")
+            stt_device = config.get("stt_device", "cpu")
+            stt_compute_type = config.get("stt_compute_type", "int8")
+            stt_language = config.get("stt_language", "en")
+            silence_duration = config.get("silence_duration", 1.5)
 
             # --- logs ---
             detailed_logs = config.get("logs", True)
@@ -71,10 +95,19 @@ async def main():
         chatbot_name = "Nous"
         remember_conversation = False
         model_dir = ""
+        llama_server_device = "cuda"
 
         # --- tts settings ---
         tts_language = "en"
         tts_service = "gtts"
+        tts_voice = "ash"
+        tts_speed = 1.0
+        voice_cloning = False
+        voice_design = False
+        gain = 1.0
+
+        # --- omnivoice settings ---
+        omnivoice_device = "cuda"
 
         # --- openai settings ---
         openai_model = "gpt-4o-mini"
@@ -83,7 +116,19 @@ async def main():
         
         # --- general settings ---
         app_language = "english"
-        speech_recognition_language = "en"
+        play_only_cable = False
+
+        # --- wake word settings ---
+        wake_word_model = "models/openwakeword/hey_jarvis_v0.1.tflite"
+        wake_word_threshold = 0.5
+        wake_word_confirm_sound = True
+
+        # --- local stt settings ---
+        stt_service = "whisper"
+        stt_device = "cpu"
+        stt_compute_type = "int8"
+        stt_language = "en"
+        silence_duration = 1.5
 
         # --- logs settings ---
         detailed_logs = True
@@ -96,17 +141,49 @@ async def main():
     vts = VtubeControll(detailed_logs=detailed_logs)
 
     #Chat bot scirpt
-    chat_bot = ChatBot(chatbot_service, openai_model, detailed_logs, model_dir, remember_conversation)
+    chat_bot = ChatBot(
+        chat_bot_service= chatbot_service,
+        openai_model= openai_model,
+        detailed_logs= detailed_logs,
+        model_path= model_dir,
+        remember_conversation= remember_conversation
+    )
     chat_bot.initialize()
     
     #LLama server
-    local_server = RunLocalServer(show_ollama_server_logs)
+    local_server = RunLocalServer(show_ollama_server_logs, model_dir, llama_server_device)
 
     #user input
-    user_input = UserInput(user_input_service, speech_recognition_language ,detailed_logs, app_language)
+    user_input = UserInput(
+        user_input_service=user_input_service,
+        detailed_logs=detailed_logs,
+        app_language=app_language,
+        wake_word_model_path=os.path.join(BASE_PATH, wake_word_model),
+        wake_word_threshold=wake_word_threshold,
+        wake_word_confirm_sound=wake_word_confirm_sound,
+        stt_service=stt_service,
+        stt_device=stt_device,
+        stt_compute_type=stt_compute_type,
+        stt_language=stt_language,
+        silence_duration=silence_duration,
+    )
 
     #text to speech
-    tts = TTS(tts_language=tts_language, tts_service=tts_service,  chatbot_name=chatbot_name,openai_tts_model=openai_tts_model, openai_tts_voice=openai_tts_voice)
+    tts = TTS(
+        tts_language=tts_language, 
+        tts_service=tts_service, 
+        chatbot_name=chatbot_name, 
+        openai_tts_model=openai_tts_model, 
+        openai_tts_voice=openai_tts_voice, 
+        tts_voice=tts_voice, 
+        tts_speed=tts_speed, 
+        voice_cloning=voice_cloning, 
+        voice_design=voice_design, 
+        omnivoice_device=omnivoice_device, 
+        detailed_logs=detailed_logs,
+        play_only_cable=play_only_cable,
+        gain=gain
+    )
 
     #----------------------
     #START VTS PLUGINS
@@ -132,11 +209,29 @@ async def main():
             print(f"{RED}Failed to start local llama server: {e}{RESET}")
 
     #IA.py
-    ai = Nous(vts=vts, ChatBot=chat_bot, detailed_logs=detailed_logs, print_audio_devices=print_audio_devices, user_input=user_input, tts=tts)
+    ai = Nous(
+        vts=vts, 
+        ChatBot=chat_bot, 
+        detailed_logs=detailed_logs, 
+        print_audio_devices=print_audio_devices, 
+        user_input=user_input, 
+        tts=tts
+    )
 
     print(f"{YELLOW}Initializing nous...{RESET}")
     ai.initialize(mic_index=None)
     print(f"{GREEN}Nous initialized.{RESET}")
+
+    #--- initialize wake word + whisper STT ---
+    if user_input_service == "wake_word":
+        print(f"{YELLOW}Loading wake word model...{RESET}")
+        user_input.setup_wake_word()
+        print(f"{GREEN}Wake word model loaded.{RESET}")
+
+    if stt_service == "whisper" and user_input_service != "console":
+        print(f"{YELLOW}Loading Whisper STT model...{RESET}")
+        user_input.setup_whisper()
+        print(f"{GREEN}Whisper STT model loaded.{RESET}")
 
     try:
         ai_task = asyncio.create_task(ai.conversation_cycle())
@@ -154,6 +249,11 @@ async def main():
     finally:
         user_input.cleanup()
         local_server.stop_server()
+        try:
+            if hasattr(vts, 'vts') and vts.vts:
+                await vts.vts.disconnect()
+        except Exception:
+            pass
 
 #if this file is executed directly it will run the main funtion
 if __name__ == "__main__":

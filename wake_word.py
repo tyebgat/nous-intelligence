@@ -40,8 +40,14 @@ class WakeWordListener:
             self._model = None
 
     def reset(self) -> None:
-        """Drop any buffered partial audio (e.g. between utterances)."""
+        """Drop buffered partial audio and clear the model's streaming state
+        (e.g. between utterances) so stale scores cannot re-trigger."""
         self._pending = b""
+        if self._model is not None:
+            try:
+                self._model.reset()
+            except Exception:
+                pass
 
     def _resolve_model_path(self) -> str:
         """Resolve a configured wake word model path.

@@ -51,7 +51,10 @@ class UserInput:
         self._listen_buffer = b""
         self._got_speech = False
         self._silent_seconds = 0.0
+        self._listen_seconds_total = 0.0
         self._energy_threshold = 300
+        # Give up if the user says nothing after the wake word (safety net).
+        self.max_wait_no_speech = 8.0
 
         self.wake_word = WakeWordListener(
             model_path=wake_word_model_path,
@@ -114,6 +117,10 @@ class UserInput:
         """Total raw bytes currently buffered for the active utterance."""
         return sum(len(c) for c in self._utterance_buffer)
 
+    def listen_frames(self) -> list:
+        """Copy of the post-wake-word recording buffer (does not consume it)."""
+        return [self._listen_buffer] if self._listen_buffer else []
+
     def utterance_frames(self) -> list:
         """Copy of the currently buffered frames (does not consume them)."""
         return list(self._utterance_buffer)
@@ -158,6 +165,7 @@ class UserInput:
         self._listen_buffer = b""
         self._got_speech = False
         self._silent_seconds = 0.0
+        self._listen_seconds_total = 0.0
         self.listening = True
 
     def add_listen_audio(self, pcm: bytes) -> bool:
@@ -168,6 +176,7 @@ class UserInput:
         audio_chunk = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
         rms = float(np.sqrt(np.mean(audio_chunk ** 2))) if audio_chunk.size else 0.0
         chunk_seconds = len(pcm) / 2 / 16000.0
+        self._listen_seconds_total += chunk_seconds
         if rms > self._energy_threshold:
             self._got_speech = True
             self._silent_seconds = 0.0
@@ -175,6 +184,9 @@ class UserInput:
             self._silent_seconds += chunk_seconds
             if self._silent_seconds >= self.silence_duration:
                 return True
+        elif self._listen_seconds_total >= self.max_wait_no_speech:
+            # No speech since the wake word; stop instead of listening forever.
+            return True
         return False
 
     def stop_listening(self) -> str:
@@ -184,6 +196,7 @@ class UserInput:
         self._listen_buffer = b""
         self._got_speech = False
         self._silent_seconds = 0.0
+        self._listen_seconds_total = 0.0
         frames = [buffer] if buffer else []
         return self._transcribe_frames(frames)
 

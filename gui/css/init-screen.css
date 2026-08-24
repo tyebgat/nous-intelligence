@@ -1,0 +1,80 @@
+/* ── Initialize Screen ── */
+.init-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+
+.init-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.init-screen .init-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
+  text-align: center;
+}
+
+.init-screen .init-title {
+  color: #deded9;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.init-screen #btnInitialize {
+  background: #000;
+  border: 1px solid #8b5cf6;
+  border-radius: 12px;
+  padding: 14px 48px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #a78bfa;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 0 0 14px rgba(139,92,246,0.6), inset 0 0 10px rgba(139,92,246,0.25);
+  transition: box-shadow 0.2s, transform 0.2s, color 0.2s;
+}
+
+.init-screen #btnInitialize:hover {
+  color: #c4b5fd;
+  box-shadow: 0 0 22px rgba(139,92,246,0.9), inset 0 0 14px rgba(139,92,246,0.4);
+  transform: translateY(-1px);
+}
+
+/* ── Splash Screen ── */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+
+.splash-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-screen img {
+  width: 78%;
+  max-width: 760px;
+  opacity: 0;
+  animation: splash-grow 2.6s ease-out forwards;
+}
+
+@keyframes splash-grow {
+  0%   { transform: scale(0.55); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}

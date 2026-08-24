@@ -5,6 +5,7 @@ Nous Intelligence is a fully customizable AI that can connect to a Vtube Studio 
 ## Table of Contents 
 - [Requirements](#requirements)
 - [How to Install](#how-to-install)
+- [Screenshot](#screenshot)
 - [Configurations](#configuration)
 - [Vtube Studio Configuration](#vtube-studio-configuration)
 - [Common Problems](#common-problems)
@@ -32,7 +33,8 @@ If you do not have a Hugging face account, create one on https://huggingface.co/
 ### Normal way
 
 - Download the latest .zip on the releases page.
-- Unzip it and run the .exe
+- Unzip it and run the either main-gui.exe or main.exe
+- Running main-gui will start a server in which you can access the GUI while main will start the CLI version of the program.
 
 ### Dev Install
 
@@ -52,6 +54,7 @@ pip install -r requirements-omnivoice.txt
 > Tip:
 > requirements.txt is located in the Data folder, make sure you either launch the terminal from there or cd onto the folder.
 
+- For llama.cpp CUDA support download the latest win-cuda-13.3 from llama.cpp github extract it into a folder named "llama-server-CUDA" and drop it in the project's root.
 - launch main.py from terminal by typying: 
 ```
 python main.py
@@ -60,18 +63,17 @@ python main.py
 > IMPORTANT:
 > The program will use the default recording device, so please set your prefferd mic to default before launching.
 
----
+## **Screenshot**
 
 ## **System Requirements**
 
 Running on cloud services: Nothing / Barely anything
 Running all local: have atleast 6gb of ram free at all times, this will depend on the size of the local model you chose, larger model will consume more ram.
 
----
 
 ## **Configuration**
-
----
+>Tip:
+>Configuration is made easy by using running the program's GUI but you can still change the settings in the settings.json if you so wish to.
 
 ### **Personalities**
 
@@ -85,7 +87,7 @@ Edit the openai-TTS-instructions only if you are using the openai TTS service. T
 
 ### **Voice Cloning**
 
-Only available by Using "pockettts" as the tts service and settings "voice_cloning" to true. To voice clone you need a "reference.wav" file of atleast 5 seconds, and drop it into the `"data"` folder.
+Only available by Using "pockettts" as the tts service and settings "voice_cloning" to true. To voice clone you need a "reference.wav" file of atleast 5 seconds, and drop it into the `"data"` folder (or point the `reference_wav` setting to your file).
 
 ---
 
@@ -109,6 +111,7 @@ For local and free solution I recommend using https://github.com/livekit/livekit
 | `chatbot_service` | `"openai"` \| `"local"` \| `"test"` | `"openai"`: Uses an OpenAI model (API key required). `"local"`: Runs a local Llama server with a GGUF model (free, but heavier on PC). `"test"`: Prints a predetermined message every time. |
 | `remember_conversation` | `true` \| `false` | `true`: Stores past messages in a .txt and loads them on boot. `false`: Wipes message history on boot (helps reduce tokens with OpenAI). |
 | `model_dir` | string | Directory where the GGUF model is stored. Only used with `"local"` chatbot service. |
+| `llama_server_device` | `"cpu"` \| `"cuda"` | Device to run the local Llama server on. Only used with `"local"` chatbot service. |
 
 ---
 
@@ -131,7 +134,6 @@ For local and free solution I recommend using https://github.com/livekit/livekit
 | `stt_compute_type` | `"int8"` \| `"float16"` \| `"float32"` | Precision for Whisper inference. `"int8"`: Smallest and fastest, slight quality loss. `"float16"`: Good balance (GPU recommended). `"float32"`: Full precision, slowest, best quality. Use `"int8"` on CPU for best performance. |
 | `stt_language` | string | ISO 639-1 language code for speech recognition (en, es, etc). |
 | `silence_duration` | float | Seconds of silence before STT considers the user finished speaking. |
-| `gain` | float | Gain of the tts audio 1.0 is normal |
 
 ---
 
@@ -145,6 +147,8 @@ For local and free solution I recommend using https://github.com/livekit/livekit
 | `tts_speed` | float | Speed multiplier for TTS (default: 1.0). |
 | `voice_cloning` | `true` \| `false` | Pocket TTS only. `true`: Uses Data/reference.wav for voice cloning. `false`: Uses the built-in voice from `tts_voice`. |
 | `voice_design` | `true` \| `false` | omnivoice only. Support for the voice desing, edit the text in Data/omnivoice-desing.txt.
+| `reference_wav` | string | Path to the wav sample of the voice to clone when `voice_cloning` is enabled (defaults to `Data/reference.wav`). |
+| `gain` | float | Gain of the tts audio, `1.0` is normal. |
 
 ---
 
@@ -158,12 +162,26 @@ For local and free solution I recommend using https://github.com/livekit/livekit
 
 ---
 
+### **Appearance Settings**
+
+These settings only affect the built-in GUI.
+
+| Setting | Type | Description |
+|---------|------|-------------|
+| `theme` | string | Color theme applied to the whole app interface. Available themes: `"dark"`, `"darkamoled"`, `"light"`, `"midnight"`, `"midnightamoled"`, `"sakura"`, `"sakuraamoled"`, `"purplehaze"`, `"purplehazeamoled"`. |
+| `disable_splash` | `true` \| `false` | `true`: Skips the startup splash screen so the app boots straight into the main interface. |
+| `blur_intensity` | int (0 - 200) | Controls how much blur is applied to the background color spots. |
+| `keep_camera_aspect_ratio` | `true` \| `false` | Keeps the camera's native aspect ratio instead of stretching it to fill the view. |
+
+---
+
 ### **General Settings**
 
 | Setting | Type | Description |
 |---------|------|-------------|
 | `app_language` | string | Changes the conversation cycle language (not logs yet). |
 | `play_only_cable`| bool | `"true"` Will only play on cable device. `"false"` will play on both default playback device and cable device. |
+| `audio_device` | string | Output device id used for TTS playback. Leave empty (`""`) for the system default. Use `print_audio_devices` to find device ids. |
 
 ---
 
@@ -189,6 +207,7 @@ This configuration is stored in `settings.json` on the project's root:
     "chatbot_name": "NOUS",
     "remember_conversation": false,
     "model_dir": "models/llama/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+    "llama_server_device": "cuda",
 
     "_comment_wake": "------WAKE WORD SETTINGS-------",
     "wake_word_model": "models/openwakeword/hey_jarvis_v0.1.onnx",
@@ -209,6 +228,8 @@ This configuration is stored in `settings.json` on the project's root:
     "tts_speed": 1,
     "voice_cloning": true,
     "voice_design": false,
+    "reference_wav": "Data/reference.wav",
+    "gain": 1.0,
 
     "_comment_omnivoice": "------OMNIVOICE TTS SETTINGS-------",
     "omnivoice_device": "cuda",
@@ -218,8 +239,16 @@ This configuration is stored in `settings.json` on the project's root:
     "openai_tts_model": "gpt-4o-mini-tts",
     "openai_tts_voice": "marin",
 
+    "_comment_appearance": "------APPEARANCE SETTINGS-------",
+    "theme": "midnightamoled",
+    "disable_splash": false,
+    "blur_intensity": 120,
+    "keep_camera_aspect_ratio": false,
+
     "_comment_general": "------GENERAL SETTINGS-------",
     "app_language": "english",
+    "play_only_cable": true,
+    "audio_device": "",
 
     "_comment_logs": "------LOGS SETTINGS--------",
     "logs": true,
@@ -238,7 +267,7 @@ Go to configuration (gear icon) and scroll down until you see the slider "START 
 
 make sure its running on port 8001
 
-Scroll down even more until Microphone settings, tick the slider "Use Microphone" to blue and use micrpohne "CABLE Output (VB-Audio Virtual Cable)"
+Scroll down even more until Microphone settings, tick the slider "Use Microphone" to blue and use micrpohne "CABLE Output (VB-Audio Virtual Cable)". You can also set "Preview microphone audio" so that there is no delay while playing back the TTS message.
 
 Set volume gain and frequency gain to 100
 

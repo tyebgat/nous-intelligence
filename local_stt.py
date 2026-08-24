@@ -3,11 +3,24 @@ import numpy as np
 RED = '\033[31m'
 GREEN = '\033[32m'
 YELLOW = '\033[33m'
+ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 
 class LocalSTT:
     DEFAULT_MODEL = "Systran/faster-whisper-base"
+    # English-only variant: its vocabulary cannot emit other languages,
+    # which stops random Spanish output on noisy/silent chunks.
+    DEFAULT_MODEL_EN = "Systran/faster-whisper-base.en"
+
+    # Well-known Whisper hallucinations on silence/noise (e.g. the classic
+    # Spanish "Amara.org" captions credit). Dropped before joining segments.
+    HALLUCINATIONS = (
+        "amara.org", "amara.org", "subtítulos por", "subtitulos por",
+        "subtitles by", "gracias por ver", "thanks for watching",
+        "thank you for watching", "suscríbete", "suscribete",
+        "hasta la próxima", "música de fondo",
+    )
 
     def __init__(
         self,
@@ -30,11 +43,17 @@ class LocalSTT:
         try:
             from faster_whisper import WhisperModel
 
+            model_name = self.DEFAULT_MODEL
+            if (self.language or "").lower().startswith("en"):
+                # English requested: use the English-only weights so the
+                # decoder physically cannot output Spanish/other languages.
+                model_name = self.DEFAULT_MODEL_EN
+
             if self.detailed_logs:
-                print(f"{YELLOW}Loading Whisper STT model: {self.DEFAULT_MODEL} "
-                    f"(device={self.device}, compute={self.compute_type}){RESET}")
+                print(f"{YELLOW}Loading Whisper STT model: {model_name} "
+                    f"(device={self.device}, compute={self.compute_type}, lang={self.language}){RESET}")
             self._model = WhisperModel(
-                self.DEFAULT_MODEL,
+                model_name,
                 device=self.device,
                 compute_type=self.compute_type
             )
@@ -54,11 +73,24 @@ class LocalSTT:
                 audio_np,
                 beam_size=5,
                 language=self.language if self.language else None,
-                vad_filter=vad_filter
+                vad_filter=vad_filter,
+                # Don't condition on previous segments: prevents a hallucinated
+                # phrase from snowballing into repeated garbage.
+                condition_on_previous_text=False,
             )
 
-            text = " ".join(segment.text.strip() for segment in segments)
-            return text.strip()
+            parts = []
+            for segment in segments:
+                text = segment.text.strip()
+                low = text.lower().strip(" .,!?¡¿\"'")
+                if not low:
+                    continue
+                if any(h in low for h in self.HALLUCINATIONS):
+                    if self.detailed_logs:
+                        print(f"{ORANGE}[STT] Dropped hallucinated segment: {text}{RESET}")
+                    continue
+                parts.append(text)
+            return " ".join(parts).strip()
         except Exception as e:
             print(f"{RED}Transcription error: {e}{RESET}")
             return ""

@@ -43,6 +43,9 @@ class TTS:
         self.play_only_cable = play_only_cable
         self.gain = gain
         self.cable_device_id = None
+        self.is_playing = False
+        self.on_playback_start = None
+        self.on_playback_end = None
         
     def load_openai_tts_personality(self) -> list:
         with open(os.path.join(BASE_PATH, "openai-TTS-instructions.txt"), "r") as personality:
@@ -244,6 +247,10 @@ class TTS:
             self.is_speaking = False
             return
 
+        self.is_playing = True
+        if self.on_playback_start:
+            self.on_playback_start()
+
         try:
             data, samplerate = sf.read(output_path)
 
@@ -280,4 +287,7 @@ class TTS:
         except Exception as e:
             print(f"{RED}Error playing audio: {e}{RESET}")
         finally:
+            self.is_playing = False
             self.is_speaking = False
+            if self.on_playback_end:
+                self.on_playback_end()

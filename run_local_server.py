@@ -11,10 +11,15 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class RunLocalServer:
-    def __init__(self, show_ollama_server_logs: bool = False, model_dir: str = ""):
-        self.server_exe = os.path.join(BASE_PATH, "Ollama server", "llama-server.exe")
+    def __init__(self, show_ollama_server_logs: bool = False, model_dir: str = "", device: str = "cuda"):
+        if device == "cpu":
+            server_dir = os.path.join(BASE_PATH, "llama-server-CPU")
+        else:
+            server_dir = os.path.join(BASE_PATH, "llama-server-CUDA")
+        self.server_exe = os.path.join(server_dir, "llama-server.exe")
         self.model_path = os.path.join(BASE_PATH, model_dir) if model_dir else os.path.join(BASE_PATH, "models", "llama-3.2-1b-instruct-q4_k_m.gguf")
         self.show_ollama_server_logs = show_ollama_server_logs
+        self.device = device
     
     async def launch_server(self, timeout: int = 30) -> None:
         print(f"{YELLOW}Checking local AI server{RESET}")
@@ -23,13 +28,15 @@ class RunLocalServer:
             self.server_exe,
             "-m", self.model_path,
             "--port", "8080",
-            "--ctx-size", "20498"
+            "--ctx-size", "20498",
+            "--fit", "off"
         ]
 
         #launches it as a background process
         creation_flags = 0 if self.show_ollama_server_logs else subprocess.CREATE_NO_WINDOW
         self.process = subprocess.Popen(cmd, creationflags=creation_flags)
         print(f"{YELLOW} Detected model: {self.model_path}{RESET}")
+        print(f"{YELLOW}Running on device: {self.device.upper()}{RESET}")
         print(f"{YELLOW}Loading model into ram...{RESET}")
         async with httpx.AsyncClient() as client:
             for _ in range(timeout):

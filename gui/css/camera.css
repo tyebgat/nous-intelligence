@@ -1,0 +1,52 @@
+/* ── Camera Panel ── */
+.camera-panel {
+  flex: 1;
+  background: var(--panel);
+  border-radius: 16px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: flex 0.3s, min-width 0.3s, max-width 0.3s, border-color 0.3s;
+}
+
+#cameraFeed.contain {
+  object-fit: contain;
+}
+
+.btn-camera-off {
+  opacity: 0.35;
+}
+
+#cameraFeed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+#cameraFeed.active {
+  display: block;
+}
+
+.camera-placeholder {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.camera-placeholder.hidden {
+  display: none;
+}
+
+.camera-placeholder svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.camera-placeholder p {
+  font-size: 14px;
+}

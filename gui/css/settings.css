@@ -1,0 +1,255 @@
+/* ── Settings Panel ── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-overlay.open {
+  display: flex;
+}
+
+.settings-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 780px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.settings-header button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.settings-header button:hover {
+  color: var(--text);
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px 0;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.settings-tabs .tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.settings-tabs .tab:hover {
+  color: var(--text);
+}
+
+.settings-tabs .tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.settings-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+.tab-content label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-label);
+  gap: 12px;
+}
+
+.tab-content label input[type="text"],
+.tab-content label input[type="number"],
+.tab-content label select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 13px;
+  width: 180px;
+  outline: none;
+}
+
+.tab-content label input[type="text"]:focus,
+.tab-content label input[type="number"]:focus,
+.tab-content label select:focus {
+  border-color: var(--accent);
+}
+
+.tab-content label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.tab-content label input[type="range"] {
+  width: 140px;
+  accent-color: var(--accent);
+}
+
+.tab-content .path-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.tab-content .path-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+
+.tab-content .path-row input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+.tab-content .path-row button {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab-content .path-row button:hover {
+  border-color: var(--accent);
+}
+
+.tab-content label.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.tab-content label input[type="color"] {
+  width: 40px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.tab-content label.textarea-field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.tab-content label.textarea-field textarea {
+  width: 100%;
+  height: 120px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: Consolas, Menlo, monospace;
+  resize: vertical;
+  outline: none;
+}
+
+.tab-content label.textarea-field textarea:focus {
+  border-color: var(--accent);
+}
+
+.settings-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-footer button {
+  background: var(--success);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.settings-footer button:hover {
+  background: var(--success-hover);
+}
+
+/* ── Setting tooltips ── */
+.setting-tooltip {
+  position: fixed;
+  z-index: 500;
+  max-width: 320px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.setting-tooltip.visible {
+  opacity: 1;
+}

@@ -5,1010 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nous Intelligence</title>
 <link rel="icon" type="image/svg+xml" href="/gui/icon.svg"/>
-<style>
-:root {
-  --accent: #E4D329;
-  --bg: #12121A;
-  --panel: #1E1E2A;
-  --panel-2: #22222E;
-  --chat-bg: #181825;
-  --ai-msg-bg: #26263A;
-  --bar-bg: #2D2D42;
-  --input-bg: #2A2A3A;
-  --btn-bg: #3A3A4A;
-  --btn-bg-hover: #4A4A5A;
-  --border: #3A3A4A;
-  --border-soft: rgba(222,222,217,0.15);
-  --text: #deded9;
-  --text-muted: #5a5a6a;
-  --text-label: #b0b0ba;
-  --terminal-bg: #0d0d12;
-  --terminal-text: #a8e6a3;
-  --console-text: #c9d1d9;
-  --success: #2ecc71;
-  --success-hover: #27ae60;
-  --shadow: rgba(0,0,0,0.4);
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--bg);
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ── Initialize Screen ── */
-.init-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.6s ease;
-}
-
-.init-screen.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.init-screen .init-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 34px;
-  text-align: center;
-}
-
-.init-screen .init-title {
-  color: #deded9;
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.init-screen #btnInitialize {
-  background: #000;
-  border: 1px solid #8b5cf6;
-  border-radius: 12px;
-  padding: 14px 48px;
-  font-size: 17px;
-  font-weight: 600;
-  color: #a78bfa;
-  cursor: pointer;
-  letter-spacing: 1px;
-  box-shadow: 0 0 14px rgba(139,92,246,0.6), inset 0 0 10px rgba(139,92,246,0.25);
-  transition: box-shadow 0.2s, transform 0.2s, color 0.2s;
-}
-
-.init-screen #btnInitialize:hover {
-  color: #c4b5fd;
-  box-shadow: 0 0 22px rgba(139,92,246,0.9), inset 0 0 14px rgba(139,92,246,0.4);
-  transform: translateY(-1px);
-}
-
-/* ── Splash Screen ── */
-.splash-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.6s ease;
-}
-
-.splash-screen.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.splash-screen img {
-  width: 78%;
-  max-width: 760px;
-  opacity: 0;
-  animation: splash-grow 2.6s ease-out forwards;
-}
-
-@keyframes splash-grow {
-  0%   { transform: scale(0.55); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* ── Background Blurs ── */
-.bg-blurs {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
-}
-
-.blur-spot {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.3;
-  filter: blur(120px);
-  animation: drift 8s ease-in-out infinite alternate;
-}
-
-.blur-spot:nth-child(2) { animation-duration: 10s; animation-delay: -2s; }
-.blur-spot:nth-child(3) { animation-duration: 7s; animation-delay: -4s; }
-.blur-spot:nth-child(4) { animation-duration: 9s; animation-delay: -1s; }
-.blur-spot:nth-child(5) { animation-duration: 11s; animation-delay: -3s; }
-
-@keyframes drift {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(40px); }
-}
-
-/* ── Floating Top Bar ── */
-.floating-bar {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  z-index: 100;
-  background: var(--bar-bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 5px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  backdrop-filter: blur(12px);
-}
-
-.floating-bar .bar-logo {
-  height: 22px;
-  overflow: hidden;
-  display: inline-flex;
-  align-items: flex-start;
-}
-
-.floating-bar .bar-logo img {
-  height: 31px;
-  width: auto;
-  transform: translateY(-1px);
-  filter: drop-shadow(0 0 6px rgba(1,120,172,0.35));
-}
-
-.floating-bar .bar-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.floating-bar .bar-buttons button {
-  background: transparent;
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color 0.2s;
-}
-
-.floating-bar .bar-buttons button:hover {
-  border-color: var(--accent);
-}
-
-.floating-bar .bar-buttons button.active {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.floating-bar #btnGithub {
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-}
-
-.floating-bar #btnGithub:hover {
-  border: none;
-  color: var(--accent);
-}
-
-.floating-bar #btnGithub svg {
-  width: 20px;
-  height: 20px;
-}
-
-.floating-bar .bar-buttons button svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* ── Main Layout ── */
-.main {
-  display: flex;
-  position: relative;
-  z-index: 1;
-  gap: 20px;
-  padding: 68px 20px 20px;
-  flex: 1;
-  min-height: 0;
-}
-
-/* ── Side Stack (chat + terminal) ── */
-.side-stack {
-  flex: 0 0 auto;
-  width: 400px;
-  min-width: 280px;
-  max-width: 700px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-height: 0;
-}
-
-/* ── Chat Panel ── */
-.chat-panel {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  background: var(--panel);
-  border-radius: 16px;
-  border: 2px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
-
-#btnClearChat {
-  position: absolute;
-  top: 10px;
-  right: 16px;
-  z-index: 5;
-  background: rgba(42,42,58,0.85);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
-}
-
-#btnClearChat:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
-
-.resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 6px;
-  height: 100%;
-  cursor: ew-resize;
-  z-index: 10;
-}
-
-.resize-handle::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 1px;
-  width: 3px;
-  height: 40px;
-  background: var(--border);
-  border-radius: 2px;
-  transform: translateY(-50%);
-  transition: background 0.2s;
-}
-
-.resize-handle:hover::after,
-.resize-handle.active::after {
-  background: var(--accent);
-}
-
-.chat-messages {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  background: var(--chat-bg);
-}
-
-.chat-messages .placeholder {
-  color: var(--text-muted);
-  text-align: center;
-  margin: auto;
-  font-style: italic;
-  font-size: 14px;
-}
-
-.chat-messages .msg {
-  max-width: 80%;
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 14px;
-  line-height: 1.4;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-}
-
-.chat-messages .ai-msg {
-  align-self: flex-start;
-  background: var(--ai-msg-bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 14px 14px 14px 4px;
-}
-
-.chat-input-area {
-  padding: 12px 16px 16px;
-  display: flex;
-  gap: 10px;
-  border-top: 1px solid var(--border);
-}
-
-.chat-input-area textarea {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  font-size: 14px;
-  font-family: inherit;
-  line-height: 1.4;
-  outline: none;
-  color: var(--text);
-  resize: none;
-  max-height: 120px;
-  overflow-y: auto;
-}
-
-.chat-input-area textarea::placeholder {
-  color: var(--text-muted);
-}
-
-.chat-input-area textarea:focus {
-  border-color: var(--accent);
-}
-
-.chat-input-area button {
-  background: var(--border);
-  border: none;
-  border-radius: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.chat-input-area button:hover {
-  background: var(--btn-bg-hover);
-}
-
-.chat-input-area button svg {
-  width: 20px;
-  height: 20px;
-  color: var(--text);
-}
-
-/* ── Camera Panel ── */
-.camera-panel {
-  flex: 1;
-  background: var(--panel);
-  border-radius: 16px;
-  border: 2px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  transition: flex 0.3s, min-width 0.3s, max-width 0.3s, border-color 0.3s;
-}
-
-#cameraFeed.contain {
-  object-fit: contain;
-}
-
-.btn-camera-off {
-  opacity: 0.35;
-}
-
-#cameraFeed {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: none;
-}
-
-#cameraFeed.active {
-  display: block;
-}
-
-.camera-placeholder {
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.camera-placeholder.hidden {
-  display: none;
-}
-
-.camera-placeholder svg {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 10px;
-  opacity: 0.5;
-}
-
-.camera-placeholder p {
-  font-size: 14px;
-}
-
-/* ── Status Dot ── */
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #e74c3c;
-  box-shadow: 0 0 6px #e74c3c;
-  display: inline-block;
-  margin-left: 10px;
-  transition: background 0.3s, box-shadow 0.3s;
-}
-
-.status-dot.starting {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-}
-
-.status-dot.online {
-  background: #00ff88;
-  box-shadow: 0 0 8px #00ff88;
-}
-
-/* ── Settings Panel ── */
-.settings-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 200;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.settings-overlay.open {
-  display: flex;
-}
-
-.settings-panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 780px;
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--text);
-}
-
-.settings-header button {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.settings-header button:hover {
-  color: var(--text);
-}
-
-.settings-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 12px 16px 0;
-  overflow-x: auto;
-  flex-shrink: 0;
-}
-
-.settings-tabs .tab {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 6px 10px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 11px;
-  white-space: nowrap;
-  transition: color 0.2s, border-color 0.2s;
-}
-
-.settings-tabs .tab:hover {
-  color: var(--text);
-}
-
-.settings-tabs .tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.settings-body {
-  padding: 20px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.tab-content {
-  display: none;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.tab-content.active {
-  display: flex;
-}
-
-.tab-content label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: var(--text-label);
-  gap: 12px;
-}
-
-.tab-content label input[type="text"],
-.tab-content label input[type="number"],
-.tab-content label select {
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  color: var(--text);
-  font-size: 13px;
-  width: 180px;
-  outline: none;
-}
-
-.tab-content label input[type="text"]:focus,
-.tab-content label input[type="number"]:focus,
-.tab-content label select:focus {
-  border-color: var(--accent);
-}
-
-.tab-content label input[type="checkbox"] {
-  accent-color: var(--accent);
-  width: 16px;
-  height: 16px;
-}
-
-.tab-content label input[type="range"] {
-  width: 140px;
-  accent-color: var(--accent);
-}
-
-.tab-content .path-row {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  width: 180px;
-  flex-shrink: 0;
-}
-
-.tab-content .path-row input[type="text"] {
-  flex: 1;
-  min-width: 0;
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  color: var(--text);
-  font-size: 13px;
-  outline: none;
-}
-
-.tab-content .path-row input[type="text"]:focus {
-  border-color: var(--accent);
-}
-
-.tab-content .path-row button {
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.tab-content .path-row button:hover {
-  border-color: var(--accent);
-}
-
-.tab-content label.disabled {
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.tab-content label input[type="color"] {
-  width: 40px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: none;
-  cursor: pointer;
-}
-
-.tab-content label.textarea-field {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.tab-content label.textarea-field textarea {
-  width: 100%;
-  height: 120px;
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  color: var(--text);
-  font-size: 13px;
-  font-family: Consolas, Menlo, monospace;
-  resize: vertical;
-  outline: none;
-}
-
-.tab-content label.textarea-field textarea:focus {
-  border-color: var(--accent);
-}
-
-.settings-footer {
-  padding: 12px 20px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.settings-footer button {
-  background: var(--success);
-  border: none;
-  border-radius: 8px;
-  padding: 8px 24px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.settings-footer button:hover {
-  background: var(--success-hover);
-}
-
-/* ── Toast Notification ── */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 600;
-  background: var(--bg);
-  border: 1px solid var(--success);
-  color: var(--success);
-  padding: 12px 22px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.3s, transform 0.3s;
-  pointer-events: none;
-  box-shadow: 0 6px 20px var(--shadow);
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.toast .loader {
-  display: none;
-}
-
-.toast.busy {
-  border-color: var(--border);
-  color: var(--text);
-}
-
-.toast.busy .loader {
-  display: inline-block;
-}
-
-/* Spinner loader (shown beside "Generating..." messages) */
-.loader {
-  --color-1: #A7E0E9;
-  --color-2: #2F4EC6;
-  --size: 0.6px;
-
-  width: calc(48 * var(--size));
-  height: calc(48 * var(--size));
-  border-radius: 50%;
-  display: inline-block;
-  position: relative;
-  border: calc(3 * var(--size)) solid;
-  border-color: var(--color-1) var(--color-1) transparent;
-  box-sizing: border-box;
-  animation: rotation 1s linear infinite;
-  flex-shrink: 0;
-}
-
-.loader::after {
-  content: '';
-  box-sizing: border-box;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  margin: auto;
-  border: calc(3 * var(--size)) solid;
-  border-color: transparent var(--color-2) var(--color-2);
-  width: calc(24 * var(--size));
-  height: calc(24 * var(--size));
-  border-radius: 50%;
-  animation: rotationBack 0.5s linear infinite;
-  transform-origin: center center;
-}
-
-@keyframes rotation {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes rotationBack {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(-360deg); }
-}
-
-/* Three-dots loader (shown in the chat bubble while generating) */
-.typing-dots {
-  display: inline-block;
-  width: 60px;
-  aspect-ratio: 4;
-  --_g: no-repeat radial-gradient(circle closest-side,var(--text) 90%,#0000);
-  background:
-    var(--_g) 0%   50%,
-    var(--_g) 50%  50%,
-    var(--_g) 100% 50%;
-  background-size: calc(100%/3) 100%;
-  animation: l7 1s infinite linear;
-}
-
-@keyframes l7 {
-  33% { background-size: calc(100%/3) 0%,   calc(100%/3) 100%, calc(100%/3) 100%; }
-  50% { background-size: calc(100%/3) 100%, calc(100%/3) 0%,   calc(100%/3) 100%; }
-  66% { background-size: calc(100%/3) 100%, calc(100%/3) 100%, calc(100%/3) 0%; }
-}
-/* ── Terminal Panel ── */
-.terminal {
-  flex: 0 0 auto;
-  height: 220px;
-  width: 100%;
-  background: var(--terminal-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.terminal.visible {
-  display: flex;
-}
-
-.terminal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.terminal-header button {
-  background: none;
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  color: var(--text);
-  padding: 2px 8px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.terminal-header button:hover {
-  border-color: var(--accent);
-}
-
-.terminal-log {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 14px;
-  font-family: Consolas, Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--terminal-text);
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* ── Warning Modal ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 300;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-overlay.open {
-  display: flex;
-}
-
-.modal-panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 420px;
-  max-width: 92vw;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.modal-text {
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.modal-actions button {
-  background: var(--success);
-  border: none;
-  border-radius: 8px;
-  padding: 8px 24px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.modal-actions button:hover {
-  background: var(--success-hover);
-}
-
-/* ── Init Overlay ── */
-.init-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 250;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.init-overlay.open {
-  display: flex;
-}
-
-.init-panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 640px;
-  max-width: 92vw;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.init-panel h3 {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.init-console {
-  background: var(--terminal-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  height: 320px;
-  overflow-y: auto;
-  padding: 12px 14px;
-  font-family: Consolas, Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--console-text);
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.init-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.init-ok {
-  display: none;
-  background: var(--success);
-  border: none;
-  color: var(--terminal-bg);
-  font-weight: 600;
-  padding: 10px 26px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.init-ok.visible {
-  display: inline-block;
-}
-
-.init-ok:hover {
-  background: var(--success-hover);
-}
-</style>
+<link rel="stylesheet" href="/gui/css/base.css"/>
+<link rel="stylesheet" href="/gui/css/init-screen.css"/>
+<link rel="stylesheet" href="/gui/css/layout.css"/>
+<link rel="stylesheet" href="/gui/css/floating-bar.css"/>
+<link rel="stylesheet" href="/gui/css/camera.css"/>
+<link rel="stylesheet" href="/gui/css/chat.css"/>
+<link rel="stylesheet" href="/gui/css/terminal.css"/>
+<link rel="stylesheet" href="/gui/css/settings.css"/>
+<link rel="stylesheet" href="/gui/css/toast.css"/>
+<link rel="stylesheet" href="/gui/css/modal.css"/>
 <link id="themeStylesheet" rel="stylesheet" href="/gui/themes/dark.css"/>
 <script>
 // Load the saved theme early to avoid a flash of the wrong theme. If the
@@ -1016,6 +22,7 @@ body {
 // screens right away so the app boots straight into the main GUI.
 fetch('/api/settings').then(r => r.json()).then(c => {
   const theme = c.theme || 'dark';
+  window.__appLanguage = c.app_language || 'english';
   const link = document.getElementById('themeStylesheet');
   if (link) link.href = '/gui/themes/' + theme + '.css';
   if (c.disable_splash === true) {
@@ -1038,8 +45,8 @@ fetch('/api/settings').then(r => r.json()).then(c => {
 
 <div class="init-screen" id="initScreen">
   <div class="init-box">
-    <h1 class="init-title">Initialize Nous Intelligence</h1>
-    <button id="btnInitialize">Initialize</button>
+    <h1 class="init-title" data-i18n="init_title">Initialize Nous Intelligence</h1>
+    <button id="btnInitialize" data-i18n="init_btn">Initialize</button>
   </div>
 </div>
 
@@ -1053,13 +60,13 @@ fetch('/api/settings').then(r => r.json()).then(c => {
     <img src="/gui/Nous intelligence only text.plain.svg" alt="Nous Intelligence"/>
   </span>
   <div class="bar-buttons">
-    <button id="btnStart" title="Start">
+    <button id="btnStart" data-i18n-title="title_start" title="Start">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
     </button>
-    <button id="btnStop" title="Stop">
+    <button id="btnStop" data-i18n-title="title_stop" title="Stop">
       <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
     </button>
-    <button id="btnCamera" title="Camera">
+    <button id="btnCamera" data-i18n-title="title_camera" title="Camera">
       <span style="position:relative;display:flex;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -1070,20 +77,20 @@ fetch('/api/settings').then(r => r.json()).then(c => {
         </svg>
       </span>
     </button>
-    <button id="btnTerminal" title="Terminal">
+    <button id="btnTerminal" data-i18n-title="title_terminal" title="Terminal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="4 17 10 11 4 5"/>
         <line x1="12" y1="19" x2="20" y2="19"/>
       </svg>
     </button>
-    <button id="btnSettings" title="Settings">
+    <button id="btnSettings" data-i18n-title="title_settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
   </div>
-  <button id="btnGithub" title="GitHub" style="margin-left:auto;">
+  <button id="btnGithub" data-i18n-title="title_github" title="GitHub" style="margin-left:auto;">
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
     </svg>
@@ -1102,12 +109,13 @@ fetch('/api/settings').then(r => r.json()).then(c => {
     <!-- Chat Panel -->
     <div class="chat-panel" id="chatPanel">
       <div class="resize-handle" id="resizeHandle"></div>
-      <button id="btnClearChat" title="Clear chat">Clear</button>
+      <button id="btnClearChat" data-i18n="chat_clear" title="Clear chat">Clear</button>
       <div class="chat-messages" id="chatMessages">
-        <div class="placeholder">Start the service and send a message to begin chatting.</div>
+        <div class="placeholder" data-i18n="chat_placeholder_start">Start the service and send a message to begin chatting.</div>
       </div>
+      <div class="busy-warning" id="busyWarning" data-i18n="busy_warning">Please, wait for the AI to finish before putting another message.</div>
       <div class="chat-input-area">
-        <textarea id="chatInput" rows="1" placeholder="Type a message... (Alt+Enter for new line)"></textarea>
+        <textarea id="chatInput" rows="1" data-i18n-placeholder="chat_placeholder_type" placeholder="Type a message... (Alt+Enter for new line)"></textarea>
         <button id="btnSend">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="19" x2="12" y2="5"/>
@@ -1120,8 +128,8 @@ fetch('/api/settings').then(r => r.json()).then(c => {
     <!-- Terminal Panel -->
     <div class="terminal" id="terminalPanel">
       <div class="terminal-header">
-        <span>Terminal</span>
-        <button id="terminalClear">Clear</button>
+        <span data-i18n="terminal">Terminal</span>
+        <button id="terminalClear" data-i18n="chat_clear">Clear</button>
       </div>
       <div class="terminal-log" id="terminalLog"></div>
     </div>
@@ -1135,36 +143,33 @@ fetch('/api/settings').then(r => r.json()).then(c => {
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-      <p>Camera Feed</p>
+      <p data-i18n="camera_feed">Camera Feed</p>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast">
-  <span class="loader"></span>
-  <span id="toastText">Settings Applied</span>
-</div>
+<div class="toast-container" id="toastContainer"></div>
 
 <div class="settings-overlay" id="settingsOverlay">
   <div class="settings-panel">
     <div class="settings-header">
-      <span>Settings</span>
+      <span data-i18n="settings">Settings</span>
       <button id="settingsClose">&times;</button>
     </div>
     <div class="settings-tabs" id="settingsTabs">
-      <button class="tab active" data-tab="appearance">Appearance</button>
-      <button class="tab" data-tab="general">General</button>
-      <button class="tab" data-tab="chatbot">Chatbot</button>
-      <button class="tab" data-tab="wakeword">Wake Word</button>
-      <button class="tab" data-tab="stt">Speech to Text</button>
-      <button class="tab" data-tab="tts">Text to Speech</button>
-      <button class="tab" data-tab="openai">OpenAI</button>
-      <button class="tab" data-tab="logs">Logs</button>
-      <button class="tab" data-tab="apis">APIs</button>
+      <button class="tab active" data-tab="appearance" data-i18n="tab_appearance">Appearance</button>
+      <button class="tab" data-tab="general" data-i18n="tab_general">General</button>
+      <button class="tab" data-tab="chatbot" data-i18n="tab_chatbot">Chatbot</button>
+      <button class="tab" data-tab="wakeword" data-i18n="tab_wakeword">Wake Word</button>
+      <button class="tab" data-tab="stt" data-i18n="tab_stt">Speech to Text</button>
+      <button class="tab" data-tab="tts" data-i18n="tab_tts">Text to Speech</button>
+      <button class="tab" data-tab="openai" data-i18n="tab_openai">OpenAI</button>
+      <button class="tab" data-tab="logs" data-i18n="tab_logs">Logs</button>
+      <button class="tab" data-tab="apis" data-i18n="tab_apis">APIs</button>
     </div>
     <div class="settings-body">
       <div class="tab-content active" id="tab-appearance">
-        <label>Theme <select data-key="theme">
+        <label data-tip-i18n="tip_theme"><span data-i18n="lbl_theme">Theme</span> <select data-key="theme">
           <optgroup label="Dark">
             <option value="dark">Dark</option>
             <option value="darkamoled">Dark (AMOLED)</option>
@@ -1185,78 +190,86 @@ fetch('/api/settings').then(r => r.json()).then(c => {
             <option value="purplehazeamoled">Purple Haze (AMOLED)</option>
           </optgroup>
         </select></label>
-        <label>Disable Splash Screen <input type="checkbox" data-key="disable_splash"/></label>
-        <label>Background Blur Intensity <input type="range" id="blurIntensity" data-key="blur_intensity" min="0" max="200" value="120"/></label>
-        <label>Keep Camera Aspect Ratio <input type="checkbox" id="keepAspect" data-key="keep_camera_aspect_ratio"/></label>
+        <label data-tip-i18n="tip_disable_splash"><span data-i18n="lbl_disable_splash">Disable Splash Screen</span> <input type="checkbox" data-key="disable_splash"/></label>
+        <label data-tip-i18n="tip_blur_intensity"><span data-i18n="lbl_blur_intensity">Background Blur Intensity</span> <input type="range" id="blurIntensity" data-key="blur_intensity" min="0" max="200" value="120"/></label>
+        <label data-tip-i18n="tip_keep_aspect"><span data-i18n="lbl_keep_aspect">Keep Camera Aspect Ratio</span> <input type="checkbox" id="keepAspect" data-key="keep_camera_aspect_ratio"/></label>
+        <label data-tip="Maximum resolution requested from the camera. The browser will pick the closest supported mode.">Camera Resolution <select data-key="camera_resolution">
+          <option value="640x360">360p (640x360)</option>
+          <option value="854x480">480p (854x480)</option>
+          <option value="1280x720">720p (1280x720)</option>
+          <option value="1920x1080" selected>1080p (1920x1080)</option>
+          <option value="2560x1440">1440p (2560x1440)</option>
+        </select></label>
       </div>
       <div class="tab-content" id="tab-general">
-        <label>App Language <select data-key="app_language"><option>english</option><option>spanish</option></select></label>
-        <label>Play Only Cable <input type="checkbox" data-key="play_only_cable"/></label>
-        <label>Microphone
+        <label data-tip-i18n="tip_app_language"><span data-i18n="lbl_app_language">App Language</span> <select data-key="app_language"><option>english</option><option>spanish</option></select></label>
+        <label data-tip-i18n="tip_play_only_cable"><span data-i18n="lbl_play_only_cable">Play Only Cable</span> <input type="checkbox" data-key="play_only_cable"/></label>
+        <label data-tip-i18n="tip_microphone"><span data-i18n="lbl_microphone">Microphone</span>
           <span style="display:flex;gap:6px;align-items:center;">
-            <select id="audioDeviceSelect" data-key="audio_device"><option value="">System Default</option></select>
+            <select id="audioDeviceSelect" data-key="audio_device"><option value="" data-i18n="system_default">System Default</option></select>
             <button id="refreshDevicesBtn" type="button" title="Refresh device list" style="padding:2px 8px;font-size:13px;cursor:pointer;">&#8635;</button>
           </span>
         </label>
       </div>
       <div class="tab-content" id="tab-chatbot">
-        <label>Input Service <select data-key="user_input_service"><option>console</option><option>speech</option><option>wake_word</option></select></label>
-        <label>Chatbot Service <select data-key="chatbot_service"><option>openai</option><option>local</option><option>test</option></select></label>
-        <label>Chatbot Name <input type="text" data-key="chatbot_name" value="NOUS"/></label>
-        <label>Remember Conversation <input type="checkbox" data-key="remember_conversation"/></label>
-        <label>Model Directory <span class="path-row"><input type="text" data-key="model_dir" placeholder="path to model"/><button type="button" class="browse-btn" data-for="model_dir" data-type="file" data-ext="gguf">...</button></span></label>
-        <label class="textarea-field">Personality
+        <label data-tip-i18n="tip_input_service"><span data-i18n="lbl_input_service">Input Service</span> <select data-key="user_input_service"><option>console</option><option>speech</option><option>wake_word</option></select></label>
+        <label data-tip-i18n="tip_chatbot_service"><span data-i18n="lbl_chatbot_service">Chatbot Service</span> <select data-key="chatbot_service"><option>openai</option><option>local</option><option>test</option></select></label>
+        <label data-tip-i18n="tip_chatbot_name"><span data-i18n="lbl_chatbot_name">Chatbot Name</span> <input type="text" data-key="chatbot_name" value="NOUS"/></label>
+        <label data-tip-i18n="tip_remember_conversation"><span data-i18n="lbl_remember_conversation">Remember Conversation</span> <input type="checkbox" data-key="remember_conversation"/></label>
+        <label data-tip-i18n="tip_model_dir"><span data-i18n="lbl_model_dir">Model Directory</span> <span class="path-row"><input type="text" data-key="model_dir" placeholder="path to model"/><button type="button" class="browse-btn" data-for="model_dir" data-type="file" data-ext="gguf">...</button></span></label>
+        <label data-tip-i18n="tip_llama_server_device"><span data-i18n="lbl_llama_server_device">Llama Server Device</span> <select data-key="llama_server_device"><option>cpu</option><option>cuda</option></select></label>
+        <label class="textarea-field" data-tip-i18n="tip_personality"><span data-i18n="lbl_personality">Personality</span>
           <textarea data-file="personality" placeholder="personality.txt content"></textarea>
         </label>
       </div>
       <div class="tab-content" id="tab-wakeword">
-        <label>Wake Word Model <span class="path-row"><input type="text" data-key="wake_word_model" placeholder="model path"/><button type="button" class="browse-btn" data-for="wake_word_model" data-type="file" data-ext="onnx,tflite">...</button></span></label>
-        <label>Threshold <span style="display:flex;align-items:center;gap:8px;"><input type="range" data-key="wake_word_threshold" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:var(--text);">0.5</span></span></label>
-        <label>Confirm Sound <input type="checkbox" data-key="wake_word_confirm_sound"/></label>
+        <label data-tip-i18n="tip_wake_model"><span data-i18n="lbl_wake_model">Wake Word Model</span> <span class="path-row"><input type="text" data-key="wake_word_model" placeholder="model path"/><button type="button" class="browse-btn" data-for="wake_word_model" data-type="file" data-ext="onnx,tflite">...</button></span></label>
+        <label data-tip-i18n="tip_threshold"><span data-i18n="lbl_threshold">Threshold</span> <span style="display:flex;align-items:center;gap:8px;"><input type="range" data-key="wake_word_threshold" min="0" max="1" step="0.05" id="wakeThreshold"/><span id="wakeThresholdVal" style="min-width:32px;text-align:right;font-size:13px;color:var(--text);">0.5</span></span></label>
+        <label data-tip-i18n="tip_confirm_sound"><span data-i18n="lbl_confirm_sound">Confirm Sound</span> <input type="checkbox" data-key="wake_word_confirm_sound"/></label>
       </div>
       <div class="tab-content" id="tab-stt">
-        <label>STT Service <select data-key="stt_service"><option>whisper</option><option>google</option></select></label>
-        <label>Device <select data-key="stt_device"><option>cpu</option><option>cuda</option></select></label>
-        <label>Compute Type <select data-key="stt_compute_type"><option>int8</option><option>float16</option><option>float32</option></select></label>
-        <label>Language <input type="text" data-key="stt_language" value="en"/></label>
-        <label>Silence Duration <input type="number" step="0.1" data-key="silence_duration" value="1.5"/></label>
+        <label data-tip-i18n="tip_stt_service"><span data-i18n="lbl_stt_service">STT Service</span> <select data-key="stt_service"><option>whisper</option><option>google</option></select></label>
+        <label data-tip-i18n="tip_device"><span data-i18n="lbl_device">Device</span> <select data-key="stt_device"><option>cpu</option><option>cuda</option></select></label>
+        <label data-tip-i18n="tip_compute_type"><span data-i18n="lbl_compute_type">Compute Type</span> <select data-key="stt_compute_type"><option>int8</option><option>float16</option><option>float32</option></select></label>
+        <label data-tip-i18n="tip_stt_language"><span data-i18n="lbl_language">Language</span> <input type="text" data-key="stt_language" value="en"/></label>
+        <label data-tip-i18n="tip_silence_duration"><span data-i18n="lbl_silence_duration">Silence Duration</span> <input type="number" min="0" step="0.1" data-key="silence_duration" value="1.5"/></label>
       </div>
       <div class="tab-content" id="tab-tts">
-        <label>TTS Service <select data-key="tts_service"><option>gtts</option><option>openai</option><option>omnivoice</option><option>pockettts</option></select></label>
-        <label>Language <input type="text" data-key="tts_language" value="en"/></label>
-        <label>Voice <input type="text" data-key="tts_voice" value="ash"/></label>
-        <label>Speed <input type="number" step="0.1" data-key="tts_speed" value="1.0"/></label>
-        <label>Gain <input type="number" step="0.1" data-key="gain" value="1.0"/></label>
-        <label>Voice Cloning <input type="checkbox" data-key="voice_cloning"/></label>
-        <label>Reference Wav <span class="path-row"><input type="text" data-key="reference_wav" placeholder="path to reference.wav"/><button type="button" class="browse-btn" data-for="reference_wav" data-type="file" data-ext="wav">...</button></span></label>
-        <label class="textarea-field">Reference Wav Transcripts
+        <label data-tip-i18n="tip_tts_service"><span data-i18n="lbl_tts_service">TTS Service</span> <select data-key="tts_service"><option>gtts</option><option>openai</option><option>omnivoice</option><option>pockettts</option></select></label>
+        <label data-tip-i18n="tip_tts_language"><span data-i18n="lbl_language">Language</span> <input type="text" data-key="tts_language" value="en"/></label>
+        <label data-tip-i18n="tip_tts_voice"><span data-i18n="lbl_voice">Voice</span> <input type="text" data-key="tts_voice" value="ash"/></label>
+        <label data-tip-i18n="tip_speed"><span data-i18n="lbl_speed">Speed</span> <input type="number" min="0" step="0.1" data-key="tts_speed" value="1.0"/></label>
+        <label data-tip-i18n="tip_gain"><span data-i18n="lbl_gain">Gain</span> <input type="number" min="0" step="0.1" data-key="gain" value="1.0"/></label>
+        <label data-tip-i18n="tip_voice_cloning"><span data-i18n="lbl_voice_cloning">Voice Cloning</span> <input type="checkbox" data-key="voice_cloning"/></label>
+        <label data-tip-i18n="tip_reference_wav"><span data-i18n="lbl_reference_wav">Reference Wav</span> <span class="path-row"><input type="text" data-key="reference_wav" placeholder="path to reference.wav"/><button type="button" class="browse-btn" data-for="reference_wav" data-type="file" data-ext="wav">...</button></span></label>
+        <label class="textarea-field" data-tip-i18n="tip_reference_transcripts"><span data-i18n="lbl_reference_transcripts">Reference Wav Transcripts</span>
           <textarea data-file="reference" placeholder="Data/reference.txt content"></textarea>
         </label>
-        <label>Voice Design <input type="checkbox" data-key="voice_design"/></label>
-        <label class="textarea-field">Voice Design Instructions
+        <label data-tip-i18n="tip_voice_design"><span data-i18n="lbl_voice_design">Voice Design</span> <input type="checkbox" data-key="voice_design"/></label>
+        <label class="textarea-field" data-tip-i18n="tip_voice_design_instructions"><span data-i18n="lbl_voice_design_instructions">Voice Design Instructions</span>
           <textarea data-file="voice_design" placeholder="Data/omnivoice-design.txt content"></textarea>
         </label>
       </div>
       <div class="tab-content" id="tab-openai">
-        <label>OpenAI Model <input type="text" data-key="openai_model" value="gpt-4o-mini"/></label>
-        <label>TTS Model <input type="text" data-key="openai_tts_model" value="gpt-4o-mini-tts"/></label>
-        <label>TTS Voice <input type="text" data-key="openai_tts_voice" value="ash"/></label>
-        <label class="textarea-field">TTS Instructions
+        <label data-tip-i18n="tip_openai_model"><span data-i18n="lbl_openai_model">OpenAI Model</span> <input type="text" data-key="openai_model" value="gpt-4o-mini"/></label>
+        <label data-tip-i18n="tip_openai_tts_model"><span data-i18n="lbl_openai_tts_model">TTS Model</span> <input type="text" data-key="openai_tts_model" value="gpt-4o-mini-tts"/></label>
+        <label data-tip-i18n="tip_openai_tts_voice"><span data-i18n="lbl_openai_tts_voice">TTS Voice</span> <input type="text" data-key="openai_tts_voice" value="ash"/></label>
+        <label class="textarea-field" data-tip-i18n="tip_tts_instructions"><span data-i18n="lbl_tts_instructions">TTS Instructions</span>
           <textarea data-file="tts_instructions" placeholder="openai-TTS-instructions.txt content"></textarea>
         </label>
       </div>
       <div class="tab-content" id="tab-logs">
-        <label>Detailed Logs <input type="checkbox" data-key="logs"/></label>
-        <label>Print Audio Devices <input type="checkbox" data-key="print_audio_devices"/></label>
-        <label>Show LLM Server Logs <input type="checkbox" data-key="show_ollama_server_logs"/></label>
+        <label data-tip-i18n="tip_detailed_logs"><span data-i18n="lbl_detailed_logs">Detailed Logs</span> <input type="checkbox" data-key="logs"/></label>
+        <label data-tip-i18n="tip_print_audio_devices"><span data-i18n="lbl_print_audio_devices">Print Audio Devices</span> <input type="checkbox" data-key="print_audio_devices"/></label>
+        <label data-tip-i18n="tip_show_llm_logs"><span data-i18n="lbl_show_llm_logs">Show LLM Server Logs</span> <input type="checkbox" data-key="show_ollama_server_logs"/></label>
       </div>
       <div class="tab-content" id="tab-apis">
-        <label>OpenAI API Key <input type="password" value="sk-..."/></label>
-        <label>HF Token <input type="password" value="hf_..."/></label>
+        <label data-tip-i18n="tip_openai_key"><span data-i18n="lbl_openai_key">OpenAI API Key</span> <input type="password" data-env-key="OPENAI_API_KEY" placeholder="sk-..."/></label>
+        <label data-tip-i18n="tip_hf_token"><span data-i18n="lbl_hf_token">HF Token</span> <input type="password" data-env-key="HF_TOKEN" placeholder="hf_..."/></label>
       </div>
     </div>
     <div class="settings-footer">
-      <button id="settingsApply">Apply</button>
+      <button id="settingsApply" data-i18n="apply">Apply</button>
     </div>
   </div>
 </div>
@@ -1272,998 +285,23 @@ fetch('/api/settings').then(r => r.json()).then(c => {
 
 <div class="init-overlay" id="initOverlay">
   <div class="init-panel">
-    <h3 id="initTitle">Starting services...</h3>
+    <h3 id="initTitle" data-i18n="starting_services">Starting services...</h3>
     <div class="init-console" id="initConsole"></div>
     <div class="init-actions">
-      <button class="init-ok" id="initOk">Ok</button>
+      <button class="init-ok" id="initOk" data-i18n="ok">Ok</button>
     </div>
   </div>
 </div>
 
-<script>
-// ── Camera Toggle ──
-let cameraStream = null;
-const btnCamera = document.getElementById('btnCamera');
-const cameraSlash = document.getElementById('cameraSlash');
-
-async function startCamera() {
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const video = document.getElementById('cameraFeed');
-    video.srcObject = cameraStream;
-    await video.play();
-    video.classList.add('active');
-    document.getElementById('cameraPlaceholder').classList.add('hidden');
-    btnCamera.style.borderColor = 'var(--accent)';
-    cameraSlash.style.display = 'none';
-  } catch (err) {
-    console.log('Camera not available:', err.message);
-  }
-}
-
-function stopCamera() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(t => t.stop());
-    cameraStream = null;
-  }
-  const video = document.getElementById('cameraFeed');
-  video.classList.remove('active');
-  video.srcObject = null;
-  document.getElementById('cameraPlaceholder').classList.remove('hidden');
-  btnCamera.style.borderColor = '';
-  cameraSlash.style.display = 'block';
-}
-
-btnCamera.addEventListener('click', () => {
-  if (cameraStream) { stopCamera(); }
-  else { startCamera(); }
-});
-
-// ── Blur Intensity ──
-const blurSlider = document.getElementById('blurIntensity');
-const blurSpots = document.querySelectorAll('.blur-spot');
-function updateBlur() {
-  blurSpots.forEach(spot => { spot.style.filter = `blur(${blurSlider.value}px)`; });
-}
-blurSlider.addEventListener('input', updateBlur);
-updateBlur();
-
-// ── Keep Camera Aspect Ratio ──
-const keepAspect = document.getElementById('keepAspect');
-const camVideo = document.getElementById('cameraFeed');
-
-keepAspect.addEventListener('change', () => {
-  camVideo.classList.toggle('contain', keepAspect.checked);
-});
-
-// ── Chat Panel Resize ──
-const chatPanel = document.getElementById('chatPanel');
-const sideStack = document.getElementById('sideStack');
-const resizeHandle = document.getElementById('resizeHandle');
-let isResizing = false;
-
-resizeHandle.addEventListener('mousedown', (e) => {
-  isResizing = true;
-  document.body.style.cursor = 'ew-resize';
-  resizeHandle.classList.add('active');
-  e.preventDefault();
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!isResizing) return;
-  const rect = sideStack.getBoundingClientRect();
-  let newWidth = e.clientX - rect.left;
-  newWidth = Math.max(280, Math.min(700, newWidth));
-  sideStack.style.width = newWidth + 'px';
-});
-
-document.addEventListener('mouseup', () => {
-  if (isResizing) {
-    isResizing = false;
-    document.body.style.cursor = '';
-    resizeHandle.classList.remove('active');
-  }
-});
-
-// ── WebSocket ──
-let socket = null;
-let reconnectTimer = null;
-
-function wsUrl() {
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${window.location.host}/ws`;
-}
-
-function connectWebSocket() {
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
-    return;
-  }
-  socket = new WebSocket(wsUrl());
-
-  socket.onopen = () => {
-    console.log('[WS] Conexión establecida con éxito.');
-  };
-
-  socket.onmessage = (event) => {
-    console.log('[WS] Mensaje recibido del servidor:', event.data);
-    try {
-      const data = JSON.parse(event.data);
-      handleIncomingMessage(data);
-    } catch (e) {
-      console.error('[WS] No se pudo parsear el mensaje:', e);
-    }
-  };
-
-  socket.onerror = (error) => {
-    console.error('[WS] Error en la conexión:', error);
-  };
-
-  socket.onclose = () => {
-    console.warn('[WS] Conexión cerrada. Intentando reconectar en 3 segundos...');
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connectWebSocket, 3000);
-  };
-}
-
-function wsSend(type, payload, quiet = false) {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    const messageObject = {
-      type: type,
-      payload: payload,
-      timestamp: Date.now()
-    };
-    socket.send(JSON.stringify(messageObject));
-    if (!quiet) console.log(`[WS Enviado] (${type}):`, payload);
-  } else {
-    if (!quiet) console.error('[WS Error] No se pudo enviar el mensaje: La conexión no está abierta.');
-    connectWebSocket();
-  }
-}
-
-function setServiceStatus(status) {
-  // status: 'off' (red) | 'starting' (yellow) | 'online' (green)
-  const statusDot = document.getElementById('statusDot');
-  if (!statusDot) return;
-  statusDot.classList.remove('starting', 'online');
-  if (status === 'starting') statusDot.classList.add('starting');
-  else if (status === 'online') statusDot.classList.add('online');
-}
-
-// ── Init panel / terminal logging ──
-const initOverlay = document.getElementById('initOverlay');
-const initConsole = document.getElementById('initConsole');
-const terminalLog = document.getElementById('terminalLog');
-
-// Renders ANSI color codes (\x1b[31m, etc.) as colored spans for the web terminal.
-const ANSI_COLORS = {
-  30: '#000000', 31: '#ff5555', 32: '#50fa7b', 33: '#f1fa8c',
-  34: '#8be9fd', 35: '#ff79c6', 36: '#4ad2d2', 37: '#f8f8f2',
-  90: '#777777', 91: '#ff6e6e', 92: '#69ff94', 93: '#ffffa5',
-  94: '#d6acff', 95: '#ff92df', 96: '#a4ffff', 97: '#ffffff'
-};
-
-function ansiToHtml(line) {
-  line = String(line).replace(/\r/g, '');
-  const escaped = line
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-  const re = /\x1b\[([0-9;]*)m/g;
-  let out = '';
-  let cur = null;
-  let last = 0;
-  let m;
-  while ((m = re.exec(escaped)) !== null) {
-    out += escaped.slice(last, m.index);
-    last = re.lastIndex;
-    const seq = m[1] ? m[1].split(';') : ['0'];
-    let next = cur;
-    for (const c of seq) {
-      if (c === '0' || c === '') next = null;
-      else if (c === '38') next = '#FFA500'; // orange used by the codebase
-      else if (ANSI_COLORS[c]) next = ANSI_COLORS[c];
-    }
-    if (next !== cur) {
-      if (cur) out += '</span>';
-      if (next) out += `<span style="color:${next};">`;
-      cur = next;
-    }
-  }
-  out += escaped.slice(last);
-  if (cur) out += '</span>';
-  return out;
-}
-
-function appendLog(line) {
-  const raw = String(line);
-  const html = ansiToHtml(raw);
-  if (terminalLog) {
-    terminalLog.innerHTML += html + '\n';
-    terminalLog.scrollTop = terminalLog.scrollHeight;
-  }
-  if (initOverlay && initOverlay.classList.contains('open') && initConsole) {
-    initConsole.innerHTML += html + '\n';
-    initConsole.scrollTop = initConsole.scrollHeight;
-  }
-  if (raw.indexOf('All requested AI services are online') !== -1) {
-    showInitOk();
-  }
-}
-
-function openInitPanel() {
-  if (initConsole) initConsole.textContent = '';
-  const ok = document.getElementById('initOk');
-  if (ok) ok.classList.remove('visible');
-  initOverlay.classList.add('open');
-}
-
-function showInitOk() {
-  const ok = document.getElementById('initOk');
-  if (ok) ok.classList.add('visible');
-}
-
-function closeInitPanel() {
-  initOverlay.classList.remove('open');
-}
-
-// ── Initialize / Splash screen ──
-const initScreen = document.getElementById('initScreen');
-const splashScreen = document.getElementById('splashScreen');
-
-function hideSplash() {
-  if (!splashScreen || splashScreen.classList.contains('hidden')) return;
-  splashScreen.classList.add('hidden');
-  setTimeout(() => { splashScreen.style.display = 'none'; }, 700);
-}
-
-function startSplash() {
-  if (!splashScreen) return;
-  // Restart the logo tween so it plays from the beginning each time the splash
-  // is shown, even if the user lingered on the initialize screen.
-  const logo = splashScreen.querySelector('img');
-  if (logo) {
-    logo.style.animation = 'none';
-    void logo.offsetWidth;
-    logo.style.animation = '';
-  }
-  if (initScreen) initScreen.classList.add('hidden');
-  // User gesture here lets the browser allow audio playback.
-  const audio = new Audio('/gui/Splash-screen.mp3');
-  let hidden = false;
-  const hideOnce = () => {
-    if (hidden) return;
-    hidden = true;
-    hideSplash();
-  };
-  audio.addEventListener('ended', hideOnce);
-  audio.addEventListener('error', hideOnce);
-  audio.play().catch(() => {
-    // If audio still fails, keep the splash visible for a moment, then move on.
-    setTimeout(hideOnce, 3000);
-  });
-  // Safety net so the splash never lingers forever.
-  setTimeout(hideOnce, 15000);
-}
-
-const btnInitialize = document.getElementById('btnInitialize');
-if (btnInitialize) btnInitialize.addEventListener('click', startSplash);
-if (splashScreen) splashScreen.addEventListener('click', hideSplash);
-
-let stagedMsg = null;
-
-function getOrCreateTypingBubble() {
-  const msgs = document.getElementById('chatMessages');
-  if (!msgs) return null;
-  if (stagedMsg && stagedMsg.isConnected) return stagedMsg;
-  const bubble = document.createElement('div');
-  bubble.className = 'msg ai-msg';
-  const dots = document.createElement('span');
-  dots.className = 'typing-dots';
-  bubble.appendChild(dots);
-  msgs.appendChild(bubble);
-  msgs.scrollTop = msgs.scrollHeight;
-  stagedMsg = bubble;
-  return bubble;
-}
-
-function replaceTypingBubble(text) {
-  const msgs = document.getElementById('chatMessages');
-  if (!msgs) return;
-  if (stagedMsg && stagedMsg.isConnected) {
-    // Replace the typing indicator with the real answer.
-    stagedMsg.textContent = text;
-    stagedMsg = null;
-  } else {
-    const bubble = document.createElement('div');
-    bubble.className = 'msg ai-msg';
-    bubble.textContent = text;
-    msgs.appendChild(bubble);
-  }
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function handleIncomingMessage(data) {
-  if (data.type === 'chat_stage') {
-    const stage = data.payload.stage;
-    if (stage === 'thinking') {
-      // Typing dots bubble + "Generating response" notification.
-      getOrCreateTypingBubble();
-      showToast('Generating response', { busy: true, duration: 0 });
-    } else if (stage === 'voice') {
-      showToast('Generating TTS', { busy: true, duration: 0 });
-    }
-  } else if (data.type === 'chat_response') {
-    replaceTypingBubble(data.payload.text);
-    // If TTS never started, drop the "Generating response" notification now.
-    if (toastMode === 'Generating response') hideToast();
-  } else if (data.type === 'tts_done') {
-    // Voice playback finished -> drop the "Generating TTS" notification.
-    hideToast();
-  } else if (data.type === 'log') {
-    // Server/uvicorn print forwarded to the init console and terminal.
-    appendLog(data.payload.line);
-  } else if (data.type === 'speech_result') {
-    const text = (data.payload.text || '').trim();
-    hideToast();
-    if (text) {
-      sendChatMessage(text);
-    } else {
-      showToast('Could not understand audio. Try again.');
-    }
-  } else if (data.type === 'wake_detected') {
-    showToast('Listening...', { duration: 0 });
-  } else if (data.type === 'status_update') {
-    const running = data.payload.running === true;
-    setServiceStatus(running ? 'online' : 'off');
-    serviceRunning = running;
-    if (data.payload.voice_mode !== undefined) {
-      inputService = data.payload.voice_mode || 'console';
-      updateInputPlaceholder();
-    }
-    // Init finished -> let the user close the panel.
-    if (running) {
-      showInitOk();
-      if (inputService === 'wake_word') startWakeStream();
-      else if (inputService === 'speech') requestMic();
-    } else {
-      releaseMic();
-    }
-  }
-}
-
-connectWebSocket();
-
-// ── Settings sync ──
-let originalSettings = null;
-let themeUserSelected = false;
-
-function loadSettings() {
-  return fetch('/api/settings')
-    .then((res) => res.json())
-    .then((config) => {
-      originalSettings = config;
-      inputService = config.user_input_service || 'console';
-      updateInputPlaceholder();
-      document.querySelectorAll('[data-key]').forEach((el) => {
-        const key = el.dataset.key;
-        if (!(key in config)) return;
-        if (themeUserSelected && key === 'theme') return;
-        const value = config[key];
-        if (el.type === 'checkbox') {
-          el.checked = value === true;
-        } else {
-          el.value = value;
-        }
-      });
-      // Apply the saved appearance settings, but never override a theme the
-      // user has already picked in the dropdown.
-      if (!themeUserSelected) applyTheme(config.theme || 'dark');
-      updateBlur();
-      // Refresh service-dependent grey-out states now that the saved values are
-      // loaded (setting .value programmatically does not fire 'change' events).
-      if (typeof updateTtsDisabled === 'function') updateTtsDisabled();
-      if (typeof updateChatbotDisabled === 'function') updateChatbotDisabled();
-      if (typeof updateSttDisabled === 'function') updateSttDisabled();
-    })
-    .catch((err) => console.error('Failed to load settings', err));
-}
-
-// Apply the selected theme by swapping the stylesheet.
-function applyTheme(name) {
-  const link = document.getElementById('themeStylesheet');
-  if (!link || !name) return;
-  link.href = '/gui/themes/' + name + '.css';
-}
-
-// Live-preview the theme when the dropdown changes.
-const themeSelect = document.querySelector('[data-key="theme"]');
-if (themeSelect) {
-  themeSelect.addEventListener('change', (e) => {
-    applyTheme(e.target.value);
-    themeUserSelected = true;
-  });
-}
-
-// Load the editable text files (personality, TTS instructions, voice design).
-function loadTextFiles() {
-  document.querySelectorAll('[data-file]').forEach((el) => {
-    const name = el.dataset.file;
-    fetch('/api/text/' + name)
-      .then((res) => res.json())
-      .then((data) => { el.value = data.text || ''; })
-      .catch((err) => console.error('Failed to load text file', name, err));
-  });
-}
-
-function saveTextFiles() {
-  document.querySelectorAll('[data-file]').forEach((el) => {
-    const name = el.dataset.file;
-    fetch('/api/text/' + name, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: el.value }),
-    }).catch((err) => console.error('Failed to save text file', name, err));
-  });
-}
-
-// ── Toast notification ──
-let toastTimer = null;
-let toastMode = null; // null | 'response' | 'tts'
-
-function showToast(text, opts = {}) {
-  const toast = document.getElementById('toast');
-  const label = document.getElementById('toastText');
-  if (!toast || !label) return;
-  const { busy = false, duration = 2500 } = opts;
-  toastMode = busy ? text : null;
-  label.textContent = text;
-  toast.classList.toggle('busy', busy);
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  if (duration > 0) {
-    toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
-  }
-}
-
-function hideToast() {
-  toastMode = null;
-  const toast = document.getElementById('toast');
-  if (toast) {
-    toast.classList.remove('show');
-    toast.classList.remove('busy');
-  }
-}
-
-// ── Voice input (speech / wake word) ──
-let inputService = 'console';
-let serviceRunning = false;
-
-let micStream = null;
-let micCtx = null;
-let micSource = null;
-let micProcessor = null;
-let speechActive = false;
-let wakeStreamActive = false;
-
-function updateInputPlaceholder() {
-  const input = document.getElementById('chatInput');
-  if (!input) return;
-  if (inputService === 'speech') {
-    input.disabled = true;
-    input.placeholder = 'Hold Space to talk...';
-  } else if (inputService === 'wake_word') {
-    input.disabled = true;
-    input.placeholder = 'Say the wake word then speak...';
-  } else {
-    input.disabled = false;
-    input.placeholder = 'Type a message... (Alt+Enter for new line)';
-  }
-}
-
-function bytesToBase64(bytes) {
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-async function populateAudioDevices() {
-  const select = document.getElementById('audioDeviceSelect');
-  if (!select) return;
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const inputs = devices.filter(d => d.kind === 'audioinput');
-    const saved = originalSettings?.audio_device || select.value || '';
-    select.innerHTML = '<option value="">System Default</option>';
-    inputs.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d.deviceId;
-      opt.textContent = d.label || `Device ${d.deviceId.slice(0, 8)}`;
-      select.appendChild(opt);
-    });
-    select.value = saved;
-    console.log('[Mic] Device list:', inputs.length, 'input(s)');
-  } catch (err) {
-    console.warn('[Mic] Cannot enumerate devices:', err);
-  }
-}
-
-async function requestMic() {
-  if (micStream) return true;
-  const select = document.getElementById('audioDeviceSelect');
-  const deviceId = select?.value || '';
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia(
-      deviceId ? { audio: { deviceId: { exact: deviceId } } } : { audio: true }
-    );
-    const track = micStream.getAudioTracks()[0];
-    console.log('[Mic] Using:', track?.label, '| muted:', track?.muted, '| enabled:', track?.enabled);
-    return true;
-  } catch (err) {
-    console.warn('[Mic] Access denied or device unavailable:', err);
-    showToast('Microphone access denied');
-    return false;
-  }
-}
-
-function ensureAudioContext() {
-  // Browsers gate audio on a user gesture: create/resume the context while the
-  // key press / click is being handled, or onaudioprocess never fires and no
-  // audio is sent to the server.
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return false;
-  if (!micCtx) {
-    try {
-      micCtx = new AC({ sampleRate: 16000 });
-    } catch (err) {
-      micCtx = new AC();
-    }
-  }
-  if (micCtx.state === 'suspended') micCtx.resume();
-  return !!micCtx;
-}
-
-function startAudioProcessor(onChunk) {
-  if (!micStream || micProcessor) return null;
-  if (!ensureAudioContext()) return null;
-  if (micCtx.state === 'suspended') {
-    // Safety net: resume on the next interaction if a browser ignored us.
-    const resumeOnGesture = () => {
-      if (micCtx && micCtx.state === 'suspended') micCtx.resume();
-    };
-    document.addEventListener('pointerdown', resumeOnGesture, { once: true });
-    document.addEventListener('keydown', resumeOnGesture, { once: true });
-  }
-  micSource = micCtx.createMediaStreamSource(micStream);
-  micProcessor = micCtx.createScriptProcessor(4096, 1, 1);
-  // Keep the graph running (so onaudioprocess fires) without audible feedback.
-  const mute = micCtx.createGain();
-  mute.gain.value = 0;
-  micProcessor.onaudioprocess = (e) => {
-    const input = e.inputBuffer.getChannelData(0);
-    const int16 = new Int16Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      const s = Math.max(-1, Math.min(1, input[i]));
-      int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-    }
-    onChunk(new Uint8Array(int16.buffer));
-  };
-  micSource.connect(micProcessor);
-  micProcessor.connect(mute);
-  mute.connect(micCtx.destination);
-  return micCtx.sampleRate || 16000;
-}
-
-function stopAudioProcessor() {
-  if (micProcessor) {
-    try { micProcessor.disconnect(); } catch (e) {}
-    micProcessor = null;
-  }
-  if (micSource) {
-    try { micSource.disconnect(); } catch (e) {}
-    micSource = null;
-  }
-}
-
-function releaseMic() {
-  speechActive = false;
-  wakeStreamActive = false;
-  stopAudioProcessor();
-  if (micStream) {
-    micStream.getTracks().forEach((t) => t.stop());
-    micStream = null;
-  }
-  if (micCtx) {
-    micCtx.close().catch(() => {});
-    micCtx = null;
-  }
-}
-
-function setRecordingVisual(on) {
-  const input = document.getElementById('chatInput');
-  if (!input) return;
-  input.style.borderColor = on ? 'var(--accent)' : '';
-  if (on) input.placeholder = 'Listening... release Space to send';
-  else updateInputPlaceholder();
-}
-
-async function startPushToTalk() {
-  if (speechActive) return;
-  ensureAudioContext();
-  const ok = await requestMic();
-  if (!ok) return;
-  populateAudioDevices();
-  speechActive = true;
-  setRecordingVisual(true);
-  const rate = startAudioProcessor((pcm) => {
-    if (speechActive) wsSend('mic', { event: 'audio', data: bytesToBase64(pcm) }, true);
-  });
-  wsSend('mic', { event: 'init', rate: rate || 16000 });
-  wsSend('mic', { event: 'start' });
-}
-
-function stopPushToTalk() {
-  if (!speechActive) return;
-  speechActive = false;
-  setRecordingVisual(false);
-  stopAudioProcessor();
-  wsSend('mic', { event: 'stop' });
-}
-
-async function startWakeStream() {
-  if (wakeStreamActive) return;
-  ensureAudioContext();
-  const ok = await requestMic();
-  if (!ok) return;
-  wakeStreamActive = true;
-  const rate = startAudioProcessor((pcm) => {
-    if (!wakeStreamActive) return;
-    wsSend('mic', { event: 'audio', data: bytesToBase64(pcm) }, true);
-  });
-  wsSend('mic', { event: 'init', rate: rate || 16000 });
-}
-
-function stopWakeStream() {
-  wakeStreamActive = false;
-  stopAudioProcessor();
-}
-
-function ensureVoiceStreamStarted() {
-  if (inputService === 'wake_word' && serviceRunning && !wakeStreamActive) {
-    startWakeStream();
-  }
-}
-
-// ── Push-to-talk: hold Space to talk ──
-document.addEventListener('keydown', (e) => {
-  if (e.key !== ' ' || e.repeat) return;
-  if (inputService !== 'speech' || !serviceRunning) return;
-  const t = document.activeElement;
-  if (t && t !== document.body && t.id !== 'chatInput') return;
-  const chatInputEl = document.getElementById('chatInput');
-  if (t === chatInputEl && chatInputEl.value.trim().length > 0) return;
-  e.preventDefault();
-  startPushToTalk();
-});
-
-document.addEventListener('keyup', (e) => {
-  if (e.key !== ' ') return;
-  if (speechActive) {
-    e.preventDefault();
-    stopPushToTalk();
-  }
-});
-
-// Stop a stuck push-to-talk if the window loses focus while recording.
-window.addEventListener('blur', () => {
-  if (speechActive) stopPushToTalk();
-});
-
-document.addEventListener('pointerdown', ensureVoiceStreamStarted);
-
-const inputServiceSelect = document.querySelector('[data-key="user_input_service"]');
-if (inputServiceSelect) {
-  inputServiceSelect.addEventListener('change', () => {
-    inputService = inputServiceSelect.value;
-    updateInputPlaceholder();
-  });
-}
-
-function collectChangedSettings() {
-  // Only keys that exist in the backend config AND differ get sent on Apply.
-  const diff = {};
-  document.querySelectorAll('[data-key]').forEach((el) => {
-    const key = el.dataset.key;
-    if (originalSettings === null || !(key in originalSettings)) return;
-    const value = el.type === 'checkbox'
-      ? el.checked
-      : el.type === 'number'
-        ? parseFloat(el.value)
-        : el.value;
-    if (originalSettings[key] !== value) diff[key] = value;
-  });
-  return diff;
-}
-
-function applySettings() {
-  const diff = collectChangedSettings();
-  console.log('[POST] /api/settings', diff);
-  fetch('/api/settings', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(diff),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      originalSettings = data.config;
-      if (data.config && data.config.user_input_service) {
-        inputService = data.config.user_input_service;
-        updateInputPlaceholder();
-      }
-      console.log('[POST] settings saved', data.config);
-    })
-    .catch((err) => console.error('Failed to apply settings', err));
-}
-
-//#########################
-//  BUTTONS
-//#########################
-function refreshStatus() {
-  fetch('/api/status')
-    .then((res) => res.json())
-    .then((data) => {
-      const running = data.running === true;
-      serviceRunning = running;
-      if (data.voice_mode !== undefined) {
-        inputService = data.voice_mode || 'console';
-        updateInputPlaceholder();
-      }
-      setServiceStatus(running ? 'online' : 'off');
-      if (running && inputService === 'wake_word') startWakeStream();
-      else if (running && inputService === 'speech') requestMic();
-      else if (!running) releaseMic();
-    })
-    .catch(() => setServiceStatus('off'));
-}
-
-document.getElementById('btnStart').addEventListener('click', () => {
-  console.log('[WS] POST /api/start');
-  setServiceStatus('starting');
-  openInitPanel();
-  wsSend('start', {});
-});
-
-document.getElementById('btnStop').addEventListener('click', () => {
-  console.log('[WS] POST /api/stop');
-  setServiceStatus('off');
-  wsSend('stop', {});
-});
-
-// ── Terminal toggle ──
-const btnTerminal = document.getElementById('btnTerminal');
-const terminalPanel = document.getElementById('terminalPanel');
-
-btnTerminal.addEventListener('click', () => {
-  const visible = terminalPanel.classList.toggle('visible');
-  btnTerminal.classList.toggle('active', visible);
-});
-
-document.getElementById('terminalClear').addEventListener('click', () => {
-  if (terminalLog) terminalLog.textContent = '';
-});
-
-// ── Init panel OK button ──
-document.getElementById('initOk').addEventListener('click', closeInitPanel);
-
-document.getElementById('btnSettings').addEventListener('click', () => {
-  activateSettingsTab('appearance');
-  document.getElementById('settingsOverlay').classList.add('open');
-  loadSettings().then(() => {
-    loadTextFiles();
-    populateAudioDevices();
-  });
-});
-
-document.getElementById('refreshDevicesBtn').addEventListener('click', (e) => {
-  e.preventDefault();
-  populateAudioDevices();
-});
-
-document.querySelectorAll('.browse-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const type = btn.dataset.type || 'file';
-    const ext = btn.dataset.ext || '';
-    const input = btn.parentElement.querySelector('input[type="text"]');
-    fetch('/api/browse?type=' + encodeURIComponent(type) + '&ext=' + encodeURIComponent(ext))
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.path && input) input.value = data.path;
-      })
-      .catch((err) => console.error('Browse failed', err));
-  });
-});
-
-document.getElementById('settingsClose').addEventListener('click', () => {
-  document.getElementById('settingsOverlay').classList.remove('open');
-});
-
-document.getElementById('settingsOverlay').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) {
-    document.getElementById('settingsOverlay').classList.remove('open');
-  }
-});
-
-document.getElementById('settingsApply').addEventListener('click', () => {
-  applySettings();
-  saveTextFiles();
-  document.getElementById('settingsOverlay').classList.remove('open');
-  showToast('Settings Applied');
-  try {
-    new Audio('/gui/notif.mp3').play();
-  } catch (e) { /* audio not available */ }
-});
-
-// ── Warning modal ──
-function showWarning(message, okText) {
-  const text = document.getElementById('warningText');
-  const ok = document.getElementById('warningOk');
-  if (text) text.textContent = message;
-  if (ok) ok.textContent = okText || 'Ok';
-  const overlay = document.getElementById('warningOverlay');
-  if (overlay) overlay.classList.add('open');
-}
-
-const warningOverlay = document.getElementById('warningOverlay');
-if (warningOverlay) {
-  const ok = document.getElementById('warningOk');
-  if (ok) ok.addEventListener('click', () => warningOverlay.classList.remove('open'));
-  warningOverlay.addEventListener('click', (e) => {
-    if (e.target === warningOverlay) warningOverlay.classList.remove('open');
-  });
-}
-
-// ── TTS service conditional disabling ──
-const ttsService = document.querySelector('#tab-tts select');
-const ttsLabels = document.querySelectorAll('#tab-tts label');
-
-function updateTtsDisabled() {
-  const val = ttsService.value;
-  ttsLabels.forEach((label, i) => {
-    if (i === 0) return;
-    if (val === 'gtts' && i === 1) { label.classList.remove('disabled'); }
-    else if (val === 'gtts') { label.classList.add('disabled'); }
-    else if (val === 'openai' && (i === 2 || i === 3 || i === 4 || i === 5 || i === 6)) { label.classList.add('disabled'); }
-    else if (val === 'pockettts' && i === 6) { label.classList.add('disabled'); }
-    else { label.classList.remove('disabled'); }
-  });
-}
-
-if (ttsService) {
-  ttsService.addEventListener('change', updateTtsDisabled);
-  updateTtsDisabled();
-}
-
-// ── Wake word threshold display ──
-const wakeThreshold = document.getElementById('wakeThreshold');
-const wakeThresholdVal = document.getElementById('wakeThresholdVal');
-if (wakeThreshold) {
-  wakeThreshold.addEventListener('input', () => {
-    wakeThresholdVal.textContent = parseFloat(wakeThreshold.value).toFixed(2);
-  });
-}
-
-// ── Chatbot service conditional disabling ──
-const chatbotService = document.querySelectorAll('#tab-chatbot select')[1];
-const chatbotLabels = document.querySelectorAll('#tab-chatbot label');
-
-function updateChatbotDisabled() {
-  const val = chatbotService.value;
-  chatbotLabels.forEach((label, i) => {
-    if (i === 0 || i === 1) return;
-    if (val === 'openai' && i === 4) { label.classList.add('disabled'); }
-    else if (val === 'test' && (i === 3 || i === 4)) { label.classList.add('disabled'); }
-    else { label.classList.remove('disabled'); }
-  });
-}
-
-if (chatbotService) {
-  chatbotService.addEventListener('change', updateChatbotDisabled);
-  updateChatbotDisabled();
-}
-
-// ── STT service conditional disabling ──
-const sttService = document.querySelector('#tab-stt select');
-const sttLabels = document.querySelectorAll('#tab-stt label');
-
-function updateSttDisabled() {
-  const val = sttService.value;
-  sttLabels.forEach((label, i) => {
-    if (i === 0) return;
-    if (val === 'google' && i !== 3) { label.classList.add('disabled'); }
-    else { label.classList.remove('disabled'); }
-  });
-}
-
-if (sttService) {
-  sttService.addEventListener('change', updateSttDisabled);
-  updateSttDisabled();
-}
-
-function activateSettingsTab(name) {
-  document.querySelectorAll('.settings-tabs .tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  const t = document.querySelector('.settings-tabs .tab[data-tab="' + name + '"]');
-  if (t) t.classList.add('active');
-  const c = document.getElementById('tab-' + name);
-  if (c) c.classList.add('active');
-}
-
-document.querySelectorAll('.settings-tabs .tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    // While AI services are running, only the appearance tab is editable.
-    if (serviceRunning && tab.dataset.tab !== 'appearance') {
-      showWarning('You can only change these settings when AI services are not running', 'Ok');
-      activateSettingsTab('appearance');
-      return;
-    }
-    activateSettingsTab(tab.dataset.tab);
-  });
-});
-
-document.getElementById('btnGithub').addEventListener('click', () => {
-  window.open('https://github.com/tyebgat/nous-intelligence', '_blank');
-});
-
-// ── Clear chat ──
-document.getElementById('btnClearChat').addEventListener('click', () => {
-  const msgs = document.getElementById('chatMessages');
-  if (!msgs) return;
-  msgs.innerHTML = '';
-  const ph = document.createElement('div');
-  ph.className = 'placeholder';
-  ph.textContent = 'Start the service and send a message to begin chatting.';
-  msgs.appendChild(ph);
-  stagedMsg = null;
-  hideToast();
-});
-
-function sendChatMessage(msg) {
-  msg = String(msg || '').trim();
-  if (!msg) return;
-
-  console.log(`[WS] chat message: "${msg}"`);
-  wsSend('chat', { message: msg });
-
-  const msgs = document.getElementById('chatMessages');
-  msgs.querySelector('.placeholder')?.remove();
-
-  const bubble = document.createElement('div');
-  bubble.style.cssText = 'align-self:flex-end;background:var(--panel);color:var(--text);padding:10px 14px;border-radius:14px 14px 4px 14px;max-width:80%;word-wrap:break-word;white-space:pre-wrap;font-size:14px;';
-  bubble.textContent = msg;
-  msgs.appendChild(bubble);
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-document.getElementById('btnSend').addEventListener('click', () => {
-  const input = document.getElementById('chatInput');
-  sendChatMessage(input.value);
-  input.value = '';
-});
-
-document.getElementById('chatInput').addEventListener('keydown', (e) => {
-  // Enter sends; Alt+Enter (or Shift+Enter) inserts a new line.
-  if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
-    e.preventDefault();
-    document.getElementById('btnSend').click();
-  }
-});
-
-// Set the status dot from the server on page load.
-refreshStatus();
-</script>
+<script src="/gui/js/toast.js"></script>
+<script src="/gui/js/i18n.js"></script>
+<script src="/gui/js/websocket.js"></script>
+<script src="/gui/js/terminal.js"></script>
+<script src="/gui/js/camera.js"></script>
+<script src="/gui/js/chat.js"></script>
+<script src="/gui/js/voice.js"></script>
+<script src="/gui/js/settings.js"></script>
+<script src="/gui/js/app.js"></script>
 
 </body>
 </html>

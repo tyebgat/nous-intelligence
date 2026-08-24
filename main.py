@@ -39,6 +39,7 @@ async def main():
             chatbot_name = config.get("chatbot_name", "Nous")
             remember_conversation = config.get("remember_conversation", False)
             model_dir = config.get("model_dir", "")
+            llama_server_device = config.get("llama_server_device", "cuda")
 
             # ---- tts settings
             tts_language = config.get("tts_language", "en")
@@ -94,6 +95,7 @@ async def main():
         chatbot_name = "Nous"
         remember_conversation = False
         model_dir = ""
+        llama_server_device = "cuda"
 
         # --- tts settings ---
         tts_language = "en"
@@ -149,7 +151,7 @@ async def main():
     chat_bot.initialize()
     
     #LLama server
-    local_server = RunLocalServer(show_ollama_server_logs, model_dir)
+    local_server = RunLocalServer(show_ollama_server_logs, model_dir, llama_server_device)
 
     #user input
     user_input = UserInput(

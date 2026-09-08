@@ -218,6 +218,7 @@ fetch('/api/settings').then(r => r.json()).then(c => {
         <label data-tip-i18n="tip_remember_conversation"><span data-i18n="lbl_remember_conversation">Remember Conversation</span> <input type="checkbox" data-key="remember_conversation"/></label>
         <label data-tip-i18n="tip_model_dir"><span data-i18n="lbl_model_dir">Model Directory</span> <span class="path-row"><input type="text" data-key="model_dir" placeholder="path to model"/><button type="button" class="browse-btn" data-for="model_dir" data-type="file" data-ext="gguf">...</button></span></label>
         <label data-tip-i18n="tip_llama_server_device"><span data-i18n="lbl_llama_server_device">Llama Server Device</span> <select data-key="llama_server_device"><option>cpu</option><option>cuda</option></select></label>
+        <label data-tip-i18n="tip_llama_ctx_size"><span data-i18n="lbl_llama_ctx_size">Llama Context Size</span> <input type="number" min="512" step="512" data-key="llama_ctx_size" value="4096"/></label>
         <label class="textarea-field" data-tip-i18n="tip_personality"><span data-i18n="lbl_personality">Personality</span>
           <textarea data-file="personality" placeholder="personality.txt content"></textarea>
         </label>

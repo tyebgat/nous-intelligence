@@ -75,6 +75,9 @@ async def main():
             stt_language = config.get("stt_language", "en")
             silence_duration = config.get("silence_duration", 1.5)
 
+            # --- llama server ---
+            llama_ctx_size = config.get("llama_ctx_size", 4096)
+
             # --- logs ---
             detailed_logs = config.get("logs", True)
             print_audio_devices = config.get("print_audio_devices", False)
@@ -132,6 +135,9 @@ async def main():
         stt_language = "en"
         silence_duration = 1.5
 
+        # --- llama server ---
+        llama_ctx_size = 4096
+
         # --- logs settings ---
         detailed_logs = True
         print_audio_devices = False
@@ -153,7 +159,10 @@ async def main():
     chat_bot.initialize()
     
     #LLama server
-    local_server = RunLocalServer(show_ollama_server_logs, model_dir, llama_server_device)
+    local_server = RunLocalServer(
+        show_ollama_server_logs, model_dir, llama_server_device,
+        ctx_size=llama_ctx_size
+    )
 
     #user input
     user_input = UserInput(
@@ -188,28 +197,43 @@ async def main():
         gain=gain
     )
 
-    #----------------------
-    #START VTS PLUGINS
-    #----------------------
-    try:
-        print(f'{YELLOW}Intializing Plugin...{RESET}')
-        await vts.initialize()
-        print(f'{GREEN}done.{RESET}')
+    #------------------------------------------------------------------
+    # START ALL SERVICES IN PARALLEL
+    #------------------------------------------------------------------
+    # The local llama server takes the longest (loading the model into RAM),
+    # so it is spawned as a background task while VTS, TTS, wake word and
+    # whisper initialize at the same time instead of serially after it.
+    #------------------------------------------------------------------
 
-    #if gone wrong then print out an error
-    except Exception as e:
-        print(f"{RED}Failed to start VTube Studio plugin. Is it open?: {e}{RESET}")
+    async def _init_vts():
+        #----------------------
+        #START VTS PLUGINS
+        #----------------------
+        try:
+            print(f'{YELLOW}Intializing Plugin...{RESET}')
+            await vts.initialize()
+            print(f'{GREEN}done.{RESET}')
+        #if gone wrong then print out an error
+        except Exception as e:
+            print(f"{RED}Failed to start VTube Studio plugin. Is it open?: {e}{RESET}")
 
-    #----------------------
-    #START LLAMA SERVER 
-    #----------------------
-    if chatbot_service == "local":
+    async def _start_llm():
+        #----------------------
+        #START LLAMA SERVER
+        #----------------------
+        if chatbot_service != "local":
+            return
         try:
             print(f"{YELLOW}Initializing local Llama server{RESET}")
-            await local_server.launch_server(timeout=30)
+            # Longer timeout: it no longer blocks the other services, so we
+            # can afford to wait longer for the model to load.
+            await local_server.launch_server(timeout=60)
             print(f"{GREEN}Local server running{RESET}")
         except Exception as e:
             print(f"{RED}Failed to start local llama server: {e}{RESET}")
+
+    vts_task = asyncio.create_task(_init_vts())
+    llm_task = asyncio.create_task(_start_llm())
 
     #IA.py
     ai = Nous(
@@ -222,7 +246,9 @@ async def main():
     )
 
     print(f"{YELLOW}Initializing nous...{RESET}")
-    ai.initialize(mic_index=None)
+    # Runs TTS.initialize + ChatBot.initialize + mic setup; block on it in a
+    # thread so the llama server and VTS keep loading in the background.
+    await asyncio.to_thread(ai.initialize, None)
     print(f"{GREEN}Nous initialized.{RESET}")
 
     #--- initialize wake word + whisper STT ---
@@ -235,6 +261,10 @@ async def main():
         print(f"{YELLOW}Loading Whisper STT model...{RESET}")
         user_input.setup_whisper()
         print(f"{GREEN}Whisper STT model loaded.{RESET}")
+
+    # Wait for the background services (VTS connect + llama model load).
+    await vts_task
+    await llm_task
 
     try:
         ai_task = asyncio.create_task(ai.conversation_cycle())

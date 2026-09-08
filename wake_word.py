@@ -1,7 +1,3 @@
-import sounddevice as sd
-import soundfile as sf
-import openwakeword
-from openwakeword.model import Model as OwwModel
 import pyaudio
 import numpy as np
 import os
@@ -58,6 +54,7 @@ class WakeWordListener:
         resources folder. Used by the CLI (main.py); the GUI always passes a
         full existing path so this simply returns it unchanged.
         """
+        import openwakeword
         path = self.model_path
         if os.path.isfile(path):
             return path
@@ -104,6 +101,8 @@ class WakeWordListener:
         return False
 
     def load_model(self) -> None:
+        from openwakeword.model import Model as OwwModel
+        import openwakeword
         try:
             oww_dir = os.path.join(os.path.dirname(openwakeword.__file__), "resources", "models")
             if not os.path.isdir(oww_dir) or not os.path.exists(os.path.join(oww_dir, "melspectrogram.onnx")):
@@ -201,6 +200,8 @@ class WakeWordListener:
         return frames
 
     def play_confirm_sound(self) -> None:
+        import sounddevice as sd
+        import soundfile as sf
         try:
             sound_path = os.path.join(os.path.dirname(__file__), "Data", "confirm_beep.wav")
             if os.path.exists(sound_path):

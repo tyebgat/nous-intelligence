@@ -8,9 +8,6 @@ import keyboard
 import time
 import os
 
-from wake_word import WakeWordListener
-from local_stt import LocalSTT
-
 RED = '\033[31m'
 GREEN = '\033[32m'
 YELLOW = '\033[33m'
@@ -35,6 +32,8 @@ class UserInput:
     ) -> None:
         self.user_input_service = user_input_service
         self.stt_service = stt_service
+        self.stt_device = stt_device
+        self.stt_compute_type = stt_compute_type
         self.stt_language = stt_language
         self.detailed_logs = detailed_logs
         self.app_language = app_language
@@ -56,20 +55,29 @@ class UserInput:
         # Give up if the user says nothing after the wake word (safety net).
         self.max_wait_no_speech = 8.0
 
-        self.wake_word = WakeWordListener(
-            model_path=wake_word_model_path,
-            threshold=wake_word_threshold,
-            confirm_sound=wake_word_confirm_sound,
-            silence_duration=silence_duration,
-            detailed_logs=detailed_logs,
-        )
+        # Heavy sub-components (openwakeword / faster-whisper pull in big
+        # runtimes) are only imported lazily when the configured service
+        # actually needs them, keeping cold startup fast.
+        self.wake_word = None
+        if user_input_service == "wake_word":
+            from wake_word import WakeWordListener
+            self.wake_word = WakeWordListener(
+                model_path=wake_word_model_path,
+                threshold=wake_word_threshold,
+                confirm_sound=wake_word_confirm_sound,
+                silence_duration=silence_duration,
+                detailed_logs=detailed_logs,
+            )
 
-        self.local_stt = LocalSTT(
-            device=stt_device,
-            compute_type=stt_compute_type,
-            language=stt_language,
-            detailed_logs=detailed_logs,
-        )
+        self.local_stt = None
+        if stt_service == "whisper":
+            from local_stt import LocalSTT
+            self.local_stt = LocalSTT(
+                device=stt_device,
+                compute_type=stt_compute_type,
+                language=stt_language,
+                detailed_logs=detailed_logs,
+            )
 
     def setup_mic(self, mic_index: int = None) -> None:
         self.mic = sr.Microphone(device_index=mic_index)
@@ -78,10 +86,14 @@ class UserInput:
     def setup_wake_word(self) -> None:
         if self.user_input_service != "wake_word":
             return
+        if self.wake_word is None:
+            return
         self.wake_word.load_model()
 
     def setup_whisper(self) -> None:
         if self.stt_service != "whisper":
+            return
+        if self.local_stt is None:
             return
         self.local_stt.load_model()
 
@@ -204,6 +216,14 @@ class UserInput:
         if not frames:
             return ""
         if self.stt_service == "whisper":
+            if self.local_stt is None:
+                from local_stt import LocalSTT
+                self.local_stt = LocalSTT(
+                    device=self.stt_device,
+                    compute_type=self.stt_compute_type,
+                    language=self.stt_language,
+                    detailed_logs=self.detailed_logs,
+                )
             if self.local_stt._model is None:
                 self.setup_whisper()
             return self.local_stt.transcribe(frames, vad_filter=vad_filter)
@@ -240,8 +260,10 @@ class UserInput:
         self.listening = False
         self._utterance_buffer = []
         self._listen_buffer = b""
-        self.wake_word.cleanup()
-        self.local_stt.cleanup()
+        if self.wake_word is not None:
+            self.wake_word.cleanup()
+        if self.local_stt is not None:
+            self.local_stt.cleanup()
         if self.audio:
             self.audio.terminate()
             self.audio = None

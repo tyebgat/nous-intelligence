@@ -734,7 +734,13 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
 
 
 async def _initialize() -> None:
-    """Build ChatBot, TTS, VTS and the local LLM server from settings.json."""
+    """Build ChatBot, TTS, VTS and the local LLM server from settings.json.
+
+    Every component initializes concurrently (asyncio.gather) instead of one
+    after the other. The local LLM takes the longest (loading the model into
+    RAM), so starting it together with everything else turns the wall time
+    from the *sum* of the stages into roughly the *longest* single stage.
+    """
     async with state.lock:
         if state.running:
             return
@@ -742,116 +748,129 @@ async def _initialize() -> None:
         config = state.config if state.config else load_settings()
         _log(f"{YELLOW}{i18n.t('start_services')}{RESET}")
 
-        try:
-            # 1. ChatBot
-            if "ChatBot" in globals() and ChatBot is not None:
-                try:
-                    service = config.get("chatbot_service", "openai")
-                    _log(f"{YELLOW}{i18n.t('init_chatbot', service=service)}{RESET}")
-                    state.chat_bot = ChatBot(
-                        chat_bot_service=service,
-                        openai_model=config.get("openai_model", "gpt-4o-mini"),
-                        detailed_logs=config.get("logs", True),
-                        model_path=config.get("model_dir", ""),
-                        remember_conversation=config.get("remember_conversation", False)
-                    )
-                    await asyncio.to_thread(state.chat_bot.initialize)
-                    _log(f"{GREEN}{i18n.t('chatbot_ok')}{RESET}")
-                except Exception as e:
-                    _log(f"{RED}{i18n.t('chatbot_fail', e=e)}{RESET}")
-                    state.chat_bot = None
+        async def _init_chatbot():
+            if "ChatBot" not in globals() or ChatBot is None:
+                return
+            try:
+                service = config.get("chatbot_service", "openai")
+                _log(f"{YELLOW}{i18n.t('init_chatbot', service=service)}{RESET}")
+                state.chat_bot = ChatBot(
+                    chat_bot_service=service,
+                    openai_model=config.get("openai_model", "gpt-4o-mini"),
+                    detailed_logs=config.get("logs", True),
+                    model_path=config.get("model_dir", ""),
+                    remember_conversation=config.get("remember_conversation", False)
+                )
+                await asyncio.to_thread(state.chat_bot.initialize)
+                _log(f"{GREEN}{i18n.t('chatbot_ok')}{RESET}")
+            except Exception as e:
+                _log(f"{RED}{i18n.t('chatbot_fail', e=e)}{RESET}")
+                state.chat_bot = None
 
-            # 2. Local LLM Server (only needed for the "local" chatbot service)
+        async def _init_llm():
             if (
-                config.get("chatbot_service", "openai") == "local"
-                and "RunLocalServer" in globals()
-                and RunLocalServer is not None
+                config.get("chatbot_service", "openai") != "local"
+                or "RunLocalServer" not in globals()
+                or RunLocalServer is None
             ):
-                try:
-                    _log(f"{YELLOW}{i18n.t('start_llm')}{RESET}")
-                    state.local_server = RunLocalServer(
-                        config.get("show_ollama_server_logs", False),
-                        config.get("model_dir", ""),
-                        config.get("llama_server_device", "cuda")
-                    )
-                    await state.local_server.launch_server(timeout=30)
-                    _log(f"{GREEN}{i18n.t('llm_ok')}{RESET}")
-                except Exception as e:
-                    _log(f"{RED}{i18n.t('llm_fail', e=e)}{RESET}")
-                    state.local_server = None
+                return
+            try:
+                _log(f"{YELLOW}{i18n.t('start_llm')}{RESET}")
+                state.local_server = RunLocalServer(
+                    config.get("show_ollama_server_logs", False),
+                    config.get("model_dir", ""),
+                    config.get("llama_server_device", "cuda"),
+                    ctx_size=config.get("llama_ctx_size", 4096)
+                )
+                # Bumped timeout: it no longer blocks the other services, so
+                # we can afford to wait longer for the model to load.
+                await state.local_server.launch_server(timeout=60)
+                _log(f"{GREEN}{i18n.t('llm_ok')}{RESET}")
+            except Exception as e:
+                _log(f"{RED}{i18n.t('llm_fail', e=e)}{RESET}")
+                state.local_server = None
 
-            # 3. TTS Engine
-            if "TTS" in globals() and TTS is not None:
-                try:
-                    service = config.get("tts_service", "gtts")
-                    _log(f"{YELLOW}{i18n.t('init_tts', service=service)}{RESET}")
-                    state.tts = TTS(
-                        tts_language=config.get("tts_language", "en"),
-                        tts_service=service,
-                        chatbot_name=config.get("chatbot_name", "Nous"),
-                        openai_tts_model=config.get("openai_tts_model", "gpt-4o-mini-tts"),
-                        openai_tts_voice=config.get("openai_tts_voice", "ash"),
-                        tts_voice=config.get("tts_voice", "ash"),
-                        tts_speed=config.get("tts_speed", 1.0),
-                        voice_cloning=config.get("voice_cloning", False),
-                        voice_design=config.get("voice_design", False),
-                        reference_wav=config.get("reference_wav", "Data/reference.wav"),
-                        omnivoice_device=config.get("omnivoice_device", "cuda"),
-                        detailed_logs=config.get("logs", True),
-                        play_only_cable=config.get("play_only_cable", False),
-                        gain=config.get("gain", 1.0)
-                    )
-                    await asyncio.to_thread(state.tts.initialize)
-                    _log(f"{GREEN}{i18n.t('tts_ok')}{RESET}")
-                except Exception as e:
-                    _log(f"{RED}{i18n.t('tts_fail', e=e)}{RESET}")
-                    state.tts = None
+        async def _init_tts():
+            if "TTS" not in globals() or TTS is None:
+                return
+            try:
+                service = config.get("tts_service", "gtts")
+                _log(f"{YELLOW}{i18n.t('init_tts', service=service)}{RESET}")
+                state.tts = TTS(
+                    tts_language=config.get("tts_language", "en"),
+                    tts_service=service,
+                    chatbot_name=config.get("chatbot_name", "Nous"),
+                    openai_tts_model=config.get("openai_tts_model", "gpt-4o-mini-tts"),
+                    openai_tts_voice=config.get("openai_tts_voice", "ash"),
+                    tts_voice=config.get("tts_voice", "ash"),
+                    tts_speed=config.get("tts_speed", 1.0),
+                    voice_cloning=config.get("voice_cloning", False),
+                    voice_design=config.get("voice_design", False),
+                    reference_wav=config.get("reference_wav", "Data/reference.wav"),
+                    omnivoice_device=config.get("omnivoice_device", "cuda"),
+                    detailed_logs=config.get("logs", True),
+                    play_only_cable=config.get("play_only_cable", False),
+                    gain=config.get("gain", 1.0)
+                )
+                await asyncio.to_thread(state.tts.initialize)
+                _log(f"{GREEN}{i18n.t('tts_ok')}{RESET}")
+            except Exception as e:
+                _log(f"{RED}{i18n.t('tts_fail', e=e)}{RESET}")
+                state.tts = None
 
-            # 4. VTube Studio Plugin
-            if "VtubeControll" in globals() and VtubeControll is not None:
-                try:
-                    _log(f"{YELLOW}{i18n.t('connecting_vts')}{RESET}")
-                    state.vts = VtubeControll(
-                        detailed_logs=config.get("logs", True),
-                        log_callback=_log
-                    )
-                    await state.vts.initialize()
-                    _log(f"{GREEN}{i18n.t('vts_ok')}{RESET}")
-                except Exception as e:
-                    _log(f"{RED}{i18n.t('vts_fail', e=e)}{RESET}")
-                    state.vts = None
+        async def _init_vts():
+            if "VtubeControll" not in globals() or VtubeControll is None:
+                return
+            try:
+                _log(f"{YELLOW}{i18n.t('connecting_vts')}{RESET}")
+                state.vts = VtubeControll(
+                    detailed_logs=config.get("logs", True),
+                    log_callback=_log
+                )
+                await state.vts.initialize()
+                _log(f"{GREEN}{i18n.t('vts_ok')}{RESET}")
+            except Exception as e:
+                _log(f"{RED}{i18n.t('vts_fail', e=e)}{RESET}")
+                state.vts = None
 
-            # 5. Voice input (speech / wake word)
-            if "UserInput" in globals() and UserInput is not None:
-                try:
-                    ui_service = config.get("user_input_service", "console")
-                    if ui_service in ("speech", "wake_word"):
-                        _log(f"{YELLOW}{i18n.t('init_voice', service=ui_service)}{RESET}")
-                        state.user_input = UserInput(
-                            user_input_service=ui_service,
-                            detailed_logs=config.get("logs", True),
-                            app_language=config.get("app_language", "english"),
-                            wake_word_model_path=os.path.join(
-                                BASE_PATH,
-                                config.get("wake_word_model", "models/openwakeword/hey_jarvis_v0.1.onnx"),
-                            ),
-                            wake_word_threshold=config.get("wake_word_threshold", 0.5),
-                            wake_word_confirm_sound=config.get("wake_word_confirm_sound", True),
-                            stt_service=config.get("stt_service", "whisper"),
-                            stt_device=config.get("stt_device", "cpu"),
-                            stt_compute_type=config.get("stt_compute_type", "int8"),
-                            stt_language=config.get("stt_language", "en"),
-                            silence_duration=config.get("silence_duration", 1.5),
-                        )
-                        if ui_service == "wake_word":
-                            await asyncio.to_thread(state.user_input.setup_wake_word)
-                        if config.get("stt_service", "whisper") == "whisper":
-                            await asyncio.to_thread(state.user_input.setup_whisper)
-                        _log(f"{GREEN}{i18n.t('voice_ok')}{RESET}")
-                except Exception as e:
-                    _log(f"{RED}{i18n.t('voice_fail', e=e)}{RESET}")
-                    state.user_input = None
+        async def _init_voice():
+            if "UserInput" not in globals() or UserInput is None:
+                return
+            ui_service = config.get("user_input_service", "console")
+            if ui_service not in ("speech", "wake_word"):
+                return
+            try:
+                _log(f"{YELLOW}{i18n.t('init_voice', service=ui_service)}{RESET}")
+                state.user_input = UserInput(
+                    user_input_service=ui_service,
+                    detailed_logs=config.get("logs", True),
+                    app_language=config.get("app_language", "english"),
+                    wake_word_model_path=os.path.join(
+                        BASE_PATH,
+                        config.get("wake_word_model", "models/openwakeword/hey_jarvis_v0.1.onnx"),
+                    ),
+                    wake_word_threshold=config.get("wake_word_threshold", 0.5),
+                    wake_word_confirm_sound=config.get("wake_word_confirm_sound", True),
+                    stt_service=config.get("stt_service", "whisper"),
+                    stt_device=config.get("stt_device", "cpu"),
+                    stt_compute_type=config.get("stt_compute_type", "int8"),
+                    stt_language=config.get("stt_language", "en"),
+                    silence_duration=config.get("silence_duration", 1.5),
+                )
+                if ui_service == "wake_word":
+                    await asyncio.to_thread(state.user_input.setup_wake_word)
+                if config.get("stt_service", "whisper") == "whisper":
+                    await asyncio.to_thread(state.user_input.setup_whisper)
+                _log(f"{GREEN}{i18n.t('voice_ok')}{RESET}")
+            except Exception as e:
+                _log(f"{RED}{i18n.t('voice_fail', e=e)}{RESET}")
+                state.user_input = None
 
+        try:
+            await asyncio.gather(
+                _init_chatbot(), _init_llm(), _init_tts(),
+                _init_vts(), _init_voice(),
+            )
             state.running = True
             _log(f"{GREEN}{i18n.t('all_online')}{RESET}")
 

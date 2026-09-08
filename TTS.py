@@ -11,16 +11,6 @@ import time
 import threading
 from paths import BASE_PATH
 
-try:
-    from pocket_tts import TTSModel
-except Exception:
-    TTSModel = None
-
-try:
-    from omnivoice import OmniVoice
-except Exception:
-    OmniVoice = None
-
 RED = '\033[31m'
 GREEN = '\033[32m'
 YELLOW = '\033[33m'
@@ -74,6 +64,10 @@ class TTS:
         self.pockettts_model = None
         self.pockettts_voice_state = None
         if self.tts_service == "pockettts":
+            try:
+                from pocket_tts import TTSModel
+            except Exception:
+                TTSModel = None
             if TTSModel is None:
                 print(f"{RED}pocket-tts is not installed. Install with: pip install pocket-tts scipy{RESET}")
             else:
@@ -112,6 +106,10 @@ class TTS:
         self.omnivoice_ref_text = None
         self.omnivoice_instruct = None
         if self.tts_service == "omnivoice":
+            try:
+                from omnivoice import OmniVoice
+            except Exception:
+                OmniVoice = None
             if OmniVoice is None:
                 print(f"{RED}OmniVoice is not installed. Install with: pip install git+https://github.com/k2-fsa/OmniVoice.git{RESET}")
             else:

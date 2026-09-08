@@ -233,6 +233,39 @@
 }
 
 /* ── Setting tooltips ── */
+.setting-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.setting-tip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.setting-tip-icon:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.setting-tip-icon.no-tip {
+  display: none;
+}
+
 .setting-tooltip {
   position: fixed;
   z-index: 500;
@@ -246,10 +279,12 @@
   line-height: 1.45;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.15s;
+  visibility: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .setting-tooltip.visible {
   opacity: 1;
+  visibility: visible;
 }

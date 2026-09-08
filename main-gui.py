@@ -795,6 +795,7 @@ async def _initialize() -> None:
                         tts_speed=config.get("tts_speed", 1.0),
                         voice_cloning=config.get("voice_cloning", False),
                         voice_design=config.get("voice_design", False),
+                        reference_wav=config.get("reference_wav", "Data/reference.wav"),
                         omnivoice_device=config.get("omnivoice_device", "cuda"),
                         detailed_logs=config.get("logs", True),
                         play_only_cable=config.get("play_only_cable", False),

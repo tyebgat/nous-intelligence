@@ -230,7 +230,7 @@ document.querySelectorAll('.tab-content input[type="number"]').forEach((inp) => 
 
 // ── Setting tooltips ──
 (function () {
-  const TIP_DELAY = 3000;
+  const TIP_DELAY = 500;
   const tip = document.createElement('div');
   tip.className = 'setting-tooltip';
   document.body.appendChild(tip);
@@ -258,7 +258,34 @@ document.querySelectorAll('.tab-content input[type="number"]').forEach((inp) => 
   }
 
   document.querySelectorAll('[data-tip],[data-tip-i18n]').forEach((el) => {
-    el.addEventListener('mouseenter', (e) => {
+    // Icon shows on the right side of the setting name; hovering it shows the tooltip.
+    const nameSpan = el.querySelector('.setting-name-text, span[data-i18n]');
+    let icon = el.querySelector('.setting-tip-icon');
+    if (!icon) {
+      icon = document.createElement('span');
+      icon.className = 'setting-tip-icon';
+      icon.textContent = '?';
+      icon.setAttribute('role', 'img');
+      icon.setAttribute('aria-label', 'Help');
+      if (nameSpan) {
+        // Keep the icon OUT of the data-i18n span so language re-translation
+        // (el.textContent = ...) can't delete it. Wrap name + icon together.
+        let wrap = nameSpan.parentElement && nameSpan.parentElement.classList.contains('setting-name')
+          ? nameSpan.parentElement
+          : null;
+        if (!wrap) {
+          wrap = document.createElement('span');
+          wrap.className = 'setting-name';
+          nameSpan.parentNode.insertBefore(wrap, nameSpan);
+          wrap.appendChild(nameSpan);
+        }
+        wrap.appendChild(icon);
+      } else {
+        el.insertBefore(icon, el.firstChild);
+      }
+    }
+
+    icon.addEventListener('mouseenter', (e) => {
       hide();
       lastX = e.clientX;
       lastY = e.clientY;
@@ -271,11 +298,15 @@ document.querySelectorAll('.tab-content input[type="number"]').forEach((inp) => 
         move();
       }, TIP_DELAY);
     });
-    el.addEventListener('mousemove', (e) => {
+    icon.addEventListener('mousemove', (e) => {
       lastX = e.clientX;
       lastY = e.clientY;
       if (tip.classList.contains('visible')) move();
     });
-    el.addEventListener('mouseleave', hide);
+    icon.addEventListener('mouseleave', hide);
+    icon.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
   });
 })();

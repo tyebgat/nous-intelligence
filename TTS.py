@@ -28,7 +28,7 @@ ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class TTS:
-    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, omnivoice_device: str = "cuda", detailed_logs: bool = True, play_only_cable: bool = False, gain: float = 1.0):
+    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, reference_wav: str = None, omnivoice_device: str = "cuda", detailed_logs: bool = True, play_only_cable: bool = False, gain: float = 1.0):
         self.chatbot_name = chatbot_name
         self.openai_tts_voice = openai_tts_voice
         self.openai_tts_model = openai_tts_model
@@ -38,6 +38,7 @@ class TTS:
         self.tts_speed = tts_speed
         self.voice_cloning = voice_cloning
         self.voice_design = voice_design
+        self.reference_wav = reference_wav or "Data/reference.wav"
         self.omnivoice_device = omnivoice_device
         self.detailed_logs = detailed_logs
         self.play_only_cable = play_only_cable
@@ -51,6 +52,13 @@ class TTS:
         with open(os.path.join(BASE_PATH, "openai-TTS-instructions.txt"), "r") as personality:
             text = personality.read()
             return text
+
+    def _resolve_reference_path(self, path: str) -> str:
+        if not path:
+            return None
+        if os.path.isabs(path):
+            return os.path.abspath(path)
+        return os.path.abspath(os.path.join(BASE_PATH, path))
 
     def initialize(self):
         self.tts_instructions = self.load_openai_tts_personality()
@@ -77,8 +85,8 @@ class TTS:
 
                     self.pockettts_model = TTSModel.load_model()
 
-                    ref_path = os.path.abspath(os.path.join(BASE_PATH, "Data", "reference.wav"))
-                    if self.voice_cloning and os.path.exists(ref_path):
+                    ref_path = self._resolve_reference_path(self.reference_wav)
+                    if self.voice_cloning and ref_path and os.path.exists(ref_path):
                         try:
                             self.pockettts_voice_state = self.pockettts_model.get_state_for_audio_prompt(ref_path)
                             print(f"{GREEN}Pocket TTS initialized with voice cloning from: {ref_path}{RESET}")
@@ -89,8 +97,8 @@ class TTS:
                             self.pockettts_voice_state = self.pockettts_model.get_state_for_audio_prompt(voice)
                             print(f"{GREEN}Pocket TTS initialized (voice={voice}){RESET}")
                     else:
-                        if self.voice_cloning and not os.path.exists(ref_path):
-                            print(f"{YELLOW}reference.wav not found at {ref_path}. Add a reference.wav to the Data folder for voice cloning.{RESET}")
+                        if self.voice_cloning:
+                            print(f"{YELLOW}reference wav not found at {ref_path}. Add a reference.wav (or set the reference_wav setting) for voice cloning.{RESET}")
                         voice = self.tts_voice if self.tts_voice else "alba"
                         self.pockettts_voice_state = self.pockettts_model.get_state_for_audio_prompt(voice)
                         print(f"{GREEN}Pocket TTS initialized (voice={voice}){RESET}")
@@ -120,17 +128,17 @@ class TTS:
                         dtype=torch.float16,
                     )
 
-                    ref_audio_path = os.path.abspath(os.path.join(BASE_PATH, "Data", "reference.wav"))
+                    ref_audio_path = self._resolve_reference_path(self.reference_wav)
                     ref_text_path = os.path.abspath(os.path.join(BASE_PATH, "Data", "reference.txt"))
                     design_path = os.path.abspath(os.path.join(BASE_PATH, "Data", "omnivoice-design.txt"))
 
-                    if self.voice_cloning and os.path.exists(ref_audio_path) and os.path.exists(ref_text_path):
+                    if self.voice_cloning and ref_audio_path and os.path.exists(ref_audio_path) and os.path.exists(ref_text_path):
                         self.omnivoice_ref_audio = ref_audio_path
                         with open(ref_text_path, "r", encoding="utf-8") as f:
                             self.omnivoice_ref_text = f.read().strip()
-                        print(f"{GREEN}OmniVoice initialized with voice cloning{RESET}")
-                    elif self.voice_cloning and not os.path.exists(ref_audio_path):
-                        print(f"{YELLOW}reference.wav not found. Falling back to auto voice.{RESET}")
+                        print(f"{GREEN}OmniVoice initialized with voice cloning from: {ref_audio_path}{RESET}")
+                    elif self.voice_cloning and not (ref_audio_path and os.path.exists(ref_audio_path)):
+                        print(f"{YELLOW}reference wav not found at {ref_audio_path}. Falling back to auto voice.{RESET}")
                     elif self.voice_cloning and not os.path.exists(ref_text_path):
                         print(f"{YELLOW}reference.txt not found. Falling back to auto voice.{RESET}")
 

@@ -193,7 +193,7 @@ fetch('/api/settings').then(r => r.json()).then(c => {
         <label data-tip-i18n="tip_disable_splash"><span data-i18n="lbl_disable_splash">Disable Splash Screen</span> <input type="checkbox" data-key="disable_splash"/></label>
         <label data-tip-i18n="tip_blur_intensity"><span data-i18n="lbl_blur_intensity">Background Blur Intensity</span> <input type="range" id="blurIntensity" data-key="blur_intensity" min="0" max="200" value="120"/></label>
         <label data-tip-i18n="tip_keep_aspect"><span data-i18n="lbl_keep_aspect">Keep Camera Aspect Ratio</span> <input type="checkbox" id="keepAspect" data-key="keep_camera_aspect_ratio"/></label>
-        <label data-tip="Maximum resolution requested from the camera. The browser will pick the closest supported mode.">Camera Resolution <select data-key="camera_resolution">
+        <label data-tip="Maximum resolution requested from the camera. The browser will pick the closest supported mode."><span class="setting-name-text">Camera Resolution</span> <select data-key="camera_resolution">
           <option value="640x360">360p (640x360)</option>
           <option value="854x480">480p (854x480)</option>
           <option value="1280x720">720p (1280x720)</option>

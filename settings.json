@@ -39,7 +39,7 @@
   "_comment_general": "------GENERAL SETTINGS-------",
   "app_language": "english",
   "play_only_cable": true,
-  "audio_device": "0ecb714c3a9c2dc6b92b57d859e5243af8971773594d69c0280cee1def84f2e0",
+  "audio_device": "d6b54198974a0d1502a319eefa978fe0c8807ae6790c8c478c73f65455c977b0",
   "_comment_logs": "------LOGS SETTINGS--------",
   "logs": true,
   "print_audio_devices": false,

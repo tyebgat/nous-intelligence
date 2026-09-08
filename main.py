@@ -48,6 +48,7 @@ async def main():
             tts_speed = config.get("tts_speed", 1.0)
             voice_cloning = config.get("voice_cloning", False)
             voice_design = config.get("voice_design", False)
+            reference_wav = config.get("reference_wav", "Data/reference.wav")
             gain = config.get("gain", 1.0)
 
             # --- omnivoice settings ---
@@ -104,6 +105,7 @@ async def main():
         tts_speed = 1.0
         voice_cloning = False
         voice_design = False
+        reference_wav = "Data/reference.wav"
         gain = 1.0
 
         # --- omnivoice settings ---
@@ -179,6 +181,7 @@ async def main():
         tts_speed=tts_speed, 
         voice_cloning=voice_cloning, 
         voice_design=voice_design, 
+        reference_wav=reference_wav,
         omnivoice_device=omnivoice_device, 
         detailed_logs=detailed_logs,
         play_only_cable=play_only_cable,

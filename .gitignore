@@ -8,3 +8,5 @@ debug_utterance.wav
 /llama-server-CUDA
 *.spec
 *.ps1
+debug_utterance.wav
+.env

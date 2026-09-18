@@ -1,6 +1,7 @@
 // ── Init panel / terminal logging ──
 const initOverlay = document.getElementById('initOverlay');
-const initConsole = document.getElementById('initConsole');
+const initSpinner = document.getElementById('initSpinner');
+const initStatus = document.getElementById('initStatus');
 const terminalLog = document.getElementById('terminalLog');
 
 const ANSI_COLORS = {
@@ -43,6 +44,24 @@ function ansiToHtml(line) {
   return out;
 }
 
+function stripAnsi(line) {
+  return String(line).replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+function cleanInitLabel(line) {
+  return stripAnsi(line)
+    .trim()
+    .replace(/^\[[^\]]*\]\s*/, '')
+    .replace(/\.{3,}$/, '');
+}
+
+function updateInitStatus(line) {
+  if (!initStatus || !initOverlay || !initOverlay.classList.contains('open')) return;
+  const raw = stripAnsi(line);
+  if (!/(initializ|inicializ|arranc|conect|connect|start|prepar|ready|listo|online|fail|error|fallo|download|descarg)/i.test(raw)) return;
+  initStatus.textContent = cleanInitLabel(raw);
+}
+
 function appendLog(line) {
   const raw = String(line);
   const html = ansiToHtml(raw);
@@ -50,10 +69,7 @@ function appendLog(line) {
     terminalLog.innerHTML += html + '\n';
     terminalLog.scrollTop = terminalLog.scrollHeight;
   }
-  if (initOverlay && initOverlay.classList.contains('open') && initConsole) {
-    initConsole.innerHTML += html + '\n';
-    initConsole.scrollTop = initConsole.scrollHeight;
-  }
+  updateInitStatus(raw);
   if (raw.indexOf('All requested AI services are online') !== -1 ||
       raw.indexOf('están en línea') !== -1) {
     showInitOk();
@@ -61,17 +77,19 @@ function appendLog(line) {
 }
 
 function openInitPanel() {
-  if (initConsole) initConsole.textContent = '';
+  if (initStatus) initStatus.textContent = '';
+  if (initSpinner) initSpinner.classList.remove('finished');
   const ok = document.getElementById('initOk');
   if (ok) ok.classList.remove('visible');
-  initOverlay.classList.add('open');
+  if (initOverlay) initOverlay.classList.add('open');
 }
 
 function showInitOk() {
+  if (initSpinner) initSpinner.classList.add('finished');
   const ok = document.getElementById('initOk');
   if (ok) ok.classList.add('visible');
 }
 
 function closeInitPanel() {
-  initOverlay.classList.remove('open');
+  if (initOverlay) initOverlay.classList.remove('open');
 }

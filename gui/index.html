@@ -152,10 +152,6 @@ fetch('/api/settings').then(r => r.json()).then(c => {
 
 <div class="settings-overlay" id="settingsOverlay">
   <div class="settings-panel">
-    <div class="settings-header">
-      <span data-i18n="settings">Settings</span>
-      <button id="settingsClose">&times;</button>
-    </div>
     <div class="settings-tabs" id="settingsTabs">
       <button class="tab active" data-tab="appearance" data-i18n="tab_appearance">Appearance</button>
       <button class="tab" data-tab="general" data-i18n="tab_general">General</button>
@@ -269,9 +265,7 @@ fetch('/api/settings').then(r => r.json()).then(c => {
         <label data-tip-i18n="tip_hf_token"><span data-i18n="lbl_hf_token">HF Token</span> <input type="password" data-env-key="HF_TOKEN" placeholder="hf_..."/></label>
       </div>
     </div>
-    <div class="settings-footer">
-      <button id="settingsApply" data-i18n="apply">Apply</button>
-    </div>
+    <button id="settingsApply" data-i18n="apply">Apply</button>
   </div>
 </div>
 
@@ -286,8 +280,9 @@ fetch('/api/settings').then(r => r.json()).then(c => {
 
 <div class="init-overlay" id="initOverlay">
   <div class="init-panel">
-    <h3 id="initTitle" data-i18n="starting_services">Starting services...</h3>
-    <div class="init-console" id="initConsole"></div>
+    <div class="init-spinner" id="initSpinner"></div>
+    <div class="init-title" id="initTitle" data-i18n="starting_services">Starting services...</div>
+    <div class="init-status" id="initStatus" aria-live="polite"></div>
     <div class="init-actions">
       <button class="init-ok" id="initOk" data-i18n="ok">Ok</button>
     </div>
@@ -302,6 +297,7 @@ fetch('/api/settings').then(r => r.json()).then(c => {
 <script src="/gui/js/chat.js"></script>
 <script src="/gui/js/voice.js"></script>
 <script src="/gui/js/settings.js"></script>
+<script src="/gui/js/dropdown.js"></script>
 <script src="/gui/js/app.js"></script>
 
 </body>

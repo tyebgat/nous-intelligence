@@ -124,21 +124,27 @@ document.querySelectorAll('.browse-btn').forEach((btn) => {
   });
 });
 
-document.getElementById('settingsClose').addEventListener('click', () => {
-  document.getElementById('settingsOverlay').classList.remove('open');
-});
+function closeSettings() {
+  const overlay = document.getElementById('settingsOverlay');
+  if (!overlay.classList.contains('open')) return;
+  const panel = overlay.querySelector('.settings-panel');
+  if (!panel || panel.classList.contains('closing')) return;
+  panel.classList.add('closing');
+  setTimeout(() => {
+    panel.classList.remove('closing');
+    overlay.classList.remove('open');
+  }, 120);
+}
 
 document.getElementById('settingsOverlay').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) {
-    document.getElementById('settingsOverlay').classList.remove('open');
-  }
+  if (e.target === e.currentTarget) closeSettings();
 });
 
 document.getElementById('settingsApply').addEventListener('click', () => {
   applySettings();
   saveTextFiles();
   saveEnvKeys();
-  document.getElementById('settingsOverlay').classList.remove('open');
+  closeSettings();
   showToast(t('settings_applied'));
   try {
     new Audio('/gui/notif.mp3').play();

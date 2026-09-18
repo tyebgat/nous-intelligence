@@ -211,13 +211,36 @@ if (sttService) {
   updateSttDisabled();
 }
 
+let currentSettingsTab = 'appearance';
+
 function activateSettingsTab(name) {
-  document.querySelectorAll('.settings-tabs .tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  const t = document.querySelector('.settings-tabs .tab[data-tab="' + name + '"]');
-  if (t) t.classList.add('active');
-  const c = document.getElementById('tab-' + name);
-  if (c) c.classList.add('active');
+  const newPanel = document.getElementById('tab-' + name);
+  if (!newPanel) return;
+
+  const setActiveButton = () => {
+    document.querySelectorAll('.settings-tabs .tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.tab === name));
+  };
+
+  if (name === currentSettingsTab && newPanel.classList.contains('active')) {
+    setActiveButton();
+    return;
+  }
+
+  const oldPanel = document.getElementById('tab-' + currentSettingsTab);
+  const finish = () => {
+    if (oldPanel) oldPanel.classList.remove('active', 'leaving');
+    newPanel.classList.add('active');
+    currentSettingsTab = name;
+    setActiveButton();
+  };
+
+  if (oldPanel && oldPanel !== newPanel && oldPanel.classList.contains('active')) {
+    oldPanel.classList.add('leaving');
+    setTimeout(finish, 150);
+  } else {
+    finish();
+  }
 }
 
 // ── Numeric settings cannot go below 0 ──

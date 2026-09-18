@@ -52,7 +52,7 @@
   background: var(--success-hover);
 }
 
-/* ── Init Overlay ── */
+/* ── Init Overlay (minimalist service startup) ── */
 .init-overlay {
   position: fixed;
   inset: 0;
@@ -70,55 +70,109 @@
 .init-panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 640px;
+  border-radius: 22px;
+  width: 360px;
   max-width: 92vw;
-  padding: 18px 20px;
+  padding: 46px 40px 30px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
 }
 
-.init-panel h3 {
+.init-spinner {
+  --color-1: var(--accent);
+  --color-2: var(--text-muted);
+  --size: 1px;
+  position: relative;
+  display: inline-block;
+  width: calc(46 * var(--size));
+  height: calc(46 * var(--size));
+  border-radius: 50%;
+  box-sizing: border-box;
+  border-top: calc(4 * var(--size)) solid var(--color-1);
+  border-right: calc(4 * var(--size)) solid transparent;
+  margin-bottom: 28px;
+  animation: init-spin 1s linear infinite;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.init-spinner::after {
+  content: '';
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border-left: calc(4 * var(--size)) solid var(--color-2);
+  border-bottom: calc(4 * var(--size)) solid transparent;
+  animation: init-spin-rev 0.5s linear infinite reverse;
+}
+
+@keyframes init-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes init-spin-rev {
+  to { transform: rotate(-360deg); }
+}
+
+.init-spinner.finished {
+  opacity: 0;
+  transform: scale(0.8);
+  animation-play-state: paused;
+}
+
+.init-spinner.finished::after {
+  animation-play-state: paused;
+}
+
+.init-title {
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
-.init-console {
-  background: var(--terminal-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  height: 320px;
-  overflow-y: auto;
-  padding: 12px 14px;
-  font-family: Consolas, Menlo, monospace;
+.init-status {
+  margin-top: 10px;
+  min-height: 18px;
+  max-width: 100%;
   font-size: 12px;
-  line-height: 1.6;
-  color: var(--console-text);
-  white-space: pre-wrap;
-  word-break: break-all;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: break-word;
 }
 
 .init-actions {
+  margin-top: 22px;
+  min-height: 42px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
 }
 
 .init-ok {
-  display: none;
   background: var(--success);
   border: none;
   color: var(--terminal-bg);
   font-weight: 600;
-  padding: 10px 26px;
-  border-radius: 10px;
+  padding: 10px 32px;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 14px;
+  opacity: 0;
+  transform: translateY(6px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s ease, visibility 0.45s, background 0.2s;
 }
 
 .init-ok.visible {
-  display: inline-block;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .init-ok:hover {

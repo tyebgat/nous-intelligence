@@ -133,10 +133,8 @@ function handleIncomingMessage(data) {
       terminalLog.innerHTML += html + '\n';
       terminalLog.scrollTop = terminalLog.scrollHeight;
     }
-    if (initConsole) {
-      initConsole.innerHTML += html + '\n';
-      initConsole.scrollTop = initConsole.scrollHeight;
-    }
+    const status = document.getElementById('initStatus');
+    if (status) status.textContent = crashMsg;
     setServiceStatus('off');
     window.serviceRunning = false;
     showInitOk();

@@ -2,6 +2,7 @@
 const initOverlay = document.getElementById('initOverlay');
 const initSpinner = document.getElementById('initSpinner');
 const initStatus = document.getElementById('initStatus');
+const initTitle = document.getElementById('initTitle');
 const terminalLog = document.getElementById('terminalLog');
 
 const ANSI_COLORS = {
@@ -110,13 +111,27 @@ function openInitPanel() {
   if (initSpinner) initSpinner.classList.remove('finished');
   const ok = document.getElementById('initOk');
   if (ok) ok.classList.remove('visible');
+  const panel = initOverlay ? initOverlay.querySelector('.init-panel') : null;
+  if (panel) panel.classList.remove('compact');
+  if (initTitle) {
+    initTitle.setAttribute('data-i18n', 'starting_services');
+    initTitle.textContent = (typeof t === 'function') ? t('starting_services') : 'Starting services...';
+  }
   if (initOverlay) initOverlay.classList.add('open');
 }
 
 function showInitOk() {
   if (initSpinner) initSpinner.classList.add('finished');
+  if (initTitle) {
+    initTitle.setAttribute('data-i18n', 'init_completed');
+    initTitle.textContent = (typeof t === 'function') ? t('init_completed') : 'Completed';
+  }
   const ok = document.getElementById('initOk');
   if (ok) ok.classList.add('visible');
+  const panel = initOverlay ? initOverlay.querySelector('.init-panel') : null;
+  setTimeout(() => {
+    if (panel) panel.classList.add('compact');
+  }, 500);
 }
 
 function closeInitPanel() {

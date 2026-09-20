@@ -68,6 +68,11 @@ class AppState:
     tts = None # TTS instance
     user_input = None # UserInput instance (speech / wake word)
     ai_busy = False # True while a response is being generated/spoken; blocks voice input
+    processing = False # True while an AI turn is in flight (thinking -> talking)
+    cancel_event = None # threading.Event set when the user asks to interrupt
+    _think_task = None # asyncio task running the chatbot call in a thread
+    _speak_task = None # asyncio task speaking the reply (TTS)
+    chat_tasks = set() # spawned _handle_message tasks (cancelled on disconnect)
     nous_task = None
     _lock = None
 
@@ -458,7 +463,15 @@ async def chat_socket(ws: WebSocket):
             elif msg_type == "chat":
                 text = payload.get("message") or payload.get("text", "")
                 if text:
-                    await _handle_message(ws, text)
+                    # Run as a background task so this connection keeps reading
+                    # messages while the AI thinks (e.g. an "interrupt" sent by
+                    # the same socket must be handled mid-generation).
+                    task = asyncio.create_task(_handle_message(ws, text))
+                    state.chat_tasks.add(task)
+                    task.add_done_callback(state.chat_tasks.discard)
+
+            elif msg_type == "interrupt":
+                await _interrupt_ai()
 
             elif msg_type == "mic":
                 await _handle_mic(ws, payload)
@@ -476,12 +489,65 @@ async def chat_socket(ws: WebSocket):
     finally:
         clients.discard(ws)
         mic_rate.pop(ws, None)
+        # If this connection was driving an AI turn, abort it so no orphaned
+        # generation keeps running (and cutting it also unblocks voice input).
+        if state.processing:
+            try:
+                await _interrupt_ai()
+            except Exception:
+                pass
+        for task in list(state.chat_tasks):
+            task.cancel()
+            state.chat_tasks.discard(task)
 
 
 #Chat Logic
 def _run_coroutine(coro):
     """Run an async function to completion inside a worker thread."""
     return asyncio.run(coro)
+
+
+async def _interrupt_ai() -> None:
+    """
+    Abort the current AI turn: cancel any thinking request, cut any speech,
+    reset the avatar and unlock input. Safe to call at any time, even when
+    nothing is in flight.
+
+    Ordering matters: cancelling the sub-tasks makes their cleanup/FINALLY
+    run, and the GUI-unlocking broadcasts MUST go out before we touch
+    anything that could hang (e.g. a dead VTS connection). Otherwise the
+    client never learns the turn ended and stays stuck in "busy".
+    """
+    for task in (state._think_task, state._speak_task):
+        if task is not None and not task.done():
+            task.cancel()
+    state._think_task = None
+    state._speak_task = None
+
+    if state.cancel_event is not None:
+        state.cancel_event.set()
+    state.ai_busy = False
+    state.processing = False
+    state.cancel_event = None
+
+    # Cut any active speech. Synchronous (sd.stop()), cannot hang.
+    if state.tts is not None:
+        try:
+            state.tts.stop()
+        except Exception as e:
+            _log(f"{ORANGE}{i18n.t('tts_error', e=e)}{RESET}")
+
+    # Tell every client NOW that the turn is over and input is unlocked.
+    await _broadcast({"type": "chat_interrupted", "payload": {}})
+    await _broadcast({"type": "tts_done", "payload": {}})
+
+    # Don't leave the avatar emoting a reply that was just cancelled.
+    # Timed out so an unresponsive VTS can never block the unlock above.
+    if state.vts is not None:
+        try:
+            await asyncio.wait_for(state.vts.trigger_hotkey("Neutral"), timeout=3)
+        except Exception as e:
+            _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
 
 
 async def _handle_message(ws: WebSocket, text: str) -> None:
@@ -507,105 +573,154 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
         )
         return
 
-    # Block voice input while this message is processed end-to-end
-    # (thinking -> TTS generation -> playback). Unlocked via tts_done.
-    state.ai_busy = True
-
-    # Stage 1: chatbot is thinking
-    await ws.send_json(
-        {"type": "chat_stage", "payload": {"stage": "thinking", "text": "Generating answer..."}}
-    )
-
-    try:
-        response_text, detected_emotion = await asyncio.to_thread(
-            state.chat_bot.get_chatbot_response, text
+    if state.processing:
+        # A previous turn is still in flight. The GUI turns the send button
+        # into a stop button while busy, so this is only a safety net.
+        _log(f"{ORANGE}{i18n.t('voice_blocked')}{RESET}")
+        await ws.send_json(
+            {"type": "chat_stage", "payload": {"stage": "stopped", "text": ""}}
         )
-    except Exception as e:
-        _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
-        state.ai_busy = False  # don't leave the input locked forever
-        await ws.send_json({"type": "tts_done", "payload": {}})
         return
 
-    _log(i18n.t("bot_response", text=response_text))
+    # Block voice/chat input while this message is processed end-to-end
+    # (thinking -> TTS generation -> playback). Unlocked via tts_done.
+    state.processing = True
+    state.ai_busy = True
+    state.cancel_event = threading.Event()
 
-    # Resolve the emotion now (chatbot's structured label, keyword analyzer as
-    # fallback) but only apply it once the voice actually starts playing.
-    pending_emotion = detected_emotion
-    if state.vts is not None and pending_emotion is None:
-        try:
-            pending_emotion = state.vts.analyze_dominant_emotion(response_text)
-        except Exception as e:
-            _log(f"{ORANGE}{i18n.t('vts_emotion_error', e=e)}{RESET}")
-    if pending_emotion:
-        _log(i18n.t("emotion", emotion=pending_emotion))
-
-    # Stage 2: generating the voice
-    if state.tts is not None:
+    try:
+        # Stage 1: chatbot is thinking
         await ws.send_json(
-            {"type": "chat_stage", "payload": {"stage": "voice", "text": "Generating TTS..."}}
+            {"type": "chat_stage", "payload": {"stage": "thinking", "text": "Generating answer..."}}
         )
 
-        async def _speak_and_reset():
-            loop = asyncio.get_event_loop()
-            playback_started = False
-
-            def _on_playback_start():
-                nonlocal playback_started
-                playback_started = True
-                asyncio.run_coroutine_threadsafe(
-                    ws.send_json({"type": "chat_stage", "payload": {"stage": "speaking", "text": "Speaking..."}}),
-                    loop
-                )
-                # emote exactly while the avatar is speaking
-                if state.vts is not None and pending_emotion:
-                    asyncio.run_coroutine_threadsafe(
-                        state.vts.trigger_hotkey(pending_emotion), loop
-                    )
-
-            def _on_playback_end():
-                if state.vts is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        state.vts.trigger_hotkey("Neutral"), loop
-                    )
-
-            state.tts.on_playback_start = _on_playback_start
-            state.tts.on_playback_end = _on_playback_end
+        try:
+            think_task = asyncio.create_task(
+                asyncio.to_thread(state.chat_bot.get_chatbot_response, text, state.cancel_event)
+            )
+            state._think_task = think_task
             try:
-                await asyncio.to_thread(_run_coroutine, state.tts.tts_say(response_text))
-            except Exception as e:
-                _log(f"{RED}{i18n.t('tts_error', e=e)}{RESET}")
+                response_text, detected_emotion = await think_task
+            except asyncio.CancelledError:
+                # Interrupted while thinking; _interrupt_ai already unlocked us.
+                state.processing = False
+                return
             finally:
-                state.tts.on_playback_start = None
-                state.tts.on_playback_end = None
-                # The AI finished speaking (or TTS failed): unlock input and go
-                # back to waiting for the wake word.
-                state.ai_busy = False
+                state._think_task = None
+        except Exception as e:
+            _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
+            state.ai_busy = False  # don't leave the input locked forever
+            state.processing = False
+            await ws.send_json({"type": "tts_done", "payload": {}})
+            return
+
+        # No answer: the turn was aborted or the model returned nothing.
+        if state.cancel_event is None or state.cancel_event.is_set() or not response_text:
+            state.ai_busy = False
+            state.processing = False
+            await ws.send_json({"type": "tts_done", "payload": {}})
+            return
+
+        _log(i18n.t("bot_response", text=response_text))
+
+        # Resolve the emotion now (chatbot's structured label, keyword analyzer
+        # as fallback) but only apply it once the voice actually starts playing.
+        pending_emotion = detected_emotion
+        if state.vts is not None and pending_emotion is None:
+            try:
+                pending_emotion = state.vts.analyze_dominant_emotion(response_text)
+            except Exception as e:
+                _log(f"{ORANGE}{i18n.t('vts_emotion_error', e=e)}{RESET}")
+        if pending_emotion:
+            _log(i18n.t("emotion", emotion=pending_emotion))
+
+        # Stage 2: generating the voice
+        if state.tts is not None:
+            await ws.send_json(
+                {"type": "chat_stage", "payload": {"stage": "voice", "text": "Generating TTS..."}}
+            )
+
+            async def _speak_and_reset():
+                loop = asyncio.get_event_loop()
+                playback_started = False
+
+                def _on_playback_start():
+                    nonlocal playback_started
+                    playback_started = True
+                    asyncio.run_coroutine_threadsafe(
+                        ws.send_json({"type": "chat_stage", "payload": {"stage": "speaking", "text": "Speaking..."}}),
+                        loop
+                    )
+                    # emote exactly while the avatar is speaking
+                    if state.vts is not None and pending_emotion:
+                        asyncio.run_coroutine_threadsafe(
+                            state.vts.trigger_hotkey(pending_emotion), loop
+                        )
+
+                def _on_playback_end():
+                    if state.vts is not None:
+                        asyncio.run_coroutine_threadsafe(
+                            state.vts.trigger_hotkey("Neutral"), loop
+                        )
+
+                state.tts.on_playback_start = _on_playback_start
+                state.tts.on_playback_end = _on_playback_end
                 try:
-                    await ws.send_json({"type": "tts_done", "payload": {}})
-                except Exception:
-                    pass
-                if not playback_started and state.vts is not None:
+                    await asyncio.to_thread(_run_coroutine, state.tts.tts_say(response_text))
+                except asyncio.CancelledError:
+                    pass  # interrupted: state.tts.stop() already cut the audio
+                except Exception as e:
+                    _log(f"{RED}{i18n.t('tts_error', e=e)}{RESET}")
+                finally:
+                    state.tts.on_playback_start = None
+                    state.tts.on_playback_end = None
+                    # The AI finished speaking (or TTS failed / was interrupted):
+                    # unlock input and go back to waiting for the wake word.
+                    state.ai_busy = False
+                    state.processing = False
+                    state._speak_task = None
                     try:
-                        await state.vts.trigger_hotkey("Neutral")
-                    except Exception as e:
-                        _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
+                        await ws.send_json({"type": "tts_done", "payload": {}})
+                    except (Exception, asyncio.CancelledError):
+                        pass
+                    if not playback_started and state.vts is not None:
+                        try:
+                            await state.vts.trigger_hotkey("Neutral")
+                        except Exception as e:
+                            _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
 
-        asyncio.create_task(_speak_and_reset())
-    else:
-        # No TTS configured: nothing will speak, so unlock right away.
-        state.ai_busy = False
-        await ws.send_json({"type": "tts_done", "payload": {}})
+            state._speak_task = asyncio.create_task(_speak_and_reset())
+        else:
+            # No TTS configured: nothing will speak, so unlock right away.
+            state.ai_busy = False
+            state.processing = False
+            await ws.send_json({"type": "tts_done", "payload": {}})
 
-    # Final answer replaces the temporary messages, playback continues behind it.
-    await ws.send_json(
-        {
-            "type": "chat_response",
-            "payload": {
-                "text": response_text,
-                "sender": "bot"
+        # Final answer replaces the temporary messages, playback continues behind it.
+        await ws.send_json(
+            {
+                "type": "chat_response",
+                "payload": {
+                    "text": response_text,
+                    "sender": "bot"
+                }
             }
-        }
-    )
+        )
+    except asyncio.CancelledError:
+        # Turn aborted mid-flight (interrupt or disconnect): _interrupt_ai()
+        # unlocks input, cuts speech and resets the avatar.
+        try:
+            await _interrupt_ai()
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
+        # Don't leave the input locked if anything unexpected happened.
+        try:
+            await _interrupt_ai()
+        except Exception:
+            pass
 
 
 async def _handle_mic(ws: WebSocket, payload: dict) -> None:
@@ -884,6 +999,10 @@ async def _shutdown() -> None:
     """Stop the LLM server, disconnect VTS, and drop the ChatBot/TTS objects."""
     async with state.lock:
         _log(f"{YELLOW}{i18n.t('stopping')}{RESET}")
+
+        # Abort any in-flight thinking/speaking so the Stop button always works
+        # immediately, even mid-response, instead of waiting for it to finish.
+        await _interrupt_ai()
 
         # Clean VTube Studio disconnect
         if state.vts:

@@ -37,6 +37,12 @@ class TTS:
         self.is_playing = False
         self.on_playback_start = None
         self.on_playback_end = None
+        # Set when the current speech must be cut short (interrupt/stop).
+        self._stop_requested = False
+        # OutputStreams currently playing, so stop() can abort() them safely
+        # from any thread. The global sd.play()/sd.wait()/sd.stop() functions
+        # are NOT thread-safe and crash when play/stop cross threads.
+        self._streams = []
         
     def load_openai_tts_personality(self) -> list:
         with open(os.path.join(BASE_PATH, "openai-TTS-instructions.txt"), "r") as personality:
@@ -185,9 +191,23 @@ class TTS:
         if hasattr(self, '_spinner_thread'):
             self._spinner_thread.join()
 
+    def stop(self) -> None:
+        """Request the current utterance to stop.
+
+        Sets the cooperative flag and immediately aborts every active playback
+        stream (abort() is safe to call from any thread). The blocking play
+        loop in tts_say() then exits right away."""
+        self._stop_requested = True
+        for stream in list(self._streams):
+            try:
+                stream.abort()
+            except Exception:
+                pass
+
     async def tts_say(self, text: str) -> None:
         print(f"{self.chatbot_name}: {text}")
         self.is_speaking = True
+        self._stop_requested = False
 
         output_path = os.path.join(BASE_PATH, 'Data', 'output.wav')
 
@@ -199,7 +219,7 @@ class TTS:
                     gTTS(text=text, lang=self.tts_language, slow=False, lang_check=False).save(output_path)
 
                 case "openai":
-                    client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
+                    client = OpenAI(api_key=getenv("OPENAI_API_KEY"), timeout=120.0)
                     response = client.audio.speech.create(
                         model= self.openai_tts_model,
                         voice= self.openai_tts_voice,
@@ -253,12 +273,24 @@ class TTS:
             self.is_speaking = False
             return
 
+        # Interrupt landed while the audio was being generated: the wav exists
+        # but the user already cancelled, so skip playing it entirely.
+        if self._stop_requested:
+            self._stop_requested = False
+            self.is_speaking = False
+            return
+
         self.is_playing = True
         if self.on_playback_start:
             self.on_playback_start()
 
+        streams = []
         try:
             data, samplerate = sf.read(output_path)
+
+            # PortAudio has no 64-bit float format: OpenAL/OutputStream would
+            # fail with "Invalid output sample format". Normalise early.
+            data = np.ascontiguousarray(data, dtype=np.float32)
 
             silence_samples = int(samplerate * 0.15)
             silence = np.zeros(silence_samples, dtype=data.dtype)
@@ -270,29 +302,67 @@ class TTS:
 
             if self.cable_device_id is not None:
                 if self.play_only_cable:
-                    sd.play(data, samplerate, device=self.cable_device_id)
-                    sd.wait()
+                    devices = [self.cable_device_id]
                 else:
-                    def play_default():
-                        sd.play(data, samplerate)
-                        sd.wait()
-
-                    def play_cable():
-                        sd.play(data, samplerate, device=self.cable_device_id)
-                        sd.wait()
-
-                    t1 = threading.Thread(target=play_default)
-                    t2 = threading.Thread(target=play_cable)
-                    t1.start()
-                    t2.start()
-                    t1.join()
-                    t2.join()
+                    devices = [None, self.cable_device_id]
             else:
-                sd.play(data, samplerate)
-                sd.wait()
+                devices = [None]
+
+            channels = 1 if data.ndim == 1 else data.shape[1]
+            all_done = threading.Event()
+
+            def _make_callback():
+                pos = [0]
+                def _cb(outdata, frames, time_info, status):
+                    remaining = len(data) - pos[0]
+                    n = min(frames, remaining)
+                    if n > 0:
+                        chunk = data[pos[0]:pos[0] + n]
+                        if chunk.ndim == 1:
+                            chunk = chunk[:, None]
+                        outdata[:n] = chunk
+                        pos[0] += n
+                    if n < frames:
+                        outdata[n:] = 0
+                    if len(data) - pos[0] == 0:
+                        raise sd.CallbackStop
+                return _cb
+
+            # Each device plays the same audio on its OWN stream so an
+            # abort() on one never affects the others. Owned streams avoid
+            # the thread-unsafe global sd.play()/sd.wait()/sd.stop() that
+            # crash when a stop arrives from another thread mid-playback.
+            for device in devices:
+                stream = sd.OutputStream(
+                    samplerate=samplerate,
+                    device=device,
+                    channels=channels,
+                    dtype=data.dtype,
+                    callback=_make_callback(),
+                    finished_callback=all_done.set,
+                )
+                stream.start()
+                streams.append(stream)
+            self._streams = streams
+
+            while not all_done.is_set() and not self._stop_requested:
+                time.sleep(0.05)
+
+            if self._stop_requested:
+                for stream in streams:
+                    try:
+                        stream.abort()
+                    except Exception:
+                        pass
         except Exception as e:
             print(f"{RED}Error playing audio: {e}{RESET}")
         finally:
+            for stream in streams:
+                try:
+                    stream.close()
+                except Exception:
+                    pass
+            self._streams = []
             self.is_playing = False
             self.is_speaking = False
             if self.on_playback_end:

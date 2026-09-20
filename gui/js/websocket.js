@@ -61,11 +61,16 @@ function setServiceStatus(status) {
   else if (status === 'online') statusDot.classList.add('online');
 }
 
+function setAiBusy(busy) {
+  window.aiBusy = !!busy;
+  if (typeof updateSendButton === 'function') updateSendButton();
+}
+
 function handleIncomingMessage(data) {
   if (data.type === 'chat_stage') {
     const stage = data.payload.stage;
     if (stage === 'thinking') {
-      window.aiBusy = true;
+      setAiBusy(true);
       getOrCreateTypingBubble();
       showToast(t('generating_response'), { busy: true, duration: 0 });
     } else if (stage === 'voice') {
@@ -77,8 +82,16 @@ function handleIncomingMessage(data) {
     replaceTypingBubble(data.payload.text);
     hideToast(t('generating_response'));
   } else if (data.type === 'tts_done') {
-    window.aiBusy = false;
+    setAiBusy(false);
     hideBusyWarning();
+  } else if (data.type === 'chat_interrupted') {
+    setAiBusy(false);
+    window.waitingSpeechResult = false;
+    removeTypingBubble();
+    removeUserTypingBubble();
+    hideBusyWarning();
+    hideToast();
+    showToast(t('interrupted'));
   } else if (data.type === 'log') {
     appendLog(data.payload.line);
   } else if (data.type === 'speech_result') {
@@ -116,15 +129,17 @@ function handleIncomingMessage(data) {
       else if (window.inputService === 'speech') requestMic();
     } else {
       releaseMic();
-      window.aiBusy = false;
+      setAiBusy(false);
       window.waitingSpeechResult = false;
+      removeTypingBubble();
       removeUserTypingBubble();
       hideBusyWarning();
       hideToast();
     }
   } else if (data.type === 'crash') {
-    window.aiBusy = false;
+    setAiBusy(false);
     window.waitingSpeechResult = false;
+    removeTypingBubble();
     removeUserTypingBubble();
     hideBusyWarning();
     const crashMsg = t('crash');

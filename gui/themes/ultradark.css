@@ -1,0 +1,49 @@
+/* Ultra Dark theme — colors taken from Voice Technitos (dark).
+   All dark, white outlines, white buttons with black text. */
+:root {
+  color-scheme: dark;
+  --accent: #FFFFFF;
+  --bg: #0F0F10;
+  --panel: #1F1F21;
+  --panel-2: #26262A;
+  --chat-bg: #0F0F10;
+  --ai-msg-bg: #1F1F21;
+  --bar-bg: #1F1F21;
+  --input-bg: rgba(255, 255, 255, 0.12);
+  --btn-bg: #FFFFFF;
+  --btn-bg-hover: rgba(255, 255, 255, 0.82);
+  --border: #212122;
+  --border-soft: rgba(255, 255, 255, 0.15);
+  --text: #FFFFFF;
+  --text-muted: #8A8A8F;
+  --text-label: #A1A1A6;
+  --terminal-bg: #0F0F10;
+  --terminal-text: #FFFFFF;
+  --console-text: #C9CDD4;
+  --success: #FFFFFF;
+  --success-hover: rgba(255, 255, 255, 0.82);
+  --shadow: rgba(0, 0, 0, 0.5);
+}
+
+/* Pure dark look: hide the decorative background shapes. */
+.bg-blurs .blur-spot {
+  display: none;
+}
+
+/* White buttons with black text (Voice Technitos style). */
+#settingsApply,
+.modal-actions button {
+  color: var(--bg);
+}
+
+/* These controls reuse --border as their fill; keep them dark so their icons stay visible. */
+#btnClearChat,
+.chat-input-area button {
+  background: var(--input-bg);
+}
+
+.chat-input-area button:hover,
+#btnClearChat:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text);
+}

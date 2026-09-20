@@ -150,6 +150,35 @@
   color: var(--text);
 }
 
+/* Send button becomes a Stop button while the AI is busy */
+#btnSend.stop-mode {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+#btnSend.stop-mode svg {
+  color: #fff;
+}
+
+/* Message entrance animation (user + chatbot) */
+.chat-messages .msg.msg-in {
+  animation: msg-in 0.25s ease;
+}
+
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Smaller temporary typing bubbles */
+.msg-typing {
+  padding: 8px 12px;
+}
+
+.msg-typing .typing-dots {
+  width: 36px;
+}
+
 /* Busy warning message above chat input */
 .busy-warning {
   text-align: center;

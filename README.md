@@ -175,7 +175,7 @@ These settings only affect the built-in GUI.
 
 | Setting | Type | Description |
 |---------|------|-------------|
-| `theme` | string | Color theme applied to the whole app interface. Available themes: `"dark"`, `"darkamoled"`, `"light"`, `"midnight"`, `"midnightamoled"`, `"sakura"`, `"sakuraamoled"`, `"purplehaze"`, `"purplehazeamoled"`. |
+| `theme` | string | Color theme applied to the whole app interface. Available themes: `"dark"`, `"darkamoled"`, `"ultradark"`, `"light"`, `"midnight"`, `"midnightamoled"`, `"sakura"`, `"sakuraamoled"`, `"purplehaze"`, `"purplehazeamoled"`. |
 | `disable_splash` | `true` \| `false` | `true`: Skips the startup splash screen so the app boots straight into the main interface. |
 | `blur_intensity` | int (0 - 200) | Controls how much blur is applied to the background color spots. |
 | `keep_camera_aspect_ratio` | `true` \| `false` | Keeps the camera's native aspect ratio instead of stretching it to fill the view. |

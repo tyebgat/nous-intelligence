@@ -185,16 +185,27 @@ document.getElementById('btnClearChat').addEventListener('click', () => {
   msgs.appendChild(ph);
   window.stagedMsg = null;
   window.userStagedMsg = null;
-  window.aiBusy = false;
+  setAiBusy(false);
   window.waitingSpeechResult = false;
   hideBusyWarning();
   hideToast();
 });
 
-// ── Chat send ──
+// ── Chat send / interrupt ──
 document.getElementById('btnSend').addEventListener('click', () => {
   if (window.aiBusy) {
-    showBusyWarning();
+    // The button acts as Stop while the AI is thinking or speaking.
+    console.log('[WS] interrupt request');
+    wsSend('interrupt', {});
+    // Optimistically unlock so the button flips back to Send immediately.
+    // The server also broadcasts chat_interrupted/tts_done which re-confirm
+    // this, so even a lost/delayed ack can never leave input locked.
+    setAiBusy(false);
+    window.waitingSpeechResult = false;
+    removeTypingBubble();
+    removeUserTypingBubble();
+    hideBusyWarning();
+    hideToast();
     return;
   }
   const input = document.getElementById('chatInput');

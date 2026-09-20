@@ -4,6 +4,25 @@ window.userStagedMsg = null;
 window.aiBusy = false;
 window.waitingSpeechResult = false;
 
+// While the AI is busy the send button becomes a stop/interrupt button.
+function updateSendButton() {
+  const btn = document.getElementById('btnSend');
+  if (!btn) return;
+  const send = document.getElementById('sendIcon');
+  const stop = document.getElementById('stopIcon');
+  const busy = window.aiBusy === true;
+  btn.classList.toggle('stop-mode', busy);
+  btn.title = busy ? t('title_stop_ai') : t('title_send');
+  if (send) send.style.display = busy ? 'none' : '';
+  if (stop) stop.style.display = busy ? '' : 'none';
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', updateSendButton);
+} else {
+  updateSendButton();
+}
+
 function showBusyWarning() {
   const el = document.getElementById('busyWarning');
   if (el) el.classList.add('visible');
@@ -19,7 +38,7 @@ function getOrCreateUserTypingBubble() {
   if (!msgs) return null;
   if (window.userStagedMsg && window.userStagedMsg.isConnected) return window.userStagedMsg;
   const bubble = document.createElement('div');
-  bubble.className = 'msg user-msg';
+  bubble.className = 'msg user-msg msg-typing';
   const dots = document.createElement('span');
   dots.className = 'typing-dots';
   bubble.appendChild(dots);
@@ -36,12 +55,22 @@ function removeUserTypingBubble() {
   window.userStagedMsg = null;
 }
 
+function removeTypingBubble() {
+  // Drop the AI's temporary typing bubble. If a turn is interrupted or ends
+  // without a chat_response, this must be cleared or the next reply will be
+  // placed where the leftover bubble is sitting.
+  if (window.stagedMsg && window.stagedMsg.isConnected) {
+    window.stagedMsg.remove();
+  }
+  window.stagedMsg = null;
+}
+
 function getOrCreateTypingBubble() {
   const msgs = document.getElementById('chatMessages');
   if (!msgs) return null;
   if (window.stagedMsg && window.stagedMsg.isConnected) return window.stagedMsg;
   const bubble = document.createElement('div');
-  bubble.className = 'msg ai-msg';
+  bubble.className = 'msg ai-msg msg-typing';
   const dots = document.createElement('span');
   dots.className = 'typing-dots';
   bubble.appendChild(dots);
@@ -56,10 +85,12 @@ function replaceTypingBubble(text) {
   if (!msgs) return;
   if (window.stagedMsg && window.stagedMsg.isConnected) {
     window.stagedMsg.textContent = text;
+    window.stagedMsg.classList.remove('msg-typing');
+    window.stagedMsg.classList.add('msg-in');
     window.stagedMsg = null;
   } else {
     const bubble = document.createElement('div');
-    bubble.className = 'msg ai-msg';
+    bubble.className = 'msg ai-msg msg-in';
     bubble.textContent = text;
     msgs.appendChild(bubble);
   }
@@ -109,7 +140,7 @@ function sendChatMessage(msg) {
   msgs.querySelector('.placeholder')?.remove();
 
   const bubble = document.createElement('div');
-  bubble.style.cssText = 'align-self:flex-end;background:var(--panel);color:var(--text);padding:10px 14px;border-radius:14px 14px 4px 14px;max-width:80%;word-wrap:break-word;white-space:pre-wrap;font-size:14px;';
+  bubble.className = 'msg user-msg msg-in';
   bubble.textContent = msg;
   msgs.appendChild(bubble);
   msgs.scrollTop = msgs.scrollHeight;

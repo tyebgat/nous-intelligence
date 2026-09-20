@@ -41,7 +41,7 @@ except ImportError:
     VtubeControll = None
 
 try:
-    from TTS import TTS
+    from TTS import TTS, warm_up_heavy_imports
 except ImportError:
     TTS = None
 
@@ -826,10 +826,14 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
 async def _initialize() -> None:
     """Build ChatBot, TTS, VTS and the local LLM server from settings.json.
 
-    Every component initializes concurrently (asyncio.gather) instead of one
-    after the other. The local LLM takes the longest (loading the model into
-    RAM), so starting it together with everything else turns the wall time
-    from the *sum* of the stages into roughly the *longest* single stage.
+    VTube Studio is deliberately left out of the parallel batch: connecting
+    can block until you accept the plugin's authorization popup in VTube
+    Studio, so it runs on its own first and keeps that prompt front and
+    center instead of burying it under the other services' log lines. The
+    remaining components initialize concurrently (asyncio.gather). The local
+    LLM takes the longest (loading the model into RAM), so starting it
+    together with everything else turns the wall time from the *sum* of the
+    stages into roughly the *longest* single stage.
     """
     async with state.lock:
         if state.running:
@@ -837,6 +841,16 @@ async def _initialize() -> None:
 
         config = state.config if state.config else load_settings()
         logger.info(f"{i18n.t('start_services')}")
+
+        # Import the heavy AI backends (OmniVoice -> torch/transformers,
+        # faster-whisper -> CTranslate2) on the main thread BEFORE firing the
+        # initializers into parallel worker threads. Racing those imports can
+        # break OmniVoice's cold start (it then only "works on retry" once its
+        # dependencies are cached in sys.modules).
+        warm_up_heavy_imports(
+            tts_service=config.get("tts_service", "gtts"),
+            stt_service=config.get("stt_service", "whisper"),
+        )
 
         async def _init_chatbot():
             if "ChatBot" not in globals() or ChatBot is None:
@@ -951,9 +965,13 @@ async def _initialize() -> None:
                 state.user_input = None
 
         try:
+            # VTS first, blocking, so the "accept the token in VTube Studio"
+            # prompt stays visible instead of being scrolled away while the
+            # rest of the services spin up; then the rest in parallel.
+            await _init_vts()
             await asyncio.gather(
                 _init_chatbot(), _init_llm(), _init_tts(),
-                _init_vts(), _init_voice(),
+                _init_voice(),
             )
             state.running = True
             logger.success(f"{i18n.t('all_online')}")
@@ -1030,9 +1048,9 @@ def _port_in_use(host: str = "127.0.0.1", port: int = 5050) -> bool:
 
 if __name__ == "__main__":
     load_settings()
-    # Verbosity is driven solely by the configured log_level setting.
+    # Logging is a master on/off switch driven by enable_logs.
     setup_logging(
-        level=state.config.get("log_level", "INFO"),
+        enabled=state.config.get("enable_logs", True),
         rotation=state.config.get("log_rotation", "10 MB"),
         retention=state.config.get("log_retention", "30 days"),
         file_enabled=state.config.get("file_logs", True),

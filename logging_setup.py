@@ -46,6 +46,7 @@ class InterceptHandler(logging.Handler):
 
 
 def setup_logging(
+    enabled: bool = True,
     level: str = "INFO",
     rotation: str = "10 MB",
     retention: str = "30 days",
@@ -57,9 +58,16 @@ def setup_logging(
     Adds a colored console sink, a rotating file under Data/logs and an
     optional custom sink (e.g. the GUI websocket broadcaster). Also
     redirects uvicorn's stdlib logging into loguru via InterceptHandler.
+    When ``enabled`` is False all sinks are left removed, so nothing is
+    logged anywhere (settings: enable_logs=false).
     """
     try:
         logger.remove()
+
+        # Master on/off switch (settings: enable_logs=false): no console,
+        # file or GUI output at all.
+        if not enabled:
+            return
 
         if sys.stderr is not None:
             logger.add(

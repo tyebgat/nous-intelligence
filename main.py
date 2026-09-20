@@ -14,7 +14,7 @@ from run_local_server import RunLocalServer
 from chat_bot import ChatBot
 from VtubeS_Plugin import VtubeControll
 from user_input import UserInput
-from TTS import TTS
+from TTS import TTS, warm_up_heavy_imports
 from logging_setup import setup_logging
 
 token_path=os.path.join(BASE_PATH, 'Data', 'noussoul_auth_token.txt')
@@ -135,7 +135,7 @@ async def main():
         show_ollama_server_logs = False
 
     setup_logging(
-        level=config.get("log_level", "INFO"),
+        enabled=config.get("enable_logs", True),
         rotation=config.get("log_rotation", "10 MB"),
         retention=config.get("log_retention", "30 days"),
         file_enabled=config.get("file_logs", True),
@@ -143,6 +143,15 @@ async def main():
 
     logger.info("Starting Vtube Studio Plugin...")
     
+    # Import the heavy AI backends (OmniVoice -> torch/transformers,
+    # faster-whisper -> CTranslate2) single-threaded, before the per-service
+    # initializers run in worker threads. Racing those imports can break
+    # OmniVoice's cold start.
+    warm_up_heavy_imports(
+        tts_service=config.get("tts_service", "gtts"),
+        stt_service=config.get("stt_service", "whisper"),
+    )
+
     #VTS Plugin
     vts = VtubeControll()
 

@@ -16,6 +16,31 @@ from loguru import logger
 YELLOW = '\033[33m'
 RESET = '\033[0m'
 
+
+def warm_up_heavy_imports(tts_service: str, stt_service: str) -> None:
+    """Pre-import the heavy AI backends on the caller's thread.
+
+    OmniVoice drags in torch/torchaudio/transformers and faster-whisper brings
+    CTranslate2 + its CUDA wrappers; each takes seconds to import and build a
+    CUDA context. When two of them do that in separate worker threads at the
+    same time, the concurrent heavy importing can sever each other (OmniVoice
+    fails with an ImportError on cold start, then "works on retry" once its
+    dependencies are cached in sys.modules). Importing them here, single
+    threaded and before the per-service initializers run in parallel, makes
+    those inits cache hits instead of a race.
+    """
+    if tts_service == "omnivoice":
+        try:
+            import omnivoice  # noqa: F401
+        except Exception as e:
+            logger.exception(f"Failed to import OmniVoice backend: {e}")
+    if stt_service == "whisper":
+        try:
+            import faster_whisper  # noqa: F401
+        except Exception as e:
+            logger.warning(f"Failed to import faster-whisper backend: {e}")
+
+
 class TTS:
     def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, reference_wav: str = None, omnivoice_device: str = "cuda", play_only_cable: bool = False, gain: float = 1.0):
         self.chatbot_name = chatbot_name
@@ -112,10 +137,13 @@ class TTS:
         if self.tts_service == "omnivoice":
             try:
                 from omnivoice import OmniVoice
-            except Exception:
+            except Exception as e:
+                # Don't misread every import failure as "not installed": log the
+                # real cause (e.g. a concurrent heavy import on cold start).
+                logger.exception(f"Failed to import OmniVoice: {e}")
                 OmniVoice = None
             if OmniVoice is None:
-                logger.error("OmniVoice is not installed. Install with: pip install git+https://github.com/k2-fsa/OmniVoice.git")
+                logger.error("OmniVoice unavailable. Install with: pip install git+https://github.com/k2-fsa/OmniVoice.git")
             else:
                 try:
                     import torch

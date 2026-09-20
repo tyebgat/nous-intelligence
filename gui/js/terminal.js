@@ -48,6 +48,14 @@ function stripAnsi(line) {
   return String(line).replace(/\x1b\[[0-9;]*m/g, '');
 }
 
+// Tones applied to the init status text, keyed to the log level.
+const INIT_STATUS_TONES = {
+  SUCCESS: 'status-success',
+  WARNING: 'status-warning',
+  ERROR: 'status-error',
+  CRITICAL: 'status-error'
+};
+
 function cleanInitLabel(line) {
   return stripAnsi(line)
     .trim()
@@ -55,23 +63,44 @@ function cleanInitLabel(line) {
     .replace(/\.{3,}$/, '');
 }
 
-function updateInitStatus(line) {
+function updateInitStatus(meta) {
   if (!initStatus || !initOverlay || !initOverlay.classList.contains('open')) return;
-  const raw = stripAnsi(line);
+
+  // Structured records from the server: use the plain message + level.
+  if (meta && meta.level) {
+    if (meta.level === 'DEBUG') return;
+    const message = cleanInitLabel(meta.message || '');
+    if (!message) return;
+    initStatus.className = 'init-status';
+    const tone = INIT_STATUS_TONES[meta.level];
+    if (tone) initStatus.classList.add(tone);
+    initStatus.textContent = message;
+    return;
+  }
+
+  // Fallback for plain lines (e.g. voice.js appendLog calls while the overlay
+  // is open): keep the old keyword-filtered behavior.
+  const raw = stripAnsi(meta);
+  const text = cleanInitLabel(raw);
   if (!/(initializ|inicializ|arranc|conect|connect|start|prepar|ready|listo|online|fail|error|fallo|download|descarg)/i.test(raw)) return;
-  initStatus.textContent = cleanInitLabel(raw);
+  initStatus.textContent = text;
 }
 
-function appendLog(line) {
+function appendLog(line, meta) {
   const raw = String(line);
   const html = ansiToHtml(raw);
   if (terminalLog) {
     terminalLog.innerHTML += html + '\n';
     terminalLog.scrollTop = terminalLog.scrollHeight;
   }
-  updateInitStatus(raw);
-  if (raw.indexOf('All requested AI services are online') !== -1 ||
-      raw.indexOf('están en línea') !== -1) {
+  updateInitStatus(meta || raw);
+  if (meta && meta.message) {
+    if (meta.message.indexOf('All requested AI services are online') !== -1 ||
+        meta.message.indexOf('están en línea') !== -1) {
+      showInitOk();
+    }
+  } else if (raw.indexOf('All requested AI services are online') !== -1 ||
+             raw.indexOf('están en línea') !== -1) {
     showInitOk();
   }
 }
@@ -91,5 +120,10 @@ function showInitOk() {
 }
 
 function closeInitPanel() {
-  if (initOverlay) initOverlay.classList.remove('open');
+  if (!initOverlay || !initOverlay.classList.contains('open')) return;
+  initOverlay.classList.add('closing');
+  setTimeout(() => {
+    initOverlay.classList.remove('closing');
+    initOverlay.classList.remove('open');
+  }, 120);
 }

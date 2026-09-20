@@ -93,7 +93,7 @@ function handleIncomingMessage(data) {
     hideToast();
     showToast(t('interrupted'));
   } else if (data.type === 'log') {
-    appendLog(data.payload.line);
+    appendLog(data.payload.line, data.payload);
   } else if (data.type === 'speech_result') {
     const text = (data.payload.text || '').trim();
     window.waitingSpeechResult = false;

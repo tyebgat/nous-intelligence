@@ -10,15 +10,14 @@ import sys
 import time
 import threading
 from paths import BASE_PATH
+from loguru import logger
 
-RED = '\033[31m'
-GREEN = '\033[32m'
+# Used by the CLI "Generating TTS..." spinner (kept as raw ANSI writes).
 YELLOW = '\033[33m'
-ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 class TTS:
-    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, reference_wav: str = None, omnivoice_device: str = "cuda", detailed_logs: bool = True, play_only_cable: bool = False, gain: float = 1.0):
+    def __init__(self, tts_language: str = "en", chatbot_name: str = "Nous", tts_service: str = "gtts", openai_tts_model: str = None, openai_tts_voice: str = "ash", tts_voice: str = "ash", tts_speed: float = 1.0, voice_cloning: bool = False, voice_design: bool = False, reference_wav: str = None, omnivoice_device: str = "cuda", play_only_cable: bool = False, gain: float = 1.0):
         self.chatbot_name = chatbot_name
         self.openai_tts_voice = openai_tts_voice
         self.openai_tts_model = openai_tts_model
@@ -30,7 +29,6 @@ class TTS:
         self.voice_design = voice_design
         self.reference_wav = reference_wav or "Data/reference.wav"
         self.omnivoice_device = omnivoice_device
-        self.detailed_logs = detailed_logs
         self.play_only_cable = play_only_cable
         self.gain = gain
         self.cable_device_id = None
@@ -62,9 +60,9 @@ class TTS:
 
         #try to get virtual audio cable
         if self.cable_device_id is not None:
-            print(f"{GREEN}VB Cable device set to id: {self.cable_device_id}{RESET}")
+            logger.success(f"VB Cable device set to id: {self.cable_device_id}")
         else:
-            print(f"{ORANGE}No VB cable found, lypsinc may not work.{RESET}")
+            logger.warning("No VB cable found, lypsinc may not work.")
         
         #initialize pocket tts
         self.pockettts_model = None
@@ -75,7 +73,7 @@ class TTS:
             except Exception:
                 TTSModel = None
             if TTSModel is None:
-                print(f"{RED}pocket-tts is not installed. Install with: pip install pocket-tts scipy{RESET}")
+                logger.error("pocket-tts is not installed. Install with: pip install pocket-tts scipy")
             else:
                 try:
                     hf_token = getenv("HF_TOKEN")
@@ -89,22 +87,22 @@ class TTS:
                     if self.voice_cloning and ref_path and os.path.exists(ref_path):
                         try:
                             self.pockettts_voice_state = self.pockettts_model.get_state_for_audio_prompt(ref_path)
-                            print(f"{GREEN}Pocket TTS initialized with voice cloning from: {ref_path}{RESET}")
+                            logger.success(f"Pocket TTS initialized with voice cloning from: {ref_path}")
                         except Exception as e:
-                            print(f"{YELLOW}Voice cloning failed: {e}{RESET}")
-                            print(f"{YELLOW}Falling back to built-in voice.{RESET}")
+                            logger.warning(f"Voice cloning failed: {e}")
+                            logger.warning("Falling back to built-in voice.")
                             voice = self.tts_voice if self.tts_voice else "alba"
                             self.pockettts_voice_state = self.pockettts_model.get_state_for_audio_prompt(voice)
-                            print(f"{GREEN}Pocket TTS initialized (voice={voice}){RESET}")
+                            logger.success(f"Pocket TTS initialized (voice={voice})")
                     else:
                         if self.voice_cloning:
-                            print(f"{YELLOW}reference wav not found at {ref_path}. Add a reference.wav (or set the reference_wav setting) for voice cloning.{RESET}")
+                            logger.warning(f"reference wav not found at {ref_path}. Add a reference.wav (or set the reference_wav setting) for voice cloning.")
                         voice = self.tts_voice if self.tts_voice else "alba"
                         self.pockettts_voice_state = self.pockettts_model.get_state_for_audio_prompt(voice)
-                        print(f"{GREEN}Pocket TTS initialized (voice={voice}){RESET}")
+                        logger.success(f"Pocket TTS initialized (voice={voice})")
 
                 except Exception as e:
-                    print(f"{RED}Failed to initialize Pocket TTS: {e}{RESET}")
+                    logger.error(f"Failed to initialize Pocket TTS: {e}")
 
         #initialize omnivoice tts
         self.omnivoice_model = None
@@ -117,15 +115,15 @@ class TTS:
             except Exception:
                 OmniVoice = None
             if OmniVoice is None:
-                print(f"{RED}OmniVoice is not installed. Install with: pip install git+https://github.com/k2-fsa/OmniVoice.git{RESET}")
+                logger.error("OmniVoice is not installed. Install with: pip install git+https://github.com/k2-fsa/OmniVoice.git")
             else:
                 try:
                     import torch
-                    if self.omnivoice_device == "cuda" and self.detailed_logs:
-                        print(f"{GREEN}CUDA available: {torch.cuda.is_available()}{RESET}")
-                        print(f"{GREEN}CUDA device count: {torch.cuda.device_count()}{RESET}")
-                        print(f"{GREEN}CUDA current device: {torch.cuda.current_device()}{RESET}")
-                        print(f"{GREEN}CUDA device name: {torch.cuda.get_device_name(0)}{RESET}")
+                    if self.omnivoice_device == "cuda":
+                        logger.debug(f"CUDA available: {torch.cuda.is_available()}")
+                        logger.debug(f"CUDA device count: {torch.cuda.device_count()}")
+                        logger.debug(f"CUDA current device: {torch.cuda.current_device()}")
+                        logger.debug(f"CUDA device name: {torch.cuda.get_device_name(0)}")
                     self.omnivoice_model = OmniVoice.from_pretrained(
                         "k2-fsa/OmniVoice",
                         device_map=f"{self.omnivoice_device}:0" if self.omnivoice_device == "cuda" else self.omnivoice_device,
@@ -140,24 +138,24 @@ class TTS:
                         self.omnivoice_ref_audio = ref_audio_path
                         with open(ref_text_path, "r", encoding="utf-8") as f:
                             self.omnivoice_ref_text = f.read().strip()
-                        print(f"{GREEN}OmniVoice initialized with voice cloning from: {ref_audio_path}{RESET}")
+                        logger.success(f"OmniVoice initialized with voice cloning from: {ref_audio_path}")
                     elif self.voice_cloning and not (ref_audio_path and os.path.exists(ref_audio_path)):
-                        print(f"{YELLOW}reference wav not found at {ref_audio_path}. Falling back to auto voice.{RESET}")
+                        logger.warning(f"reference wav not found at {ref_audio_path}. Falling back to auto voice.")
                     elif self.voice_cloning and not os.path.exists(ref_text_path):
-                        print(f"{YELLOW}reference.txt not found. Falling back to auto voice.{RESET}")
+                        logger.warning("reference.txt not found. Falling back to auto voice.")
 
                     if self.omnivoice_ref_audio is None and self.voice_design and os.path.exists(design_path):
                         with open(design_path, "r", encoding="utf-8") as f:
                             self.omnivoice_instruct = f.read().strip()
-                        print(f"{GREEN}OmniVoice initialized with voice design{RESET}")
+                        logger.success("OmniVoice initialized with voice design")
                     elif self.voice_design and not os.path.exists(design_path):
-                        print(f"{YELLOW}omnivoice-design.txt not found. Falling back to auto voice.{RESET}")
+                        logger.warning("omnivoice-design.txt not found. Falling back to auto voice.")
 
                     if self.omnivoice_ref_audio is None and self.omnivoice_instruct is None:
-                        print(f"{GREEN}OmniVoice initialized with auto voice{RESET}")
+                        logger.success("OmniVoice initialized with auto voice")
 
                 except Exception as e:
-                    print(f"{RED}Failed to initialize OmniVoice: {e}{RESET}")
+                    logger.error(f"Failed to initialize OmniVoice: {e}")
 
     def get_cable_device_id(self):
         devices = sd.query_devices()
@@ -167,7 +165,7 @@ class TTS:
                 'cable input' in name and
                 'vb-audio virtual cable' in name and
                 device['default_samplerate'] == 44100.0):
-                print(f"{GREEN}Found VB Cable Input: [{i}] {device['name']}{RESET}")
+                logger.success(f"Found VB Cable Input: [{i}] {device['name']}")
                 return i
         return None
 
@@ -205,7 +203,7 @@ class TTS:
                 pass
 
     async def tts_say(self, text: str) -> None:
-        print(f"{self.chatbot_name}: {text}")
+        logger.info(f"{self.chatbot_name}: {text}")
         self.is_speaking = True
         self._stop_requested = False
 
@@ -236,7 +234,7 @@ class TTS:
 
                 case "omnivoice":
                     if self.omnivoice_model is None:
-                        print(f"{YELLOW}OmniVoice not initialized, falling back to gtts...{RESET}")
+                        logger.warning("OmniVoice not initialized, falling back to gtts...")
                         gTTS(text=text, lang=self.tts_language, slow=False, lang_check=False).save(output_path)
                         return
                     generate_kwargs = {"text": text}
@@ -250,26 +248,26 @@ class TTS:
 
                 case "pockettts":
                     if self.pockettts_model is None or self.pockettts_voice_state is None:
-                        print(f"{YELLOW}Pocket TTS not initialized, falling back to gtts...{RESET}")
+                        logger.warning("Pocket TTS not initialized, falling back to gtts...")
                         gTTS(text=text, lang=self.tts_language, slow=False, lang_check=False).save(output_path)
                         return
                     audio = self.pockettts_model.generate_audio(self.pockettts_voice_state, text)
                     scipy.io.wavfile.write(output_path, self.pockettts_model.sample_rate, audio.numpy())
 
                 case _:
-                    print(f"{YELLOW} TTS service not supported falling back to gtts... {RESET}")
+                    logger.warning("TTS service not supported falling back to gtts...")
                     gTTS(text=text, lang=self.tts_language, slow=False, lang_check=False).save(output_path)
 
         except Exception as e:
             self._stop_spinner()
-            print(f"{RED}Error generating TTS: {e}{RESET}")
+            logger.error(f"Error generating TTS: {e}")
             self.is_speaking = False
             return
 
         self._stop_spinner()
 
         if not os.path.exists(output_path):
-            print(f"{RED}error: output.wav file not created!{RESET}")
+            logger.error("error: output.wav file not created!")
             self.is_speaking = False
             return
 
@@ -355,7 +353,7 @@ class TTS:
                     except Exception:
                         pass
         except Exception as e:
-            print(f"{RED}Error playing audio: {e}{RESET}")
+            logger.error(f"Error playing audio: {e}")
         finally:
             for stream in streams:
                 try:

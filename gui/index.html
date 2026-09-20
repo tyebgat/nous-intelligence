@@ -260,7 +260,15 @@ fetch('/api/settings').then(r => r.json()).then(c => {
         </label>
       </div>
       <div class="tab-content" id="tab-logs">
-        <label data-tip-i18n="tip_detailed_logs"><span data-i18n="lbl_detailed_logs">Detailed Logs</span> <input type="checkbox" data-key="logs"/></label>
+        <label data-tip-i18n="tip_log_level"><span data-i18n="lbl_log_level">Log Level</span>
+          <select data-key="log_level">
+            <option value="DEBUG">DEBUG</option>
+            <option value="INFO">INFO</option>
+            <option value="WARNING">WARNING</option>
+            <option value="ERROR">ERROR</option>
+          </select>
+        </label>
+        <label data-tip-i18n="tip_file_logs"><span data-i18n="lbl_file_logs">Write Log File</span> <input type="checkbox" data-key="file_logs"/></label>
         <label data-tip-i18n="tip_print_audio_devices"><span data-i18n="lbl_print_audio_devices">Print Audio Devices</span> <input type="checkbox" data-key="print_audio_devices"/></label>
         <label data-tip-i18n="tip_show_llm_logs"><span data-i18n="lbl_show_llm_logs">Show LLM Server Logs</span> <input type="checkbox" data-key="show_ollama_server_logs"/></label>
       </div>

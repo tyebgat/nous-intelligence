@@ -161,12 +161,22 @@ function showWarning(message, okText) {
   if (overlay) overlay.classList.add('open');
 }
 
+function closeWarning() {
+  const overlay = document.getElementById('warningOverlay');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  overlay.classList.add('closing');
+  setTimeout(() => {
+    overlay.classList.remove('closing');
+    overlay.classList.remove('open');
+  }, 120);
+}
+
 const warningOverlay = document.getElementById('warningOverlay');
 if (warningOverlay) {
   const ok = document.getElementById('warningOk');
-  if (ok) ok.addEventListener('click', () => warningOverlay.classList.remove('open'));
+  if (ok) ok.addEventListener('click', closeWarning);
   warningOverlay.addEventListener('click', (e) => {
-    if (e.target === warningOverlay) warningOverlay.classList.remove('open');
+    if (e.target === warningOverlay) closeWarning();
   });
 }
 

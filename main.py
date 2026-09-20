@@ -3,6 +3,7 @@ import json
 import os
 import colorama
 from dotenv import load_dotenv
+from loguru import logger
 
 load_dotenv()
 colorama.init()
@@ -14,24 +15,21 @@ from chat_bot import ChatBot
 from VtubeS_Plugin import VtubeControll
 from user_input import UserInput
 from TTS import TTS
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
+from logging_setup import setup_logging
 
 token_path=os.path.join(BASE_PATH, 'Data', 'noussoul_auth_token.txt')
 
 async def main():
-    print(f"{YELLOW} Loading settings json...{RESET}")
+    setup_logging()
+    logger.info("Loading settings json...")
     #opens the json setting
+    config = {}  # filled below; kept empty on missing/corrupt settings file
     try:
         #========================
         # GET JSON CONFIGURATION
         # ========================
         with open(os.path.join(BASE_PATH, "settings.json"), 'r') as f:
-            print(f"{YELLOW}loading settings from json....{RESET}")
+            logger.info("loading settings from json....")
             config = json.load(f)
             # --- chatbot settings ---
             user_input_service = config.get("user_input_service", "console")
@@ -84,15 +82,15 @@ async def main():
             show_ollama_server_logs = config.get("show_ollama_server_logs", False)
 
             if detailed_logs:
-                print("==================SETTINGS===================")
-                print(json.dumps(config, indent=4))
-                print("=" * 60)
+                logger.debug("==================SETTINGS===================")
+                logger.debug(json.dumps(config, indent=4))
+                logger.debug("=" * 60)
 
     except FileNotFoundError:
         #========================
         # JSON DEFAULT SETTINGS
         # ========================
-        print(f"{ORANGE}file not found using default settings...{RESET}")
+        logger.warning("file not found using default settings...")
         # --- chatbot settings ---
         user_input_service = "console"
         chatbot_service = "test"     
@@ -143,7 +141,16 @@ async def main():
         print_audio_devices = False
         show_ollama_server_logs = False
 
-    print(f'{YELLOW}Starting Vtube Studio Plugin...{RESET}')
+    # Level reflects the "Detailed Logs" toggle when enabled, otherwise the
+    # configured log_level; file written to Data/logs/app.log per settings.
+    setup_logging(
+        level="DEBUG" if detailed_logs else config.get("log_level", "INFO"),
+        rotation=config.get("log_rotation", "10 MB"),
+        retention=config.get("log_retention", "30 days"),
+        file_enabled=config.get("file_logs", True),
+    )
+
+    logger.info("Starting Vtube Studio Plugin...")
     
     #VTS Plugin
     vts = VtubeControll(detailed_logs=detailed_logs)
@@ -210,12 +217,12 @@ async def main():
         #START VTS PLUGINS
         #----------------------
         try:
-            print(f'{YELLOW}Intializing Plugin...{RESET}')
+            logger.info("Intializing Plugin...")
             await vts.initialize()
-            print(f'{GREEN}done.{RESET}')
+            logger.success("done.")
         #if gone wrong then print out an error
         except Exception as e:
-            print(f"{RED}Failed to start VTube Studio plugin. Is it open?: {e}{RESET}")
+            logger.error(f"Failed to start VTube Studio plugin. Is it open?: {e}")
 
     async def _start_llm():
         #----------------------
@@ -224,13 +231,13 @@ async def main():
         if chatbot_service != "local":
             return
         try:
-            print(f"{YELLOW}Initializing local Llama server{RESET}")
+            logger.info("Initializing local Llama server")
             # Longer timeout: it no longer blocks the other services, so we
             # can afford to wait longer for the model to load.
             await local_server.launch_server(timeout=60)
-            print(f"{GREEN}Local server running{RESET}")
+            logger.success("Local server running")
         except Exception as e:
-            print(f"{RED}Failed to start local llama server: {e}{RESET}")
+            logger.error(f"Failed to start local llama server: {e}")
 
     vts_task = asyncio.create_task(_init_vts())
     llm_task = asyncio.create_task(_start_llm())
@@ -245,22 +252,22 @@ async def main():
         tts=tts
     )
 
-    print(f"{YELLOW}Initializing nous...{RESET}")
+    logger.info("Initializing nous...")
     # Runs TTS.initialize + ChatBot.initialize + mic setup; block on it in a
     # thread so the llama server and VTS keep loading in the background.
     await asyncio.to_thread(ai.initialize, None)
-    print(f"{GREEN}Nous initialized.{RESET}")
+    logger.success("Nous initialized.")
 
     #--- initialize wake word + whisper STT ---
     if user_input_service == "wake_word":
-        print(f"{YELLOW}Loading wake word model...{RESET}")
+        logger.info("Loading wake word model...")
         user_input.setup_wake_word()
-        print(f"{GREEN}Wake word model loaded.{RESET}")
+        logger.success("Wake word model loaded.")
 
     if stt_service == "whisper" and user_input_service != "console":
-        print(f"{YELLOW}Loading Whisper STT model...{RESET}")
+        logger.info("Loading Whisper STT model...")
         user_input.setup_whisper()
-        print(f"{GREEN}Whisper STT model loaded.{RESET}")
+        logger.success("Whisper STT model loaded.")
 
     # Wait for the background services (VTS connect + llama model load).
     await vts_task
@@ -272,12 +279,12 @@ async def main():
         await ai_task
     
     except KeyboardInterrupt:
-        print(f"{ORANGE}Keyboard interrupt detected shutting down...{RESET}")
+        logger.warning("Keyboard interrupt detected shutting down...")
 
     except Exception as e:
-        print(f"{RED}Unexpecter error occured in main loop, shutting down...{RESET}")
+        logger.error("Unexpecter error occured in main loop, shutting down...")
         if detailed_logs:
-            print(f"{RED}Unexpected error occured in main loop, shutting down: {e}{RESET}")
+            logger.debug(f"Unexpected error occured in main loop, shutting down: {e}")
 
     finally:
         user_input.cleanup()

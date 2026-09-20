@@ -2,10 +2,10 @@
 import asyncio
 import base64
 import json
-import logging
 import sys
 import threading
 import webbrowser
+from contextlib import asynccontextmanager
 from pathlib import Path
 import os
 
@@ -17,9 +17,11 @@ load_dotenv()
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from loguru import logger
 import uvicorn
 
 from paths import BASE_PATH
+from logging_setup import setup_logging
 import i18n
 
 #Modules
@@ -49,12 +51,6 @@ except ImportError:
     UserInput = None
 
 nous_task = None
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
 
 
 #Global state
@@ -105,64 +101,43 @@ async def _broadcast(message: dict) -> None:
         clients.discard(client)
 
 
-def _log(line: str) -> None:
+#Running asyncio loop captured at startup (used to push loguru records
+#from worker threads into the WebSocket broadcaster).
+_loop_ref = None
+
+
+def _gui_log_sink(message) -> None:
+    """Loguru sink that forwards each record to the GUI over WebSocket.
+
+    `str(message)` is the colored, fully formatted line shown in the
+    terminal; the record's `level` and `message` drive the init status text.
     """
-    Print a line to the server console and forward it to the GUI over
-    WebSocket so it can be shown in the init panel / terminal.
-    """
-    print(line)
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
+    record = message.record
+    loop = _loop_ref
+    if loop is None or not loop.is_running():
         return
-    if loop.is_running():
-        loop.create_task(_broadcast({"type": "log", "payload": {"line": line}}))
-
-
-class WSBroadcastHandler(logging.Handler):
-    """Python logging handler that forwards uvicorn logs to the GUI."""
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            if msg:
-                _log(msg)
-        except Exception:
-            pass
-
-
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {"format": "%(message)s"},
-        "access": {"format": "%(message)s"},
-    },
-    "handlers": {
-        "default": {
-            "formatter": "default",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-        },
-        "access": {
-            "formatter": "access",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-        },
-        "ws": {
-            "formatter": "default",
-            "()": WSBroadcastHandler,
-        },
-    },
-    "loggers": {
-        "uvicorn": {"handlers": ["default", "ws"], "level": "INFO", "propagate": False},
-        "uvicorn.error": {"handlers": ["default", "ws"], "level": "INFO", "propagate": False},
-        "uvicorn.access": {"handlers": ["access", "ws"], "level": "INFO", "propagate": False},
-    },
-}
+    asyncio.run_coroutine_threadsafe(
+        _broadcast({
+            "type": "log",
+            "payload": {
+                "line": str(message),
+                "level": record["level"].name,
+                "message": record["message"],
+            },
+        }),
+        loop,
+    )
 
 #Fast api
-app = FastAPI(title="Nous Intelligence GUI")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _loop_ref
+    _loop_ref = asyncio.get_running_loop()
+    yield
+    _loop_ref = None
+
+
+app = FastAPI(title="Nous Intelligence GUI", lifespan=lifespan)
 
 #settings functions
 def settings_path() -> Path:
@@ -266,7 +241,7 @@ async def browse_path(type: str = "folder", ext: str = ""):
     try:
         path = await asyncio.to_thread(_browse_sync, type, ext)
     except Exception as e:
-        print(f"{RED}File dialog failed: {e}{RESET}")
+        logger.error(f"File dialog failed: {e}")
         return {"path": ""}
     finally:
         _dialog_lock.release()
@@ -424,7 +399,7 @@ async def chat_socket(ws: WebSocket):
     """
     await ws.accept()
     clients.add(ws)
-    _log(i18n.t("ws_connected"))
+    logger.info(i18n.t("ws_connected"))
 
     try:
         while True:
@@ -447,8 +422,8 @@ async def chat_socket(ws: WebSocket):
                             {"type": "crash", "payload": {}}
                         )
                 except Exception as e:
-                    _log(f"{RED}[SERVER ERROR] {e}{RESET}")
-                    _log(f"{RED}{i18n.t('crash')}{RESET}")
+                    logger.error(f"[SERVER ERROR] {e}")
+                    logger.error(f"{i18n.t('crash')}")
                     await ws.send_json(
                         {"type": "crash", "payload": {}}
                     )
@@ -483,9 +458,9 @@ async def chat_socket(ws: WebSocket):
                 await ws.send_json({"type": "pong", "payload": {}})
 
     except WebSocketDisconnect:
-        _log(i18n.t("ws_disconnected"))
+        logger.info(i18n.t("ws_disconnected"))
     except Exception as e:
-        _log(f"[WS Error]: {e}")
+        logger.error(f"[WS Error]: {e}")
     finally:
         clients.discard(ws)
         mic_rate.pop(ws, None)
@@ -535,7 +510,7 @@ async def _interrupt_ai() -> None:
         try:
             state.tts.stop()
         except Exception as e:
-            _log(f"{ORANGE}{i18n.t('tts_error', e=e)}{RESET}")
+            logger.warning(f"{i18n.t('tts_error', e=e)}")
 
     # Tell every client NOW that the turn is over and input is unlocked.
     await _broadcast({"type": "chat_interrupted", "payload": {}})
@@ -547,7 +522,7 @@ async def _interrupt_ai() -> None:
         try:
             await asyncio.wait_for(state.vts.trigger_hotkey("Neutral"), timeout=3)
         except Exception as e:
-            _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
+            logger.warning(f"{i18n.t('vts_neutral_error', e=e)}")
 
 
 async def _handle_message(ws: WebSocket, text: str) -> None:
@@ -559,7 +534,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
     notifications while each stage runs, and a "tts_done" message is sent when
     the voice playback finishes.
     """
-    _log(i18n.t("chat_received", text=text))
+    logger.info(i18n.t("chat_received", text=text))
 
     if state.chat_bot is None:
         await ws.send_json(
@@ -576,7 +551,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
     if state.processing:
         # A previous turn is still in flight. The GUI turns the send button
         # into a stop button while busy, so this is only a safety net.
-        _log(f"{ORANGE}{i18n.t('voice_blocked')}{RESET}")
+        logger.warning(f"{i18n.t('voice_blocked')}")
         await ws.send_json(
             {"type": "chat_stage", "payload": {"stage": "stopped", "text": ""}}
         )
@@ -608,7 +583,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             finally:
                 state._think_task = None
         except Exception as e:
-            _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
+            logger.error(f"{i18n.t('chatbot_error', e=e)}")
             state.ai_busy = False  # don't leave the input locked forever
             state.processing = False
             await ws.send_json({"type": "tts_done", "payload": {}})
@@ -621,7 +596,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             await ws.send_json({"type": "tts_done", "payload": {}})
             return
 
-        _log(i18n.t("bot_response", text=response_text))
+        logger.info(i18n.t("bot_response", text=response_text))
 
         # Resolve the emotion now (chatbot's structured label, keyword analyzer
         # as fallback) but only apply it once the voice actually starts playing.
@@ -630,9 +605,9 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             try:
                 pending_emotion = state.vts.analyze_dominant_emotion(response_text)
             except Exception as e:
-                _log(f"{ORANGE}{i18n.t('vts_emotion_error', e=e)}{RESET}")
+                logger.warning(f"{i18n.t('vts_emotion_error', e=e)}")
         if pending_emotion:
-            _log(i18n.t("emotion", emotion=pending_emotion))
+            logger.info(i18n.t("emotion", emotion=pending_emotion))
 
         # Stage 2: generating the voice
         if state.tts is not None:
@@ -670,7 +645,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
                 except asyncio.CancelledError:
                     pass  # interrupted: state.tts.stop() already cut the audio
                 except Exception as e:
-                    _log(f"{RED}{i18n.t('tts_error', e=e)}{RESET}")
+                    logger.error(f"{i18n.t('tts_error', e=e)}")
                 finally:
                     state.tts.on_playback_start = None
                     state.tts.on_playback_end = None
@@ -687,7 +662,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
                         try:
                             await state.vts.trigger_hotkey("Neutral")
                         except Exception as e:
-                            _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
+                            logger.warning(f"{i18n.t('vts_neutral_error', e=e)}")
 
             state._speak_task = asyncio.create_task(_speak_and_reset())
         else:
@@ -715,7 +690,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             pass
         raise
     except Exception as e:
-        _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
+        logger.error(f"{i18n.t('chatbot_error', e=e)}")
         # Don't leave the input locked if anything unexpected happened.
         try:
             await _interrupt_ai()
@@ -750,7 +725,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
     if ui.user_input_service == "speech":
         if event == "start":
             if state.ai_busy:
-                _log(f"{ORANGE}{i18n.t('voice_blocked')}{RESET}")
+                logger.warning(f"{i18n.t('voice_blocked')}")
             else:
                 ui.start_utterance()
             return
@@ -768,26 +743,26 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                         seconds=f"{stats['seconds']:.2f}",
                         peak=f"{stats['peak']:.0f}", rms=f"{stats['rms']:.0f}",
                     )
-                    _log(f"{YELLOW}{i18n.t('voice_stats', **_stats)}{RESET}")
+                    logger.info(f"{i18n.t('voice_stats', **_stats)}")
                     dump_path = os.path.join(BASE_PATH, "debug_utterance.wav")
                     await asyncio.to_thread(ui.dump_utterance, dump_path, frames)
-                    _log(f"{YELLOW}{i18n.t('voice_saved', path=dump_path)}{RESET}")
+                    logger.info(f"{i18n.t('voice_saved', path=dump_path)}")
                 else:
-                    _log(f"{YELLOW}{i18n.t('voice_no_chunks')}{RESET}")
+                    logger.info(f"{i18n.t('voice_no_chunks')}")
 
                 text = await asyncio.to_thread(ui._transcribe_frames, frames, True)
                 if not text and ui.stt_service == "whisper" and ui.local_stt._model is not None:
-                    _log(f"{YELLOW}{i18n.t('vad_retry')}{RESET}")
+                    logger.info(f"{i18n.t('vad_retry')}")
                     text = await asyncio.to_thread(ui._transcribe_frames, frames, False)
                 ui.end_utterance()  # clear the buffer
 
                 if text:
-                    _log(f"{GREEN}{i18n.t('voice_text', text=text)}{RESET}")
+                    logger.success(f"{i18n.t('voice_text', text=text)}")
                 else:
-                    _log(f"{ORANGE}{i18n.t('voice_no_speech')}{RESET}")
+                    logger.warning(f"{i18n.t('voice_no_speech')}")
                 await ws.send_json({"type": "speech_result", "payload": {"text": text}})
             except Exception as e:
-                _log(f"{RED}{i18n.t('voice_input_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('voice_input_error', e=e)}")
             return
 
     raw = base64.b64decode(payload.get("data") or "")
@@ -809,7 +784,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
             if state.ai_busy:
                 if not ui.listening and ui.feed_wake_audio(pcm):
                     ui.wake_word.reset()
-                    _log(f"{ORANGE}{i18n.t('wake_ignored')}{RESET}")
+                    logger.warning(f"{i18n.t('wake_ignored')}")
                     await ws.send_json({"type": "wake_busy", "payload": {}})
                 return
 
@@ -817,7 +792,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                 if ui.feed_wake_audio(pcm):
                     ui.wake_word.reset()  # clear streaming state so it can't double-fire
                     ui.start_listening()
-                    _log(f"{GREEN}{i18n.t('wake_detected')}{RESET}")
+                    logger.success(f"{i18n.t('wake_detected')}")
                     if ui.wake_word.confirm_sound:
                         await asyncio.to_thread(ui.wake_word.play_confirm_sound)
                     await ws.send_json({"type": "wake_detected", "payload": {}})
@@ -831,7 +806,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                             seconds=f"{stats['seconds']:.2f}",
                             peak=f"{stats['peak']:.0f}", rms=f"{stats['rms']:.0f}",
                         )
-                        _log(f"{YELLOW}{i18n.t('wake_utterance', **_ustats)}{RESET}")
+                        logger.info(f"{i18n.t('wake_utterance', **_ustats)}")
                         dump_path = os.path.join(BASE_PATH, "debug_utterance.wav")
                         await asyncio.to_thread(ui.dump_utterance, dump_path, frames)
                     text = await asyncio.to_thread(ui.stop_listening)
@@ -840,12 +815,12 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                         # Lock input immediately (before the client's chat round
                         # trip) so no new wake word can slip in mid-transition.
                         state.ai_busy = True
-                        _log(f"{GREEN}{i18n.t('voice_text', text=text)}{RESET}")
+                        logger.success(f"{i18n.t('voice_text', text=text)}")
                     else:
-                        _log(f"{ORANGE}{i18n.t('voice_no_speech')}{RESET}")
+                        logger.warning(f"{i18n.t('voice_no_speech')}")
                     await ws.send_json({"type": "speech_result", "payload": {"text": text}})
     except Exception as e:
-        _log(f"{RED}{i18n.t('voice_input_error', e=e)}{RESET}")
+        logger.error(f"{i18n.t('voice_input_error', e=e)}")
 
 
 async def _initialize() -> None:
@@ -861,25 +836,24 @@ async def _initialize() -> None:
             return
 
         config = state.config if state.config else load_settings()
-        _log(f"{YELLOW}{i18n.t('start_services')}{RESET}")
+        logger.info(f"{i18n.t('start_services')}")
 
         async def _init_chatbot():
             if "ChatBot" not in globals() or ChatBot is None:
                 return
             try:
                 service = config.get("chatbot_service", "openai")
-                _log(f"{YELLOW}{i18n.t('init_chatbot', service=service)}{RESET}")
+                logger.info(f"{i18n.t('init_chatbot', service=service)}")
                 state.chat_bot = ChatBot(
                     chat_bot_service=service,
                     openai_model=config.get("openai_model", "gpt-4o-mini"),
-                    detailed_logs=config.get("logs", True),
                     model_path=config.get("model_dir", ""),
                     remember_conversation=config.get("remember_conversation", False)
                 )
                 await asyncio.to_thread(state.chat_bot.initialize)
-                _log(f"{GREEN}{i18n.t('chatbot_ok')}{RESET}")
+                logger.success(f"{i18n.t('chatbot_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('chatbot_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('chatbot_fail', e=e)}")
                 state.chat_bot = None
 
         async def _init_llm():
@@ -890,7 +864,7 @@ async def _initialize() -> None:
             ):
                 return
             try:
-                _log(f"{YELLOW}{i18n.t('start_llm')}{RESET}")
+                logger.info(f"{i18n.t('start_llm')}")
                 state.local_server = RunLocalServer(
                     config.get("show_ollama_server_logs", False),
                     config.get("model_dir", ""),
@@ -900,9 +874,9 @@ async def _initialize() -> None:
                 # Bumped timeout: it no longer blocks the other services, so
                 # we can afford to wait longer for the model to load.
                 await state.local_server.launch_server(timeout=60)
-                _log(f"{GREEN}{i18n.t('llm_ok')}{RESET}")
+                logger.success(f"{i18n.t('llm_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('llm_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('llm_fail', e=e)}")
                 state.local_server = None
 
         async def _init_tts():
@@ -910,7 +884,7 @@ async def _initialize() -> None:
                 return
             try:
                 service = config.get("tts_service", "gtts")
-                _log(f"{YELLOW}{i18n.t('init_tts', service=service)}{RESET}")
+                logger.info(f"{i18n.t('init_tts', service=service)}")
                 state.tts = TTS(
                     tts_language=config.get("tts_language", "en"),
                     tts_service=service,
@@ -923,29 +897,25 @@ async def _initialize() -> None:
                     voice_design=config.get("voice_design", False),
                     reference_wav=config.get("reference_wav", "Data/reference.wav"),
                     omnivoice_device=config.get("omnivoice_device", "cuda"),
-                    detailed_logs=config.get("logs", True),
                     play_only_cable=config.get("play_only_cable", False),
                     gain=config.get("gain", 1.0)
                 )
                 await asyncio.to_thread(state.tts.initialize)
-                _log(f"{GREEN}{i18n.t('tts_ok')}{RESET}")
+                logger.success(f"{i18n.t('tts_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('tts_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('tts_fail', e=e)}")
                 state.tts = None
 
         async def _init_vts():
             if "VtubeControll" not in globals() or VtubeControll is None:
                 return
             try:
-                _log(f"{YELLOW}{i18n.t('connecting_vts')}{RESET}")
-                state.vts = VtubeControll(
-                    detailed_logs=config.get("logs", True),
-                    log_callback=_log
-                )
+                logger.info(f"{i18n.t('connecting_vts')}")
+                state.vts = VtubeControll()
                 await state.vts.initialize()
-                _log(f"{GREEN}{i18n.t('vts_ok')}{RESET}")
+                logger.success(f"{i18n.t('vts_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('vts_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('vts_fail', e=e)}")
                 state.vts = None
 
         async def _init_voice():
@@ -955,10 +925,9 @@ async def _initialize() -> None:
             if ui_service not in ("speech", "wake_word"):
                 return
             try:
-                _log(f"{YELLOW}{i18n.t('init_voice', service=ui_service)}{RESET}")
+                logger.info(f"{i18n.t('init_voice', service=ui_service)}")
                 state.user_input = UserInput(
                     user_input_service=ui_service,
-                    detailed_logs=config.get("logs", True),
                     app_language=config.get("app_language", "english"),
                     wake_word_model_path=os.path.join(
                         BASE_PATH,
@@ -976,9 +945,9 @@ async def _initialize() -> None:
                     await asyncio.to_thread(state.user_input.setup_wake_word)
                 if config.get("stt_service", "whisper") == "whisper":
                     await asyncio.to_thread(state.user_input.setup_whisper)
-                _log(f"{GREEN}{i18n.t('voice_ok')}{RESET}")
+                logger.success(f"{i18n.t('voice_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('voice_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('voice_fail', e=e)}")
                 state.user_input = None
 
         try:
@@ -987,18 +956,18 @@ async def _initialize() -> None:
                 _init_vts(), _init_voice(),
             )
             state.running = True
-            _log(f"{GREEN}{i18n.t('all_online')}{RESET}")
+            logger.success(f"{i18n.t('all_online')}")
 
         except Exception as e:
-            _log(f"{RED}[SERVER ERROR] {e}{RESET}")
-            _log(f"{RED}{i18n.t('crash')}{RESET}")
+            logger.error(f"[SERVER ERROR] {e}")
+            logger.error(f"{i18n.t('crash')}")
             await _broadcast({"type": "crash", "payload": {}})
 
 
 async def _shutdown() -> None:
     """Stop the LLM server, disconnect VTS, and drop the ChatBot/TTS objects."""
     async with state.lock:
-        _log(f"{YELLOW}{i18n.t('stopping')}{RESET}")
+        logger.info(f"{i18n.t('stopping')}")
 
         # Abort any in-flight thinking/speaking so the Stop button always works
         # immediately, even mid-response, instead of waiting for it to finish.
@@ -1010,11 +979,11 @@ async def _shutdown() -> None:
                 if hasattr(state.vts, "vts") and state.vts.vts is not None:
                     if hasattr(state.vts.vts, "close"):
                         await state.vts.vts.close()
-                        _log(f"{GREEN}{i18n.t('vts_disconnected')}{RESET}")
+                        logger.success(f"{i18n.t('vts_disconnected')}")
                     else:
-                        _log(f"{YELLOW}{i18n.t('vts_skip_close')}{RESET}")
+                        logger.info(f"{i18n.t('vts_skip_close')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('vts_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('vts_error', e=e)}")
             state.vts = None
 
         # Clean Local LLM stop
@@ -1024,9 +993,9 @@ async def _shutdown() -> None:
                     state.local_server.stop_server()
                 elif hasattr(state.local_server, "stop"):
                     state.local_server.stop()
-                _log(f"{GREEN}{i18n.t('llm_stopped')}{RESET}")
+                logger.success(f"{i18n.t('llm_stopped')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('local_server_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('local_server_error', e=e)}")
             state.local_server = None
 
         state.chat_bot = None
@@ -1037,13 +1006,13 @@ async def _shutdown() -> None:
         if state.user_input:
             try:
                 state.user_input.cleanup()
-                _log(f"{GREEN}{i18n.t('voice_stopped')}{RESET}")
+                logger.success(f"{i18n.t('voice_stopped')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('user_input_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('user_input_error', e=e)}")
             state.user_input = None
 
         state.running = False
-        _log(f"{GREEN}{i18n.t('shut_down')}{RESET}")
+        logger.success(f"{i18n.t('shut_down')}")
 
 
 #Main
@@ -1061,18 +1030,26 @@ def _port_in_use(host: str = "127.0.0.1", port: int = 5050) -> bool:
 
 if __name__ == "__main__":
     load_settings()
+    # Verbosity is driven solely by the configured log_level setting.
+    setup_logging(
+        level=state.config.get("log_level", "INFO"),
+        rotation=state.config.get("log_rotation", "10 MB"),
+        retention=state.config.get("log_retention", "30 days"),
+        file_enabled=state.config.get("file_logs", True),
+        gui_sink=_gui_log_sink,
+    )
     try:
         if _port_in_use():
-            print(f"{RED}Port 5050 is already in use. Another instance of NOUS (or another program) is running.{RESET}")
-            print(f"{ORANGE}Close it first, or the GUI cannot start.{RESET}")
+            logger.error("Port 5050 is already in use. Another instance of NOUS (or another program) is running.")
+            logger.warning("Close it first, or the GUI cannot start.")
         else:
-            _log("Nous Intelligence GUI -> http://localhost:5050")
+            logger.info("Nous Intelligence GUI -> http://localhost:5050")
             threading.Timer(1.5, _open_browser).start()
-            uvicorn.run(app, host="127.0.0.1", port=5050, log_config=LOGGING_CONFIG)
+            uvicorn.run(app, host="127.0.0.1", port=5050, log_config=None, log_level="warning", access_log=False)
     except KeyboardInterrupt:
-        print(f"{YELLOW}Server stopped by user.{RESET}")
+        logger.warning("Server stopped by user.")
     except Exception as e:
-        print(f"{RED}Fatal error: {e}{RESET}")
+        logger.error(f"Fatal error: {e}")
     finally:
         #keep the terminal open so crash/shutdown messages can be read
-        input(f"{ORANGE}Press Enter to close this window...{RESET}")
+        input("Press Enter to close this window...")

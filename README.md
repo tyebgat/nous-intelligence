@@ -258,7 +258,10 @@ This configuration is stored in `settings.json` on the project's root:
     "audio_device": "",
 
     "_comment_logs": "------LOGS SETTINGS--------",
-    "logs": true,
+    "log_level": "INFO",
+    "file_logs": true,
+    "log_rotation": "10 MB",
+    "log_retention": "30 days",
     "print_audio_devices": false,
     "show_ollama_server_logs": true
 }

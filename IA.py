@@ -14,12 +14,10 @@ class Nous:
         self, 
         vts: VtubeControll = None, 
         ChatBot: ChatBot = None, 
-        detailed_logs: bool = False, 
         print_audio_devices: bool = False, 
         user_input: UserInput = None,
         tts: TTS = None) -> None:
         
-        self.detailed_logs = detailed_logs
         self.print_audio_devices = print_audio_devices
         self.chat_bot = ChatBot
         self.vts = vts
@@ -99,7 +97,7 @@ class Nous:
 
 def main():
     from TTS import TTS
-    user_input = UserInput("console", False, "english")
+    user_input = UserInput(user_input_service="console", app_language="english")
     tts = TTS(tts_language="en")
     ai = Nous(tts=tts, user_input=user_input)
     ai.initialize()

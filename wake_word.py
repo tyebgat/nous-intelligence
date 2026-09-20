@@ -15,13 +15,11 @@ class WakeWordListener:
         threshold: float = 0.5,
         confirm_sound: bool = True,
         silence_duration: float = 1.5,
-        detailed_logs: bool = False,
     ) -> None:
         self.model_path = model_path
         self.threshold = threshold
         self.confirm_sound = confirm_sound
         self.silence_duration = silence_duration
-        self.detailed_logs = detailed_logs
         self._model = None
         self._pending = b""
 
@@ -107,14 +105,12 @@ class WakeWordListener:
 
             model_path = self._resolve_model_path()
 
-            if self.detailed_logs:
-                logger.debug(f"Loading wake word model: {model_path}")
+            logger.debug(f"Loading wake word model: {model_path}")
             self._model = OwwModel(
                 wakeword_models=[model_path],
                 inference_framework="onnx"
             )
-            if self.detailed_logs:
-                logger.debug("Wake word model loaded.")
+            logger.debug("Wake word model loaded.")
         except Exception as e:
             logger.error(f"Failed to load wake word model: {e}")
             raise
@@ -146,8 +142,7 @@ class WakeWordListener:
                 stream.stop_stream()
                 stream.close()
         except Exception as e:
-            if self.detailed_logs:
-                logger.debug(f"Wake word listen error: {e}")
+            logger.debug(f"Wake word listen error: {e}")
             return False
 
     def record_until_silence(self, audio: pyaudio.PyAudio) -> list:
@@ -188,8 +183,7 @@ class WakeWordListener:
                 stream.stop_stream()
                 stream.close()
         except Exception as e:
-            if self.detailed_logs:
-                logger.debug(f"Recording error: {e}")
+            logger.debug(f"Recording error: {e}")
             return []
 
         return frames
@@ -214,5 +208,4 @@ class WakeWordListener:
                 sd.play(tone.astype(np.float32), sr_rate)
                 sd.wait()
         except Exception as e:
-            if self.detailed_logs:
-                logger.debug(f"Could not play confirm sound: {e}")
+            logger.debug(f"Could not play confirm sound: {e}")

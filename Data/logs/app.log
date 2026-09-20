@@ -5520,3 +5520,38 @@ ConnectionResetError: [WinError 10054] An existing connection was forcibly close
 2026-09-20 16:19:46.339 | SUCCESS  | __main__:_shutdown:987 | [SERVER] VTube Studio disconnected.
 2026-09-20 16:19:46.339 | SUCCESS  | __main__:_shutdown:1001 | [SERVER] Local LLM server stopped.
 2026-09-20 16:19:46.340 | SUCCESS  | __main__:_shutdown:1020 | [SERVER] AI services shut down completely.
+2026-09-20 16:37:54.271 | INFO     | __main__:chat_socket:461 | [WS] Client disconnected.
+2026-09-20 16:37:55.318 | DEBUG    | logging:callHandlers:1706 | close.started
+2026-09-20 16:37:55.322 | DEBUG    | logging:callHandlers:1706 | close.complete
+2026-09-20 16:38:03.163 | INFO     | logging_setup:setup_logging:100 | Logging initialized. Log file: C:\Users\Tyebgat\Desktop\desktop media\Coding\NOUS INTELLIGENCE\nous-intelligence\Data\logs\app.log
+2026-09-20 16:38:04.171 | INFO     | __main__:<module>:1046 | Nous Intelligence GUI -> http://localhost:5050
+2026-09-20 16:38:05.383 | INFO     | __main__:chat_socket:402 | [WS] Client connected.
+2026-09-20 16:38:06.369 | INFO     | __main__:chat_socket:402 | [WS] Client connected.
+2026-09-20 16:38:14.126 | INFO     | __main__:_initialize:839 | [SERVER] Starting AI Services...
+2026-09-20 16:38:14.127 | INFO     | __main__:_init_chatbot:846 | [SERVER] Initializing ChatBot (local)...
+2026-09-20 16:38:14.132 | INFO     | __main__:_init_llm:867 | [SERVER] Starting local LLM server...
+2026-09-20 16:38:14.133 | INFO     | run_local_server:launch_server:58 | Checking local AI server
+2026-09-20 16:38:14.228 | INFO     | __main__:_init_tts:887 | [SERVER] Initializing TTS (omnivoice)...
+2026-09-20 16:38:14.228 | INFO     | __main__:_init_vts:913 | [SERVER] Connecting to VTube Studio...
+2026-09-20 16:38:14.228 | SUCCESS  | VtubeS_Plugin:__init__:24 | Plugin starto!
+2026-09-20 16:38:14.229 | INFO     | VtubeS_Plugin:auth_connect:33 | Trying to connect to Vtube Studio API...
+2026-09-20 16:38:14.234 | SUCCESS  | TTS:get_cable_device_id:168 | Found VB Cable Input: [16] CABLE Input (VB-Audio Virtual Cable)
+2026-09-20 16:38:14.234 | SUCCESS  | TTS:initialize:63 | VB Cable device set to id: 16
+2026-09-20 16:38:14.240 | SUCCESS  | __main__:_init_chatbot:854 | [SERVER] ChatBot initialized successfully.
+2026-09-20 16:38:14.504 | INFO     | logging:callHandlers:1706 | HTTP Request: GET http://localhost:8080/health "HTTP/1.1 200 OK"
+2026-09-20 16:38:14.505 | SUCCESS  | run_local_server:launch_server:64 | An existing local server is already running, reusing it.
+2026-09-20 16:38:14.506 | SUCCESS  | run_local_server:launch_server:65 | Detected model: C:\Users\Tyebgat\Desktop\desktop media\Coding\NOUS INTELLIGENCE\nous-intelligence\models/llama/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+2026-09-20 16:38:14.507 | SUCCESS  | __main__:_init_llm:877 | [SERVER] Local LLM server running successfully.
+2026-09-20 16:38:18.332 | ERROR    | __main__:_init_vts:918 | [SERVER ERROR] VTube Studio failed to connect: [WinError 1225] The remote computer refused the network connection
+2026-09-20 16:38:26.941 | SUCCESS  | TTS:initialize:141 | OmniVoice initialized with voice cloning from: C:\Users\Tyebgat\Desktop\desktop media\Coding\NOUS INTELLIGENCE\nous-intelligence\Data\reference.wav
+2026-09-20 16:38:26.943 | SUCCESS  | __main__:_init_tts:904 | [SERVER] TTS Engine ready successfully.
+2026-09-20 16:38:26.945 | SUCCESS  | __main__:_initialize:959 | [SERVER] All requested AI services are online.
+2026-09-20 16:38:41.031 | INFO     | __main__:_handle_message:537 | [CHAT RECEIVED]: hi nous
+2026-09-20 16:38:43.830 | INFO     | logging:callHandlers:1706 | HTTP Request: POST http://localhost:8080/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-20 16:38:51.936 | INFO     | __main__:_handle_message:599 | [BOT RESPONSE]: Hi there! It's so great to meet you! How can I assist you today?
+2026-09-20 16:38:51.937 | INFO     | __main__:_handle_message:610 | [EMOTION]: Happy
+2026-09-20 16:38:51.939 | INFO     | TTS:tts_say:206 | NOUS: Hi there! It's so great to meet you! How can I assist you today?
+2026-09-20 16:39:09.198 | INFO     | __main__:_shutdown:970 | [SERVER] Stopping AI services...
+2026-09-20 16:39:09.202 | SUCCESS  | __main__:_shutdown:996 | [SERVER] Local LLM server stopped.
+2026-09-20 16:39:09.420 | SUCCESS  | __main__:_shutdown:1015 | [SERVER] AI services shut down completely.
+2026-09-20 16:40:39.834 | INFO     | __main__:chat_socket:461 | [WS] Client disconnected.

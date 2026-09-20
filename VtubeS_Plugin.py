@@ -10,7 +10,7 @@ from loguru import logger
 class VtubeControll:
 
     # initialize
-    def __init__(self, detailed_logs: bool = True):
+    def __init__(self):
         # identifies the plugin so that it shows the plugin name and developer in Vtube Studio
         self.vts = pyvts.vts(
             plugin_info={
@@ -21,7 +21,6 @@ class VtubeControll:
         )
         self.hotkeys = {}  # cache for hotkeys which will serve for emotions
         self._hotkey_aliases = {}  # lowercase/normalized name -> exact hotkey name
-        self.detailed_logs = detailed_logs
         logger.success("Plugin starto!")
 
     # initializes the function of the authentication and hotkey fetch
@@ -128,12 +127,7 @@ class VtubeControll:
                 "messageType": "HotkeysInCurrentModelRequest",  # requests hotkeys here
                 "requestID": "fetch_hotkeys"
             })
-            logger.success(f"Hotkeys fetched")
-            if self.detailed_logs:
-                logger.debug("=" * 60)
-                logger.debug("Full API response from VTS:")
-                logger.debug(response)  # prints the full response data for debugging purposes
-                logger.debug("=" * 60)
+            logger.success("Hotkeys fetched")
 
             if "data" not in response:
                 raise RuntimeError("No 'data' in response. This might be an error message.")
@@ -151,21 +145,13 @@ class VtubeControll:
                 self._normalize_hotkey_name(name): name
                 for name in self.hotkeys
             }
-            if self.detailed_logs:
-                logger.debug("=" * 60)
-                logger.debug(f"Hotkeys fetched: \n{list(self.hotkeys.keys())}")
-                logger.debug("=" * 60)
+            logger.debug(f"Hotkeys fetched: {list(self.hotkeys.keys())}")
 
         except Exception as e:
             logger.error(f"Error fetching hotkeys: {e}")
             logger.warning(f"Make sure you have a model loaded in VTube Studio with configured hotkeys")
             self.hotkeys = {}
             self._hotkey_aliases = {}
-
-        if self.detailed_logs:
-            logger.debug("=" * 60)
-            logger.debug(f"Hotkeys fetched: {list(self.hotkeys.keys())}")
-            logger.debug("=" * 60)
 
         if not self.hotkeys:
             logger.warning(f"WARNING: No hotkeys found! Make sure your VTube Studio model has hotkeys configured.")
@@ -195,23 +181,17 @@ class VtubeControll:
     # function detects ai response and triggers corresponding hotkey
     async def trigger_hotkey(self, name):
         resolved = self.resolve_emotion(name) or name
-        if self.detailed_logs:
-            logger.info(f"Attempting to trigger hotkey: {name}")
-            logger.debug("=" * 60)
-            logger.debug(f"Available hotkeys: \n{list(self.hotkeys.keys())}")
-            logger.debug("=" * 60)
+        logger.debug(f"Attempting to trigger hotkey: {name}")
 
         if resolved not in self.hotkeys:
-            if self.detailed_logs:
-                logger.warning(f"Hotkey '{name}' not found!")
+            logger.warning(f"Hotkey '{name}' not found!")
             return
 
         try:
             hotkey_id = self.hotkeys[resolved]
-            if self.detailed_logs:
-                logger.info(f"Triggering hotkey ID: {hotkey_id}")
+            logger.debug(f"Triggering hotkey ID: {hotkey_id}")
 
-            response = await self.vts.request({
+            await self.vts.request({
                 "apiName": "VTubeStudioPublicAPI",
                 "apiVersion": "1.0",
                 "messageType": "HotkeyTriggerRequest",
@@ -220,10 +200,6 @@ class VtubeControll:
                     "hotkeyID": hotkey_id
                 }
             })
-            if self.detailed_logs:
-                logger.debug("=" * 60)
-                logger.debug(f"Hotkey trigger response: \n{response}")
-                logger.debug("=" * 60)
 
         except Exception as e:
             logger.warning(f"Connection lost, attempting to reconnect...")
@@ -233,7 +209,7 @@ class VtubeControll:
 
                 resolved = self.resolve_emotion(name) or name
                 hotkey_id = self.hotkeys[resolved]
-                response = await self.vts.request({
+                await self.vts.request({
                     "apiName": "VTubeStudioPublicAPI",
                     "apiVersion": "1.0",
                     "messageType": "HotkeyTriggerRequest",
@@ -242,11 +218,8 @@ class VtubeControll:
                         "hotkeyID": hotkey_id
                     }
                 })
-                if self.detailed_logs:
-                    logger.debug("=" * 60)
-                    logger.debug(f"Hotkey triggered after reconnection: \n{response}")
-                    logger.debug("=" * 60)
-                logger.success(f"Conected.")
+                logger.success("Connected.")
+
             except Exception as reconnect_error:
                 logger.error(f"Failed to reconnect and trigger hotkey '{name}': {reconnect_error}")
 
@@ -335,20 +308,17 @@ class VtubeControll:
             if question_marks >= 1 and exclaims == 0 and max(counts.values()) == 0:
                 counts["Surprised"] += 1
 
-            if self.detailed_logs:
-                logger.debug(f"Emotion counts - {counts} (excl: {exclaims}, caps: {caps_ratio:.0%})")
+            logger.debug(f"Emotion counts - {counts} (excl: {exclaims}, caps: {caps_ratio:.0%})")
 
             dominant = max(counts, key=counts.get)
             if counts[dominant] == 0:
                 return "Neutral"
 
-            if self.detailed_logs:
-                logger.debug(f"Dominant emotion: {dominant}")
+            logger.debug(f"Dominant emotion: {dominant}")
             return dominant
 
         except Exception as e:
-            if self.detailed_logs:
-                logger.warning(f"error in analyzing dominant emotion: {e}")
+            logger.warning(f"Error analyzing dominant emotion: {e}")
             return "Neutral"
 
 # if this file is executed directly it will run the main function

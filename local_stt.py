@@ -22,12 +22,10 @@ class LocalSTT:
         device: str = "cpu",
         compute_type: str = "int8",
         language: str = "en",
-        detailed_logs: bool = False,
     ) -> None:
         self.device = device
         self.compute_type = compute_type
         self.language = language
-        self.detailed_logs = detailed_logs
         self._model = None
 
     def cleanup(self) -> None:
@@ -44,9 +42,8 @@ class LocalSTT:
                 # decoder physically cannot output Spanish/other languages.
                 model_name = self.DEFAULT_MODEL_EN
 
-            if self.detailed_logs:
-                logger.debug(f"Loading Whisper STT model: {model_name} "
-                    f"(device={self.device}, compute={self.compute_type}, lang={self.language})")
+            logger.debug(f"Loading Whisper STT model: {model_name} "
+                f"(device={self.device}, compute={self.compute_type}, lang={self.language})")
             self._model = WhisperModel(
                 model_name,
                 device=self.device,
@@ -81,8 +78,7 @@ class LocalSTT:
                 if not low:
                     continue
                 if any(h in low for h in self.HALLUCINATIONS):
-                    if self.detailed_logs:
-                        logger.debug(f"[STT] Dropped hallucinated segment: {text}")
+                    logger.debug(f"[STT] Dropped hallucinated segment: {text}")
                     continue
                 parts.append(text)
             return " ".join(parts).strip()

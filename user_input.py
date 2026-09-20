@@ -19,7 +19,6 @@ class UserInput:
     def __init__(
         self,
         user_input_service: str = "speech",
-        detailed_logs: bool = False,
         app_language: str = "english",
         wake_word_model_path: str = "",
         wake_word_threshold: float = 0.5,
@@ -35,7 +34,6 @@ class UserInput:
         self.stt_device = stt_device
         self.stt_compute_type = stt_compute_type
         self.stt_language = stt_language
-        self.detailed_logs = detailed_logs
         self.app_language = app_language
         self.silence_duration = silence_duration
         self.mic = None
@@ -66,7 +64,6 @@ class UserInput:
                 threshold=wake_word_threshold,
                 confirm_sound=wake_word_confirm_sound,
                 silence_duration=silence_duration,
-                detailed_logs=detailed_logs,
             )
 
         self.local_stt = None
@@ -76,7 +73,6 @@ class UserInput:
                 device=stt_device,
                 compute_type=stt_compute_type,
                 language=stt_language,
-                detailed_logs=detailed_logs,
             )
 
     def setup_mic(self, mic_index: int = None) -> None:
@@ -108,8 +104,7 @@ class UserInput:
             x_new = np.linspace(0, len(audio) - 1, target_len)
             return np.interp(x_new, x_old, audio).astype(np.int16).tobytes()
         except Exception as e:
-            if self.detailed_logs:
-                logger.debug(f"Resample error: {e}")
+            logger.debug(f"Resample error: {e}")
             return pcm
 
     #=============================================
@@ -222,7 +217,6 @@ class UserInput:
                     device=self.stt_device,
                     compute_type=self.stt_compute_type,
                     language=self.stt_language,
-                    detailed_logs=self.detailed_logs,
                 )
             if self.local_stt._model is None:
                 self.setup_whisper()
@@ -361,14 +355,11 @@ class UserInput:
 
                         return text
                     except Exception as e:
-                        if self.detailed_logs:
-                            logger.debug(f"unexpected error during recording: {e}")
+                        logger.debug(f"unexpected error during recording: {e}")
                         if self.app_language == "english":
                             logger.error("Error during recording.")
                         elif self.app_language == "spanish":
                             logger.error("Eror durante grabacion.")
-                        if self.detailed_logs:
-                            logger.debug("Cleaning up audio stream...")
                         try:
                             if 'stream' in locals():
                                 stream.stop_stream()

@@ -77,14 +77,8 @@ async def main():
             llama_ctx_size = config.get("llama_ctx_size", 4096)
 
             # --- logs ---
-            detailed_logs = config.get("logs", True)
             print_audio_devices = config.get("print_audio_devices", False)
             show_ollama_server_logs = config.get("show_ollama_server_logs", False)
-
-            if detailed_logs:
-                logger.debug("==================SETTINGS===================")
-                logger.debug(json.dumps(config, indent=4))
-                logger.debug("=" * 60)
 
     except FileNotFoundError:
         #========================
@@ -137,14 +131,11 @@ async def main():
         llama_ctx_size = 4096
 
         # --- logs settings ---
-        detailed_logs = True
         print_audio_devices = False
         show_ollama_server_logs = False
 
-    # Level reflects the "Detailed Logs" toggle when enabled, otherwise the
-    # configured log_level; file written to Data/logs/app.log per settings.
     setup_logging(
-        level="DEBUG" if detailed_logs else config.get("log_level", "INFO"),
+        level=config.get("log_level", "INFO"),
         rotation=config.get("log_rotation", "10 MB"),
         retention=config.get("log_retention", "30 days"),
         file_enabled=config.get("file_logs", True),
@@ -153,15 +144,14 @@ async def main():
     logger.info("Starting Vtube Studio Plugin...")
     
     #VTS Plugin
-    vts = VtubeControll(detailed_logs=detailed_logs)
+    vts = VtubeControll()
 
     #Chat bot scirpt
     chat_bot = ChatBot(
-        chat_bot_service= chatbot_service,
-        openai_model= openai_model,
-        detailed_logs= detailed_logs,
-        model_path= model_dir,
-        remember_conversation= remember_conversation
+        chat_bot_service=chatbot_service,
+        openai_model=openai_model,
+        model_path=model_dir,
+        remember_conversation=remember_conversation
     )
     chat_bot.initialize()
     
@@ -174,7 +164,6 @@ async def main():
     #user input
     user_input = UserInput(
         user_input_service=user_input_service,
-        detailed_logs=detailed_logs,
         app_language=app_language,
         wake_word_model_path=os.path.join(BASE_PATH, wake_word_model),
         wake_word_threshold=wake_word_threshold,
@@ -199,7 +188,6 @@ async def main():
         voice_design=voice_design, 
         reference_wav=reference_wav,
         omnivoice_device=omnivoice_device, 
-        detailed_logs=detailed_logs,
         play_only_cable=play_only_cable,
         gain=gain
     )
@@ -246,7 +234,6 @@ async def main():
     ai = Nous(
         vts=vts, 
         ChatBot=chat_bot, 
-        detailed_logs=detailed_logs, 
         print_audio_devices=print_audio_devices, 
         user_input=user_input, 
         tts=tts
@@ -282,9 +269,7 @@ async def main():
         logger.warning("Keyboard interrupt detected shutting down...")
 
     except Exception as e:
-        logger.error("Unexpecter error occured in main loop, shutting down...")
-        if detailed_logs:
-            logger.debug(f"Unexpected error occured in main loop, shutting down: {e}")
+        logger.error(f"Unexpected error occured in main loop, shutting down: {e}")
 
     finally:
         user_input.cleanup()

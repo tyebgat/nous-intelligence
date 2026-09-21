@@ -3,12 +3,7 @@ import subprocess
 import asyncio
 import httpx
 from paths import BASE_PATH
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
+from loguru import logger
 
 # Default context size for the local LLM. Kept modest on purpose: llama.cpp
 # allocates the whole KV cache up front, so a huge ctx-size slows model loading
@@ -60,14 +55,14 @@ class RunLocalServer:
         raise TimeoutError("server did not become healthy in time")
 
     async def launch_server(self, timeout: int = 30) -> None:
-        print(f"{YELLOW}Checking local AI server{RESET}")
+        logger.info("Checking local AI server")
 
         # Reuse a server that is already listening (e.g. left running from a
         # previous app session) instead of loading the model into RAM again.
         async with httpx.AsyncClient(timeout=2) as client:
             if await self._is_alive(client):
-                print(f"{GREEN}An existing local server is already running, reusing it.{RESET}")
-                print(f"{GREEN}Detected model: {self.model_path}{RESET}")
+                logger.success("An existing local server is already running, reusing it.")
+                logger.success(f"Detected model: {self.model_path}")
                 return
 
             cmd = [
@@ -81,22 +76,22 @@ class RunLocalServer:
             #launches it as a background process
             creation_flags = 0 if self.show_ollama_server_logs else subprocess.CREATE_NO_WINDOW
             self.process = subprocess.Popen(cmd, creationflags=creation_flags)
-            print(f"{YELLOW} Detected model: {self.model_path}{RESET}")
-            print(f"{YELLOW}Running on device: {self.device.upper()}{RESET}")
-            print(f"{YELLOW}Loading model into ram...{RESET}")
+            logger.info(f"Detected model: {self.model_path}")
+            logger.info(f"Running on device: {self.device.upper()}")
+            logger.info("Loading model into ram...")
 
             try:
                 await self._wait_until_ready(timeout, client)
-                print(f"{GREEN}Local Server is active!{RESET}")
+                logger.success("Local Server is active!")
             except TimeoutError:
                 #if the loop finishes
                 self.stop_server()
-                raise TimeoutError(f"{RED}The local server timed out or failed to start.{RESET}")
+                raise TimeoutError(f"The local server timed out or failed to start.")
     
     def stop_server(self) -> None:
         if hasattr(self, 'process') and self.process:
-            print(f"{YELLOW}Shutting down local LLM...{RESET}")
+            logger.info("Shutting down local LLM...")
             self.process.terminate()
             self.process.wait()
             self.process = None
-            print(f"{GREEN}Local LLM closed with no problems.{RESET}")
+            logger.success("Local LLM closed with no problems.")

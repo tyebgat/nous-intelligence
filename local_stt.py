@@ -1,10 +1,5 @@
 import numpy as np
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
+from loguru import logger
 
 
 class LocalSTT:
@@ -27,12 +22,10 @@ class LocalSTT:
         device: str = "cpu",
         compute_type: str = "int8",
         language: str = "en",
-        detailed_logs: bool = False,
     ) -> None:
         self.device = device
         self.compute_type = compute_type
         self.language = language
-        self.detailed_logs = detailed_logs
         self._model = None
 
     def cleanup(self) -> None:
@@ -49,16 +42,15 @@ class LocalSTT:
                 # decoder physically cannot output Spanish/other languages.
                 model_name = self.DEFAULT_MODEL_EN
 
-            if self.detailed_logs:
-                print(f"{YELLOW}Loading Whisper STT model: {model_name} "
-                    f"(device={self.device}, compute={self.compute_type}, lang={self.language}){RESET}")
+            logger.debug(f"Loading Whisper STT model: {model_name} "
+                f"(device={self.device}, compute={self.compute_type}, lang={self.language})")
             self._model = WhisperModel(
                 model_name,
                 device=self.device,
                 compute_type=self.compute_type
             )
         except Exception as e:
-            print(f"{RED}Failed to load Whisper STT model: {e}{RESET}")
+            logger.error(f"Failed to load Whisper STT model: {e}")
             raise
 
     def transcribe(self, frames: list, vad_filter: bool = True) -> str:
@@ -86,11 +78,10 @@ class LocalSTT:
                 if not low:
                     continue
                 if any(h in low for h in self.HALLUCINATIONS):
-                    if self.detailed_logs:
-                        print(f"{ORANGE}[STT] Dropped hallucinated segment: {text}{RESET}")
+                    logger.debug(f"[STT] Dropped hallucinated segment: {text}")
                     continue
                 parts.append(text)
             return " ".join(parts).strip()
         except Exception as e:
-            print(f"{RED}Transcription error: {e}{RESET}")
+            logger.error(f"Transcription error: {e}")
             return ""

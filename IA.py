@@ -7,24 +7,17 @@ from TTS import TTS
 import asyncio
 import sounddevice as sd
 from dotenv import load_dotenv
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
+from loguru import logger
 
 class Nous:
     def __init__(
         self, 
         vts: VtubeControll = None, 
         ChatBot: ChatBot = None, 
-        detailed_logs: bool = False, 
         print_audio_devices: bool = False, 
         user_input: UserInput = None,
         tts: TTS = None) -> None:
         
-        self.detailed_logs = detailed_logs
         self.print_audio_devices = print_audio_devices
         self.chat_bot = ChatBot
         self.vts = vts
@@ -33,13 +26,12 @@ class Nous:
 
     def debug_audio_devices(self):
         devices = sd.query_devices()
-        print("\n=== ALL AUDIO DEVICES ===")
+        logger.info("=== ALL AUDIO DEVICES ===")
         for i, device in enumerate(devices):
-            print(f"[{i}] {device['name']}")
-            print(f"    Max input channels: {device['max_input_channels']}")
-            print(f"    Max output channels: {device['max_output_channels']}")
-            print(f"    Default sample rate: {device['default_samplerate']}")
-            print()
+            logger.info(f"[{i}] {device['name']}")
+            logger.info(f"    Max input channels: {device['max_input_channels']}")
+            logger.info(f"    Max output channels: {device['max_output_channels']}")
+            logger.info(f"    Default sample rate: {device['default_samplerate']}")
 
     def initialize(self, mic_index: int = None) -> None:
         if self.print_audio_devices:
@@ -63,7 +55,7 @@ class Nous:
                 dominant_emotion = detected_emotion or self.vts.analyze_dominant_emotion(text)
                 await self.vts.trigger_hotkey(dominant_emotion)
             except Exception as e:
-                print(f"{ORANGE}Emotion analysis error: {e}{RESET}")
+                logger.warning(f"Emotion analysis error: {e}")
 
     def _vts_trigger_callback(self, emotion_name: str):
         """Sync callback for TTS playback hooks; schedules the hotkey trigger."""
@@ -100,12 +92,12 @@ class Nous:
                         self.tts.on_playback_start = None
                         self.tts.on_playback_end = None
         except KeyboardInterrupt:
-            print(f"{ORANGE}Shutting down...{RESET}")
+            logger.info("Shutting down...")
             raise
 
 def main():
     from TTS import TTS
-    user_input = UserInput("console", False, "english")
+    user_input = UserInput(user_input_service="console", app_language="english")
     tts = TTS(tts_language="en")
     ai = Nous(tts=tts, user_input=user_input)
     ai.initialize()
@@ -113,7 +105,7 @@ def main():
         while True:
             asyncio.run(ai.conversation_cycle())
     except KeyboardInterrupt:
-        print(f"{ORANGE}Shutting down...{RESET}")
+        logger.info("Shutting down...")
     finally:
         ai.user_input.cleanup()
 

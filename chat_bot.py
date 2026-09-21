@@ -8,11 +8,10 @@ import sys
 import time
 import threading
 from paths import BASE_PATH
+from loguru import logger
 
-RED = '\033[31m'
-GREEN = '\033[32m'
+# Used by the CLI "Thinking..." spinner (kept as raw ANSI writes).
 YELLOW = '\033[33m'
-ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 # Raised internally when an in-flight generation is aborted by the user.
@@ -89,9 +88,8 @@ def parse_emotional_response(raw: str) -> tuple[str, str | None]:
     return strip_leaked_tags(response_text), emotion
 
 class ChatBot:
-    def __init__(self, chat_bot_service: str = "openai",openai_model: str = None, detailed_logs: bool = False, model_path: str = "", remember_conversation: bool = False) -> None:
+    def __init__(self, chat_bot_service: str = "openai",openai_model: str = None, model_path: str = "", remember_conversation: bool = False) -> None:
         self.openai_model = openai_model
-        self.detailed_logs = detailed_logs
         self.chatbot_service = chat_bot_service
         self.model_path = model_path
         self.remember_conversation = remember_conversation
@@ -207,8 +205,8 @@ class ChatBot:
                 self._stop_spinner()
                 raw_response = "".join(parts).strip()
                 chatgpt_response, emotion = parse_emotional_response(raw_response)
-                if emotion is None and self.detailed_logs:
-                    print(f"{ORANGE}Structured reply unparseable, falling back to keyword analyzer: {raw_response!r}{RESET}")
+                if emotion is None:
+                    logger.warning(f"Structured reply unparseable, falling back to keyword analyzer: {raw_response!r}")
                 self._add_message('assistant', chatgpt_response)
                 self._update_message_history()
                 return chatgpt_response, emotion
@@ -218,7 +216,7 @@ class ChatBot:
                 self._stop_spinner()
                 self.cancel_event = None
                 self._active_client = None
-                print(f"{RED}OpenAI API error: {e}{RESET}")
+                logger.error(f"OpenAI API error: {e}")
                 return "Api error.", None
         #-----------------------------
         #Local LLM Implementation
@@ -269,8 +267,8 @@ class ChatBot:
 
                 raw_response = "".join(parts).strip()
                 local_model_response, emotion = parse_emotional_response(raw_response)
-                if emotion is None and self.detailed_logs:
-                    print(f"{ORANGE}Structured reply unparseable, falling back to keyword analyzer: {raw_response!r}{RESET}")
+                if emotion is None:
+                    logger.warning(f"Structured reply unparseable, falling back to keyword analyzer: {raw_response!r}")
                 self._add_message('assistant', local_model_response)
                 self._update_message_history()
                 return local_model_response, emotion
@@ -280,7 +278,7 @@ class ChatBot:
                 self._stop_spinner()
                 self.cancel_event = None
                 self._active_client = None
-                print(f"{RED}An error has ocurred on local llm: {e}{RESET}")
+                logger.error(f"An error has ocurred on local llm: {e}")
                 return "Local model error", None
         #-----------------------------
         #Dummy response
@@ -292,7 +290,7 @@ class ChatBot:
             self._update_message_history()
             return dummy_response, "Happy"
         else:
-            print(f"{ORANGE}unknown chatbot service. chatbot_services {self.chatbot_service}{RESET}")
+            logger.warning(f"unknown chatbot service. chatbot_services {self.chatbot_service}")
 
     def _add_message(self, role: str, content: str) -> None:
         self.message_history.append({'role': role, 'content': content})

@@ -196,7 +196,10 @@ These settings only affect the built-in GUI.
 
 | Setting | Type | Description |
 |---------|------|-------------|
-| `logs` | `true` \| `false` | Prints detailed logs with full API responses for debugging. |
+| `enable_logs` | `true` \| `false` | Master switch for logging: when `false`, the console, `Data/logs/app.log` and the GUI terminal panel stay quiet. |
+| `file_logs` | `true` \| `false` | Also write logs to `Data/logs/app.log` (rotated by size, old files cleaned up). |
+| `log_rotation` | string | Size/interval at which `Data/logs/app.log` is rotated (e.g. `"10 MB"`). |
+| `log_retention` | string | How long rotated log files are kept (e.g. `"30 days"`). |
 | `print_audio_devices` | `true` \| `false` | Toggles print out of audio devices for debugging (to find Virtual Audio Cable). |
 | `show_ollama_server_logs` | `true` \| `false` | Only used with `"local"` chatbot service. Shows Llama server logs in the same console. |
 
@@ -258,7 +261,10 @@ This configuration is stored in `settings.json` on the project's root:
     "audio_device": "",
 
     "_comment_logs": "------LOGS SETTINGS--------",
-    "logs": true,
+    "enable_logs": true,
+    "file_logs": true,
+    "log_rotation": "10 MB",
+    "log_retention": "30 days",
     "print_audio_devices": false,
     "show_ollama_server_logs": true
 }

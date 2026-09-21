@@ -2,12 +2,7 @@ import pyaudio
 import numpy as np
 import os
 from glob import glob
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
+from loguru import logger
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 PRETRAINED_NAMES = ('alexa', 'hey_jarvis', 'hey_mycroft', 'hey_rhasspy', 'timer', 'weather')
@@ -20,13 +15,11 @@ class WakeWordListener:
         threshold: float = 0.5,
         confirm_sound: bool = True,
         silence_duration: float = 1.5,
-        detailed_logs: bool = False,
     ) -> None:
         self.model_path = model_path
         self.threshold = threshold
         self.confirm_sound = confirm_sound
         self.silence_duration = silence_duration
-        self.detailed_logs = detailed_logs
         self._model = None
         self._pending = b""
 
@@ -106,22 +99,20 @@ class WakeWordListener:
         try:
             oww_dir = os.path.join(os.path.dirname(openwakeword.__file__), "resources", "models")
             if not os.path.isdir(oww_dir) or not os.path.exists(os.path.join(oww_dir, "melspectrogram.onnx")):
-                print(f"{YELLOW}OpenWakeWord models not found, downloading...{RESET}")
+                logger.info("OpenWakeWord models not found, downloading...")
                 from openwakeword.utils import download_models
                 download_models()
 
             model_path = self._resolve_model_path()
 
-            if self.detailed_logs:
-                print(f"{YELLOW}Loading wake word model: {model_path}{RESET}")
+            logger.debug(f"Loading wake word model: {model_path}")
             self._model = OwwModel(
                 wakeword_models=[model_path],
                 inference_framework="onnx"
             )
-            if self.detailed_logs:
-                print(f"{GREEN}Wake word model loaded.{RESET}")
+            logger.debug("Wake word model loaded.")
         except Exception as e:
-            print(f"{RED}Failed to load wake word model: {e}{RESET}")
+            logger.error(f"Failed to load wake word model: {e}")
             raise
 
     def listen(self, audio: pyaudio.PyAudio) -> bool:
@@ -151,8 +142,7 @@ class WakeWordListener:
                 stream.stop_stream()
                 stream.close()
         except Exception as e:
-            if self.detailed_logs:
-                print(f"{RED}Wake word listen error: {e}{RESET}")
+            logger.debug(f"Wake word listen error: {e}")
             return False
 
     def record_until_silence(self, audio: pyaudio.PyAudio) -> list:
@@ -193,8 +183,7 @@ class WakeWordListener:
                 stream.stop_stream()
                 stream.close()
         except Exception as e:
-            if self.detailed_logs:
-                print(f"{RED}Recording error: {e}{RESET}")
+            logger.debug(f"Recording error: {e}")
             return []
 
         return frames
@@ -219,5 +208,4 @@ class WakeWordListener:
                 sd.play(tone.astype(np.float32), sr_rate)
                 sd.wait()
         except Exception as e:
-            if self.detailed_logs:
-                print(f"{ORANGE}Could not play confirm sound: {e}{RESET}")
+            logger.debug(f"Could not play confirm sound: {e}")

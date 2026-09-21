@@ -2,10 +2,12 @@
 import asyncio
 import base64
 import json
-import logging
+import socket
 import sys
 import threading
+import time
 import webbrowser
+from contextlib import asynccontextmanager
 from pathlib import Path
 import os
 
@@ -17,9 +19,11 @@ load_dotenv()
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from loguru import logger
 import uvicorn
 
 from paths import BASE_PATH
+from logging_setup import setup_logging
 import i18n
 
 #Modules
@@ -39,7 +43,7 @@ except ImportError:
     VtubeControll = None
 
 try:
-    from TTS import TTS
+    from TTS import TTS, warm_up_heavy_imports
 except ImportError:
     TTS = None
 
@@ -49,12 +53,6 @@ except ImportError:
     UserInput = None
 
 nous_task = None
-
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[33m'
-ORANGE = '\033[38m'
-RESET = '\033[0m'
 
 
 #Global state
@@ -105,64 +103,43 @@ async def _broadcast(message: dict) -> None:
         clients.discard(client)
 
 
-def _log(line: str) -> None:
+#Running asyncio loop captured at startup (used to push loguru records
+#from worker threads into the WebSocket broadcaster).
+_loop_ref = None
+
+
+def _gui_log_sink(message) -> None:
+    """Loguru sink that forwards each record to the GUI over WebSocket.
+
+    `str(message)` is the colored, fully formatted line shown in the
+    terminal; the record's `level` and `message` drive the init status text.
     """
-    Print a line to the server console and forward it to the GUI over
-    WebSocket so it can be shown in the init panel / terminal.
-    """
-    print(line)
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
+    record = message.record
+    loop = _loop_ref
+    if loop is None or not loop.is_running():
         return
-    if loop.is_running():
-        loop.create_task(_broadcast({"type": "log", "payload": {"line": line}}))
-
-
-class WSBroadcastHandler(logging.Handler):
-    """Python logging handler that forwards uvicorn logs to the GUI."""
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            if msg:
-                _log(msg)
-        except Exception:
-            pass
-
-
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {"format": "%(message)s"},
-        "access": {"format": "%(message)s"},
-    },
-    "handlers": {
-        "default": {
-            "formatter": "default",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-        },
-        "access": {
-            "formatter": "access",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-        },
-        "ws": {
-            "formatter": "default",
-            "()": WSBroadcastHandler,
-        },
-    },
-    "loggers": {
-        "uvicorn": {"handlers": ["default", "ws"], "level": "INFO", "propagate": False},
-        "uvicorn.error": {"handlers": ["default", "ws"], "level": "INFO", "propagate": False},
-        "uvicorn.access": {"handlers": ["access", "ws"], "level": "INFO", "propagate": False},
-    },
-}
+    asyncio.run_coroutine_threadsafe(
+        _broadcast({
+            "type": "log",
+            "payload": {
+                "line": str(message),
+                "level": record["level"].name,
+                "message": record["message"],
+            },
+        }),
+        loop,
+    )
 
 #Fast api
-app = FastAPI(title="Nous Intelligence GUI")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _loop_ref
+    _loop_ref = asyncio.get_running_loop()
+    yield
+    _loop_ref = None
+
+
+app = FastAPI(title="Nous Intelligence GUI", lifespan=lifespan)
 
 #settings functions
 def settings_path() -> Path:
@@ -266,7 +243,7 @@ async def browse_path(type: str = "folder", ext: str = ""):
     try:
         path = await asyncio.to_thread(_browse_sync, type, ext)
     except Exception as e:
-        print(f"{RED}File dialog failed: {e}{RESET}")
+        logger.error(f"File dialog failed: {e}")
         return {"path": ""}
     finally:
         _dialog_lock.release()
@@ -424,7 +401,7 @@ async def chat_socket(ws: WebSocket):
     """
     await ws.accept()
     clients.add(ws)
-    _log(i18n.t("ws_connected"))
+    logger.info(i18n.t("ws_connected"))
 
     try:
         while True:
@@ -447,8 +424,8 @@ async def chat_socket(ws: WebSocket):
                             {"type": "crash", "payload": {}}
                         )
                 except Exception as e:
-                    _log(f"{RED}[SERVER ERROR] {e}{RESET}")
-                    _log(f"{RED}{i18n.t('crash')}{RESET}")
+                    logger.error(f"[SERVER ERROR] {e}")
+                    logger.error(f"{i18n.t('crash')}")
                     await ws.send_json(
                         {"type": "crash", "payload": {}}
                     )
@@ -483,9 +460,9 @@ async def chat_socket(ws: WebSocket):
                 await ws.send_json({"type": "pong", "payload": {}})
 
     except WebSocketDisconnect:
-        _log(i18n.t("ws_disconnected"))
+        logger.info(i18n.t("ws_disconnected"))
     except Exception as e:
-        _log(f"[WS Error]: {e}")
+        logger.error(f"[WS Error]: {e}")
     finally:
         clients.discard(ws)
         mic_rate.pop(ws, None)
@@ -535,7 +512,7 @@ async def _interrupt_ai() -> None:
         try:
             state.tts.stop()
         except Exception as e:
-            _log(f"{ORANGE}{i18n.t('tts_error', e=e)}{RESET}")
+            logger.warning(f"{i18n.t('tts_error', e=e)}")
 
     # Tell every client NOW that the turn is over and input is unlocked.
     await _broadcast({"type": "chat_interrupted", "payload": {}})
@@ -547,7 +524,7 @@ async def _interrupt_ai() -> None:
         try:
             await asyncio.wait_for(state.vts.trigger_hotkey("Neutral"), timeout=3)
         except Exception as e:
-            _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
+            logger.warning(f"{i18n.t('vts_neutral_error', e=e)}")
 
 
 async def _handle_message(ws: WebSocket, text: str) -> None:
@@ -559,7 +536,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
     notifications while each stage runs, and a "tts_done" message is sent when
     the voice playback finishes.
     """
-    _log(i18n.t("chat_received", text=text))
+    logger.info(i18n.t("chat_received", text=text))
 
     if state.chat_bot is None:
         await ws.send_json(
@@ -576,7 +553,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
     if state.processing:
         # A previous turn is still in flight. The GUI turns the send button
         # into a stop button while busy, so this is only a safety net.
-        _log(f"{ORANGE}{i18n.t('voice_blocked')}{RESET}")
+        logger.warning(f"{i18n.t('voice_blocked')}")
         await ws.send_json(
             {"type": "chat_stage", "payload": {"stage": "stopped", "text": ""}}
         )
@@ -608,7 +585,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             finally:
                 state._think_task = None
         except Exception as e:
-            _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
+            logger.error(f"{i18n.t('chatbot_error', e=e)}")
             state.ai_busy = False  # don't leave the input locked forever
             state.processing = False
             await ws.send_json({"type": "tts_done", "payload": {}})
@@ -621,7 +598,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             await ws.send_json({"type": "tts_done", "payload": {}})
             return
 
-        _log(i18n.t("bot_response", text=response_text))
+        logger.info(i18n.t("bot_response", text=response_text))
 
         # Resolve the emotion now (chatbot's structured label, keyword analyzer
         # as fallback) but only apply it once the voice actually starts playing.
@@ -630,9 +607,9 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             try:
                 pending_emotion = state.vts.analyze_dominant_emotion(response_text)
             except Exception as e:
-                _log(f"{ORANGE}{i18n.t('vts_emotion_error', e=e)}{RESET}")
+                logger.warning(f"{i18n.t('vts_emotion_error', e=e)}")
         if pending_emotion:
-            _log(i18n.t("emotion", emotion=pending_emotion))
+            logger.info(i18n.t("emotion", emotion=pending_emotion))
 
         # Stage 2: generating the voice
         if state.tts is not None:
@@ -670,7 +647,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
                 except asyncio.CancelledError:
                     pass  # interrupted: state.tts.stop() already cut the audio
                 except Exception as e:
-                    _log(f"{RED}{i18n.t('tts_error', e=e)}{RESET}")
+                    logger.error(f"{i18n.t('tts_error', e=e)}")
                 finally:
                     state.tts.on_playback_start = None
                     state.tts.on_playback_end = None
@@ -687,7 +664,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
                         try:
                             await state.vts.trigger_hotkey("Neutral")
                         except Exception as e:
-                            _log(f"{ORANGE}{i18n.t('vts_neutral_error', e=e)}{RESET}")
+                            logger.warning(f"{i18n.t('vts_neutral_error', e=e)}")
 
             state._speak_task = asyncio.create_task(_speak_and_reset())
         else:
@@ -715,7 +692,7 @@ async def _handle_message(ws: WebSocket, text: str) -> None:
             pass
         raise
     except Exception as e:
-        _log(f"{RED}{i18n.t('chatbot_error', e=e)}{RESET}")
+        logger.error(f"{i18n.t('chatbot_error', e=e)}")
         # Don't leave the input locked if anything unexpected happened.
         try:
             await _interrupt_ai()
@@ -750,7 +727,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
     if ui.user_input_service == "speech":
         if event == "start":
             if state.ai_busy:
-                _log(f"{ORANGE}{i18n.t('voice_blocked')}{RESET}")
+                logger.warning(f"{i18n.t('voice_blocked')}")
             else:
                 ui.start_utterance()
             return
@@ -768,26 +745,26 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                         seconds=f"{stats['seconds']:.2f}",
                         peak=f"{stats['peak']:.0f}", rms=f"{stats['rms']:.0f}",
                     )
-                    _log(f"{YELLOW}{i18n.t('voice_stats', **_stats)}{RESET}")
+                    logger.info(f"{i18n.t('voice_stats', **_stats)}")
                     dump_path = os.path.join(BASE_PATH, "debug_utterance.wav")
                     await asyncio.to_thread(ui.dump_utterance, dump_path, frames)
-                    _log(f"{YELLOW}{i18n.t('voice_saved', path=dump_path)}{RESET}")
+                    logger.info(f"{i18n.t('voice_saved', path=dump_path)}")
                 else:
-                    _log(f"{YELLOW}{i18n.t('voice_no_chunks')}{RESET}")
+                    logger.info(f"{i18n.t('voice_no_chunks')}")
 
                 text = await asyncio.to_thread(ui._transcribe_frames, frames, True)
                 if not text and ui.stt_service == "whisper" and ui.local_stt._model is not None:
-                    _log(f"{YELLOW}{i18n.t('vad_retry')}{RESET}")
+                    logger.info(f"{i18n.t('vad_retry')}")
                     text = await asyncio.to_thread(ui._transcribe_frames, frames, False)
                 ui.end_utterance()  # clear the buffer
 
                 if text:
-                    _log(f"{GREEN}{i18n.t('voice_text', text=text)}{RESET}")
+                    logger.success(f"{i18n.t('voice_text', text=text)}")
                 else:
-                    _log(f"{ORANGE}{i18n.t('voice_no_speech')}{RESET}")
+                    logger.warning(f"{i18n.t('voice_no_speech')}")
                 await ws.send_json({"type": "speech_result", "payload": {"text": text}})
             except Exception as e:
-                _log(f"{RED}{i18n.t('voice_input_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('voice_input_error', e=e)}")
             return
 
     raw = base64.b64decode(payload.get("data") or "")
@@ -809,7 +786,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
             if state.ai_busy:
                 if not ui.listening and ui.feed_wake_audio(pcm):
                     ui.wake_word.reset()
-                    _log(f"{ORANGE}{i18n.t('wake_ignored')}{RESET}")
+                    logger.warning(f"{i18n.t('wake_ignored')}")
                     await ws.send_json({"type": "wake_busy", "payload": {}})
                 return
 
@@ -817,7 +794,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                 if ui.feed_wake_audio(pcm):
                     ui.wake_word.reset()  # clear streaming state so it can't double-fire
                     ui.start_listening()
-                    _log(f"{GREEN}{i18n.t('wake_detected')}{RESET}")
+                    logger.success(f"{i18n.t('wake_detected')}")
                     if ui.wake_word.confirm_sound:
                         await asyncio.to_thread(ui.wake_word.play_confirm_sound)
                     await ws.send_json({"type": "wake_detected", "payload": {}})
@@ -831,7 +808,7 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                             seconds=f"{stats['seconds']:.2f}",
                             peak=f"{stats['peak']:.0f}", rms=f"{stats['rms']:.0f}",
                         )
-                        _log(f"{YELLOW}{i18n.t('wake_utterance', **_ustats)}{RESET}")
+                        logger.info(f"{i18n.t('wake_utterance', **_ustats)}")
                         dump_path = os.path.join(BASE_PATH, "debug_utterance.wav")
                         await asyncio.to_thread(ui.dump_utterance, dump_path, frames)
                     text = await asyncio.to_thread(ui.stop_listening)
@@ -840,46 +817,64 @@ async def _handle_mic(ws: WebSocket, payload: dict) -> None:
                         # Lock input immediately (before the client's chat round
                         # trip) so no new wake word can slip in mid-transition.
                         state.ai_busy = True
-                        _log(f"{GREEN}{i18n.t('voice_text', text=text)}{RESET}")
+                        logger.success(f"{i18n.t('voice_text', text=text)}")
                     else:
-                        _log(f"{ORANGE}{i18n.t('voice_no_speech')}{RESET}")
+                        logger.warning(f"{i18n.t('voice_no_speech')}")
                     await ws.send_json({"type": "speech_result", "payload": {"text": text}})
     except Exception as e:
-        _log(f"{RED}{i18n.t('voice_input_error', e=e)}{RESET}")
+        logger.error(f"{i18n.t('voice_input_error', e=e)}")
 
 
 async def _initialize() -> None:
     """Build ChatBot, TTS, VTS and the local LLM server from settings.json.
 
-    Every component initializes concurrently (asyncio.gather) instead of one
-    after the other. The local LLM takes the longest (loading the model into
-    RAM), so starting it together with everything else turns the wall time
-    from the *sum* of the stages into roughly the *longest* single stage.
+    VTube Studio is deliberately left out of the parallel batch: connecting
+    can block until you accept the plugin's authorization popup in VTube
+    Studio, so it runs on its own first and keeps that prompt front and
+    center instead of burying it under the other services' log lines.
+
+    The remaining components initialize in two ordered phases (they used to
+    all share one asyncio.gather). On a cold first run OmniVoice's multi-GB
+    model download saturates the disk and starves llama-server while it reads
+    its GGUF file, blowing past the health-check timeout and taking down both
+    the local LLM and OmniVoice's own init. Running the downloads first and
+    launching llama.cpp afterwards removes that race; when the model caches
+    are warm the download phase is near-instant, so wall time stays close to
+    the *longest* single stage instead of the *sum*.
     """
     async with state.lock:
         if state.running:
             return
 
         config = state.config if state.config else load_settings()
-        _log(f"{YELLOW}{i18n.t('start_services')}{RESET}")
+        logger.info(f"{i18n.t('start_services')}")
+
+        # Import the heavy AI backends (OmniVoice -> torch/transformers,
+        # faster-whisper -> CTranslate2) on the main thread BEFORE firing the
+        # initializers into parallel worker threads. Racing those imports can
+        # break OmniVoice's cold start (it then only "works on retry" once its
+        # dependencies are cached in sys.modules).
+        warm_up_heavy_imports(
+            tts_service=config.get("tts_service", "gtts"),
+            stt_service=config.get("stt_service", "whisper"),
+        )
 
         async def _init_chatbot():
             if "ChatBot" not in globals() or ChatBot is None:
                 return
             try:
                 service = config.get("chatbot_service", "openai")
-                _log(f"{YELLOW}{i18n.t('init_chatbot', service=service)}{RESET}")
+                logger.info(f"{i18n.t('init_chatbot', service=service)}")
                 state.chat_bot = ChatBot(
                     chat_bot_service=service,
                     openai_model=config.get("openai_model", "gpt-4o-mini"),
-                    detailed_logs=config.get("logs", True),
                     model_path=config.get("model_dir", ""),
                     remember_conversation=config.get("remember_conversation", False)
                 )
                 await asyncio.to_thread(state.chat_bot.initialize)
-                _log(f"{GREEN}{i18n.t('chatbot_ok')}{RESET}")
+                logger.success(f"{i18n.t('chatbot_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('chatbot_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('chatbot_fail', e=e)}")
                 state.chat_bot = None
 
         async def _init_llm():
@@ -890,7 +885,7 @@ async def _initialize() -> None:
             ):
                 return
             try:
-                _log(f"{YELLOW}{i18n.t('start_llm')}{RESET}")
+                logger.info(f"{i18n.t('start_llm')}")
                 state.local_server = RunLocalServer(
                     config.get("show_ollama_server_logs", False),
                     config.get("model_dir", ""),
@@ -900,9 +895,9 @@ async def _initialize() -> None:
                 # Bumped timeout: it no longer blocks the other services, so
                 # we can afford to wait longer for the model to load.
                 await state.local_server.launch_server(timeout=60)
-                _log(f"{GREEN}{i18n.t('llm_ok')}{RESET}")
+                logger.success(f"{i18n.t('llm_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('llm_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('llm_fail', e=e)}")
                 state.local_server = None
 
         async def _init_tts():
@@ -910,7 +905,7 @@ async def _initialize() -> None:
                 return
             try:
                 service = config.get("tts_service", "gtts")
-                _log(f"{YELLOW}{i18n.t('init_tts', service=service)}{RESET}")
+                logger.info(f"{i18n.t('init_tts', service=service)}")
                 state.tts = TTS(
                     tts_language=config.get("tts_language", "en"),
                     tts_service=service,
@@ -923,29 +918,25 @@ async def _initialize() -> None:
                     voice_design=config.get("voice_design", False),
                     reference_wav=config.get("reference_wav", "Data/reference.wav"),
                     omnivoice_device=config.get("omnivoice_device", "cuda"),
-                    detailed_logs=config.get("logs", True),
                     play_only_cable=config.get("play_only_cable", False),
                     gain=config.get("gain", 1.0)
                 )
                 await asyncio.to_thread(state.tts.initialize)
-                _log(f"{GREEN}{i18n.t('tts_ok')}{RESET}")
+                logger.success(f"{i18n.t('tts_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('tts_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('tts_fail', e=e)}")
                 state.tts = None
 
         async def _init_vts():
             if "VtubeControll" not in globals() or VtubeControll is None:
                 return
             try:
-                _log(f"{YELLOW}{i18n.t('connecting_vts')}{RESET}")
-                state.vts = VtubeControll(
-                    detailed_logs=config.get("logs", True),
-                    log_callback=_log
-                )
+                logger.info(f"{i18n.t('connecting_vts')}")
+                state.vts = VtubeControll()
                 await state.vts.initialize()
-                _log(f"{GREEN}{i18n.t('vts_ok')}{RESET}")
+                logger.success(f"{i18n.t('vts_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('vts_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('vts_fail', e=e)}")
                 state.vts = None
 
         async def _init_voice():
@@ -955,10 +946,9 @@ async def _initialize() -> None:
             if ui_service not in ("speech", "wake_word"):
                 return
             try:
-                _log(f"{YELLOW}{i18n.t('init_voice', service=ui_service)}{RESET}")
+                logger.info(f"{i18n.t('init_voice', service=ui_service)}")
                 state.user_input = UserInput(
                     user_input_service=ui_service,
-                    detailed_logs=config.get("logs", True),
                     app_language=config.get("app_language", "english"),
                     wake_word_model_path=os.path.join(
                         BASE_PATH,
@@ -976,29 +966,44 @@ async def _initialize() -> None:
                     await asyncio.to_thread(state.user_input.setup_wake_word)
                 if config.get("stt_service", "whisper") == "whisper":
                     await asyncio.to_thread(state.user_input.setup_whisper)
-                _log(f"{GREEN}{i18n.t('voice_ok')}{RESET}")
+                logger.success(f"{i18n.t('voice_ok')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('voice_fail', e=e)}{RESET}")
+                logger.error(f"{i18n.t('voice_fail', e=e)}")
                 state.user_input = None
 
         try:
-            await asyncio.gather(
-                _init_chatbot(), _init_llm(), _init_tts(),
-                _init_vts(), _init_voice(),
-            )
+            # VTS first, blocking, so the "accept the token in VTube Studio"
+            # prompt stays visible instead of being scrolled away while the
+            # rest of the services spin up.
+            await _init_vts()
+
+            # Phase 1 (model downloads): TTS + voice. On a cold first run
+            # these pull the multi-GB OmniVoice / faster-whisper weights from
+            # HuggingFace. Launching llama.cpp at the same time made the
+            # download saturate the disk, starve the GGUF read, and blow past
+            # llama-server's 60s health-check timeout, and the resulting
+            # I/O/GPU contention also broke OmniVoice's init -> both failed.
+            await asyncio.gather(_init_tts(), _init_voice())
+
+            # Phase 2 (fast paths): chatbot + local llama server, now that
+            # the heavy downloads are done. With warmed caches phase 1 is
+            # near-instant, so the extra serialization only costs wall time
+            # on the first-run download it exists to make reliable.
+            await asyncio.gather(_init_chatbot(), _init_llm())
+
             state.running = True
-            _log(f"{GREEN}{i18n.t('all_online')}{RESET}")
+            logger.success(f"{i18n.t('all_online')}")
 
         except Exception as e:
-            _log(f"{RED}[SERVER ERROR] {e}{RESET}")
-            _log(f"{RED}{i18n.t('crash')}{RESET}")
+            logger.error(f"[SERVER ERROR] {e}")
+            logger.error(f"{i18n.t('crash')}")
             await _broadcast({"type": "crash", "payload": {}})
 
 
 async def _shutdown() -> None:
     """Stop the LLM server, disconnect VTS, and drop the ChatBot/TTS objects."""
     async with state.lock:
-        _log(f"{YELLOW}{i18n.t('stopping')}{RESET}")
+        logger.info(f"{i18n.t('stopping')}")
 
         # Abort any in-flight thinking/speaking so the Stop button always works
         # immediately, even mid-response, instead of waiting for it to finish.
@@ -1010,11 +1015,11 @@ async def _shutdown() -> None:
                 if hasattr(state.vts, "vts") and state.vts.vts is not None:
                     if hasattr(state.vts.vts, "close"):
                         await state.vts.vts.close()
-                        _log(f"{GREEN}{i18n.t('vts_disconnected')}{RESET}")
+                        logger.success(f"{i18n.t('vts_disconnected')}")
                     else:
-                        _log(f"{YELLOW}{i18n.t('vts_skip_close')}{RESET}")
+                        logger.info(f"{i18n.t('vts_skip_close')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('vts_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('vts_error', e=e)}")
             state.vts = None
 
         # Clean Local LLM stop
@@ -1024,9 +1029,9 @@ async def _shutdown() -> None:
                     state.local_server.stop_server()
                 elif hasattr(state.local_server, "stop"):
                     state.local_server.stop()
-                _log(f"{GREEN}{i18n.t('llm_stopped')}{RESET}")
+                logger.success(f"{i18n.t('llm_stopped')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('local_server_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('local_server_error', e=e)}")
             state.local_server = None
 
         state.chat_bot = None
@@ -1037,42 +1042,273 @@ async def _shutdown() -> None:
         if state.user_input:
             try:
                 state.user_input.cleanup()
-                _log(f"{GREEN}{i18n.t('voice_stopped')}{RESET}")
+                logger.success(f"{i18n.t('voice_stopped')}")
             except Exception as e:
-                _log(f"{RED}{i18n.t('user_input_error', e=e)}{RESET}")
+                logger.error(f"{i18n.t('user_input_error', e=e)}")
             state.user_input = None
 
         state.running = False
-        _log(f"{GREEN}{i18n.t('shut_down')}{RESET}")
+        logger.success(f"{i18n.t('shut_down')}")
 
 
 #Main
-def _open_browser() -> None:
-    #Open the GUI in a new browser tab once the server is up.
-    webbrowser.open("http://127.0.0.1:5050", new=2)
+HOST = "127.0.0.1"
+DEFAULT_PORT = 5050
+
+#Keeps the ctypes callback alive for the process lifetime.
+_ctrl_c_handler_route = None
 
 
-def _port_in_use(host: str = "127.0.0.1", port: int = 5050) -> bool:
-    import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(1)
-        return sock.connect_ex((host, port)) == 0
+def install_ctrl_c_handler(server) -> None:
+    """Make Ctrl+C gracefully shut the app down even while the pywebview
+    window owns the main thread.
+
+    On Windows, the edgechromium/winforms message pump blocks the main thread,
+    so Python never gets a chance to raise KeyboardInterrupt there. Instead we
+    register a Win32 console control handler that runs on its own thread when
+    Ctrl+C (or Ctrl+Break) is pressed: it stops the uvicorn backend and closes
+    the window, letting the normal post-window shutdown path finish.
+    """
+    global _ctrl_c_handler_route
+    if sys.platform != "win32" or _ctrl_c_handler_route is not None:
+        return
+
+    import ctypes
+    from ctypes import wintypes
+
+    shutdown_started = {"done": False}
+
+    def _handler(ctrl_type: int) -> bool:
+        if shutdown_started["done"]:
+            return True
+        shutdown_started["done"] = True
+        try:
+            logger.warning("Ctrl+C received; shutting down...")
+            server.should_exit = True
+            try:
+                import webview
+
+                for win in list(webview.windows):
+                    win.destroy()
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.error(f"Ctrl+C shutdown failed: {exc}")
+        return True
+
+    _ctrl_c_handler_route = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint)(_handler)
+    try:
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleCtrlHandler.argtypes = [ctypes.c_void_p, ctypes.c_bool]
+        kernel32.SetConsoleCtrlHandler.restype = ctypes.c_int
+        ok = kernel32.SetConsoleCtrlHandler(_ctrl_c_handler_route, True)
+        if not ok:
+            raise ctypes.WinError()
+    except Exception as exc:
+        logger.warning(f"Could not install the Ctrl+C handler: {exc}")
+        _ctrl_c_handler_route = None
+
+
+def open_server_console() -> None:
+    """Give the server a real console window showing its live logs.
+
+    When the app is launched without a console (e.g. via pythonw or a
+    windowed launcher) a native console is allocated for this process and
+    Python's std streams are reattached, so loguru's console output lands in
+    that visible window next to the pywebview GUI. When the process already
+    owns a console (normal `python main-gui.py` or a console=True build) the
+    existing terminal already shows the logs and nothing is changed.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        if kernel32.GetConsoleWindow():
+            return  # already attached to a console that shows the logs
+        if kernel32.AllocConsole():
+            kernel32.SetConsoleTitleW("NOUS Intelligence - Server Console")
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8", errors="replace")
+            sys.stderr = open("CONOUT$", "w", encoding="utf-8", errors="replace")
+            try:
+                sys.stdin = open("CONIN$", "r")
+            except OSError:
+                pass
+    except Exception as e:
+        logger.warning(f"Could not open the server console window: {e}")
+
+
+def get_free_port(preferred: int = DEFAULT_PORT) -> int:
+    """Return the preferred port if it is free, otherwise any free port."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, preferred))
+            return preferred
+    except OSError:
+        pass
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, 0))
+        return s.getsockname()[1]
+
+
+def wait_for_server(host: str, port: int, timeout: float = 30.0) -> bool:
+    """Poll until the uvicorn backend answers on host:port."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=1.0):
+                return True
+        except OSError:
+            time.sleep(0.25)
+    return False
+
+
+def start_backend(host: str, port: int, server: uvicorn.Server) -> None:
+    """Run uvicorn inside a worker thread (pywebview owns the main thread)."""
+    server.run()
+    logger.info(f"Backend server stopped (http://{host}:{port}).")
+
+
+def _open_browser(url: str) -> None:
+    #Open the GUI in a new browser tab.
+    webbrowser.open(url, new=2)
+
+
+class Bridge:
+    """JS bridge exposed to the GUI (via pywebview js_api)."""
+
+    port = None  # injected at startup so the bridge knows the server URL
+
+    def close_application(self):
+        import webview
+
+        try:
+            if webview.windows:
+                webview.windows[0].destroy()
+                logger.info("Application window closed from the GUI.")
+        except Exception as exc:
+            logger.error(f"Failed to close the window: {exc}")
+
+    def open_external(self, url: str):
+        try:
+            webbrowser.open(url, new=2)
+        except Exception as exc:
+            logger.error(f"Failed to open {url}: {exc}")
+
+
+def shutdown_services_after_window(server: uvicorn.Server) -> None:
+    """Stop every running AI service, then shut down the uvicorn backend.
+
+    Called once the pywebview window closes. `_shutdown()` is async and must
+    run on the FastAPI event loop, so it is scheduled there via
+    `_loop_ref` (captured by the app lifespan) instead of a fresh loop.
+    """
+    loop = _loop_ref
+    if loop is not None and loop.is_running():
+        try:
+            future = asyncio.run_coroutine_threadsafe(_shutdown(), loop)
+            future.result(timeout=30)
+            logger.success("All services shut down after window close.")
+        except Exception as e:
+            logger.error(f"Service shutdown after window close failed: {e}")
+    else:
+        logger.info("No running event loop; services were already stopped.")
+
+    server.should_exit = True
 
 
 if __name__ == "__main__":
+    # Open (or reuse) a real server console that shows the live logs next to
+    # the pywebview window. Must run BEFORE setup_logging so loguru binds to
+    # the freshly attached stderr.
+    open_server_console()
     load_settings()
+    # Logging is a master on/off switch driven by enable_logs.
+    setup_logging(
+        enabled=state.config.get("enable_logs", True),
+        rotation=state.config.get("log_rotation", "10 MB"),
+        retention=state.config.get("log_retention", "30 days"),
+        file_enabled=state.config.get("file_logs", True),
+        gui_sink=_gui_log_sink,
+    )
     try:
-        if _port_in_use():
-            print(f"{RED}Port 5050 is already in use. Another instance of NOUS (or another program) is running.{RESET}")
-            print(f"{ORANGE}Close it first, or the GUI cannot start.{RESET}")
-        else:
-            _log("Nous Intelligence GUI -> http://localhost:5050")
-            threading.Timer(1.5, _open_browser).start()
-            uvicorn.run(app, host="127.0.0.1", port=5050, log_config=LOGGING_CONFIG)
+        port = get_free_port(DEFAULT_PORT)
+        if port != DEFAULT_PORT:
+            logger.warning(f"Port {DEFAULT_PORT} busy; using {port} instead.")
+        logger.info(f"Nous Intelligence GUI -> http://{HOST}:{port}")
+
+        config = uvicorn.Config(
+            app,
+            host=HOST,
+            port=port,
+            log_level="warning",
+            access_log=False,
+            log_config=None,  # loguru owns all logging
+        )
+        server = uvicorn.Server(config)
+        server_thread = threading.Thread(
+            target=start_backend,
+            args=(HOST, port, server),
+            daemon=True,
+            name="uvicorn-backend",
+        )
+        server_thread.start()
+
+        if not wait_for_server(HOST, port):
+            logger.error("Backend did not become reachable in time. Aborting.")
+            server.should_exit = True
+            server_thread.join(timeout=5)
+            raise SystemExit(1)
+
+        #Ctrl+C must keep working: without this, the message pump behind
+        #pywebview swallows the signal and the app can only stop via the GUI.
+        install_ctrl_c_handler(server)
+
+        if not state.config.get("display_separate_window", True):
+            #Old logic: no desktop window, GUI runs in the browser tab and the
+            #server keeps logging to this console until stopped (Ctrl+C).
+            logger.info("Display in separate window is off; opening the default browser tab instead.")
+            threading.Timer(1.5, _open_browser, args=(f"http://{HOST}:{port}",)).start()
+            try:
+                server_thread.join()
+            except KeyboardInterrupt:
+                logger.warning("Server stopped by user.")
+            shutdown_services_after_window(server)
+            raise SystemExit(0)
+
+        try:
+            import webview
+        except ImportError:
+            logger.warning("pywebview not installed; opening GUI in the default browser instead.")
+            threading.Timer(1.5, _open_browser, args=(f"http://{HOST}:{port}",)).start()
+            try:
+                server_thread.join()
+            except KeyboardInterrupt:
+                logger.warning("Server stopped by user.")
+            shutdown_services_after_window(server)
+            input("Press Enter to close this window...")
+            raise SystemExit(0)
+
+        logger.info("Opening desktop window (pywebview)...")
+        webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
+        bridge = Bridge()
+        bridge.port = port
+        icon = os.path.join(BASE_PATH, "icon.ico")
+        webview.create_window(
+            "Nous Intelligence",
+            url=f"http://{HOST}:{port}",
+            width=int(state.config.get("window_width", 1280)),
+            height=int(state.config.get("window_height", 820)),
+            min_size=(900, 600),
+            js_api=bridge,
+        )
+        webview.start(gui="edgechromium", icon=icon if os.path.isfile(icon) else None)
+
+        logger.info("Window closed; shutting down all services.")
+        shutdown_services_after_window(server)
+        server_thread.join(timeout=10)
     except KeyboardInterrupt:
-        print(f"{YELLOW}Server stopped by user.{RESET}")
+        logger.warning("Server stopped by user.")
     except Exception as e:
-        print(f"{RED}Fatal error: {e}{RESET}")
-    finally:
-        #keep the terminal open so crash/shutdown messages can be read
-        input(f"{ORANGE}Press Enter to close this window...{RESET}")
+        logger.error(f"Fatal error: {e}")

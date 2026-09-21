@@ -23,6 +23,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  animation: modal-in 0.15s ease;
+}
+
+.modal-overlay.closing .modal-panel {
+  animation: modal-out 0.12s ease forwards;
 }
 
 .modal-text {
@@ -79,6 +84,30 @@
   align-items: center;
   text-align: center;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  animation: modal-in 0.15s ease;
+  transition: padding 0.35s ease;
+}
+
+.init-panel.compact {
+  padding: 26px 40px 30px;
+}
+
+.init-panel.compact .init-spinner {
+  display: none;
+}
+
+.init-overlay.closing .init-panel {
+  animation: modal-out 0.12s ease forwards;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes modal-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(8px) scale(0.98); }
 }
 
 .init-spinner {
@@ -142,6 +171,19 @@
   line-height: 1.5;
   color: var(--text-muted);
   overflow-wrap: break-word;
+}
+
+/* Tones driven by the log level of the last status message. */
+.init-status.status-success {
+  color: #50fa7b;
+}
+
+.init-status.status-warning {
+  color: #f1fa8c;
+}
+
+.init-status.status-error {
+  color: #ff5555;
 }
 
 .init-actions {

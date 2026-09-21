@@ -7,11 +7,11 @@ import tempfile
 import keyboard
 import time
 import os
+from loguru import logger
 
-RED = '\033[31m'
+# Kept as raw ANSI for the interactive console prompts (space-bar mode).
 GREEN = '\033[32m'
 YELLOW = '\033[33m'
-ORANGE = '\033[38m'
 RESET = '\033[0m'
 
 
@@ -19,7 +19,6 @@ class UserInput:
     def __init__(
         self,
         user_input_service: str = "speech",
-        detailed_logs: bool = False,
         app_language: str = "english",
         wake_word_model_path: str = "",
         wake_word_threshold: float = 0.5,
@@ -35,7 +34,6 @@ class UserInput:
         self.stt_device = stt_device
         self.stt_compute_type = stt_compute_type
         self.stt_language = stt_language
-        self.detailed_logs = detailed_logs
         self.app_language = app_language
         self.silence_duration = silence_duration
         self.mic = None
@@ -66,7 +64,6 @@ class UserInput:
                 threshold=wake_word_threshold,
                 confirm_sound=wake_word_confirm_sound,
                 silence_duration=silence_duration,
-                detailed_logs=detailed_logs,
             )
 
         self.local_stt = None
@@ -76,7 +73,6 @@ class UserInput:
                 device=stt_device,
                 compute_type=stt_compute_type,
                 language=stt_language,
-                detailed_logs=detailed_logs,
             )
 
     def setup_mic(self, mic_index: int = None) -> None:
@@ -108,8 +104,7 @@ class UserInput:
             x_new = np.linspace(0, len(audio) - 1, target_len)
             return np.interp(x_new, x_old, audio).astype(np.int16).tobytes()
         except Exception as e:
-            if self.detailed_logs:
-                print(f"{RED}Resample error: {e}{RESET}")
+            logger.debug(f"Resample error: {e}")
             return pcm
 
     #=============================================
@@ -222,7 +217,6 @@ class UserInput:
                     device=self.stt_device,
                     compute_type=self.stt_compute_type,
                     language=self.stt_language,
-                    detailed_logs=self.detailed_logs,
                 )
             if self.local_stt._model is None:
                 self.setup_whisper()
@@ -279,7 +273,7 @@ class UserInput:
                     user_input = input("User: ")
                     return user_input
                 except Exception as e:
-                    print(f"{RED}console input error: {e}{RESET}")
+                    logger.error(f"console input error: {e}")
                     return ""
             return await asyncio.to_thread(get_input_blocking)
 
@@ -329,17 +323,17 @@ class UserInput:
                             frames.append(data)
 
                         if self.app_language == "english":
-                            print(f"{YELLOW}recording stopped. Processing...{RESET}")
+                            logger.info("recording stopped. Processing...")
                         elif self.app_language == "spanish":
-                            print(f"{YELLOW}Grabacion parada. Procesando...{RESET}")
+                            logger.info("Grabacion parada. Procesando...")
                         stream.stop_stream()
                         stream.close()
 
                         if not frames:
                             if self.app_language == "english":
-                                print(f"{ORANGE}No audio captures. Try again...{RESET}")
+                                logger.warning("No audio captures. Try again...")
                             elif self.app_language == "spanish":
-                                print(f"{ORANGE}Audio no caputrado. Intente denuevo...{RESET}")
+                                logger.warning("Audio no caputrado. Intente denuevo...")
                             continue
 
                         if self.stt_service == "whisper":
@@ -349,26 +343,23 @@ class UserInput:
 
                         if not text:
                             if self.app_language == "english":
-                                print(f"{ORANGE}Could not understand audio. Try again...{RESET}")
+                                logger.warning("Could not understand audio. Try again...")
                             elif self.app_language == "spanish":
-                                print(f"{ORANGE}No se pudo entender. Intente denuevo...{RESET}")
+                                logger.warning("No se pudo entender. Intente denuevo...")
                             continue
 
                         if self.app_language == "english":
-                            print(f"{GREEN}text Captured: {text}{RESET}")
+                            logger.success(f"text Captured: {text}")
                         elif self.app_language == "spanish":
-                            print(f"{GREEN}texto capturado: {text}{RESET}")
+                            logger.success(f"texto capturado: {text}")
 
                         return text
                     except Exception as e:
-                        if self.detailed_logs:
-                            print(f"{RED}unexpected error during recording: {e}{RESET}")
+                        logger.debug(f"unexpected error during recording: {e}")
                         if self.app_language == "english":
-                            print(f"{RED}Error during recording.{RESET}")
+                            logger.error("Error during recording.")
                         elif self.app_language == "spanish":
-                            print(f"{RED}Eror durante grabacion.{RESET}")
-                        if self.detailed_logs:
-                            print(f"{YELLOW}Cleaning up audio stream...{RESET}")
+                            logger.error("Eror durante grabacion.")
                         try:
                             if 'stream' in locals():
                                 stream.stop_stream()
@@ -377,9 +368,9 @@ class UserInput:
                             pass
 
                         if self.app_language == "english":
-                            print(f"{ORANGE}Please try again...{RESET}")
+                            logger.warning("Please try again...")
                         elif self.app_language == "spanish":
-                            print(f"{ORANGE}Porfavor intente denuevo...{RESET}")
+                            logger.warning("Porfavor intente denuevo...")
                         continue
                 return ""
             return await asyncio.to_thread(get_speech_blocking)
@@ -411,29 +402,29 @@ class UserInput:
 
                     if not frames:
                         if self.app_language == "english":
-                            print(f"{ORANGE}No speech detected. Listening again...{RESET}", flush=True)
+                            logger.warning("No speech detected. Listening again...")
                         elif self.app_language == "spanish":
-                            print(f"{ORANGE}No se detecto voz. Escuchando de nuevo...{RESET}", flush=True)
+                            logger.warning("No se detecto voz. Escuchando de nuevo...")
                         continue
 
                     if self.app_language == "english":
-                        print(f"{YELLOW}Transcribing...{RESET}", flush=True)
+                        logger.info("Transcribing...")
                     elif self.app_language == "spanish":
-                        print(f"{YELLOW}Transcribiendo...{RESET}", flush=True)
+                        logger.info("Transcribiendo...")
 
                     text = self.local_stt.transcribe(frames)
 
                     if not text:
                         if self.app_language == "english":
-                            print(f"{ORANGE}Could not understand audio. Listening again...{RESET}", flush=True)
+                            logger.warning("Could not understand audio. Listening again...")
                         elif self.app_language == "spanish":
-                            print(f"{ORANGE}No se pudo entender. Escuchando de nuevo...{RESET}", flush=True)
+                            logger.warning("No se pudo entender. Escuchando de nuevo...")
                         continue
 
                     if self.app_language == "english":
-                        print(f"{GREEN}text Captured: {text}{RESET}")
+                        logger.success(f"text Captured: {text}")
                     elif self.app_language == "spanish":
-                        print(f"{GREEN}texto capturado: {text}{RESET}")
+                        logger.success(f"texto capturado: {text}")
 
                     return text
 
@@ -443,7 +434,7 @@ class UserInput:
 
         else:
             if self.app_language == "english":
-                print(f"{ORANGE}unknown input service: {self.user_input_service}{RESET}")
+                logger.error(f"unknown input service: {self.user_input_service}")
             elif self.app_language == "spanish":
-                print(f"{ORANGE}Input service desconocido: {self.user_input_service}{RESET}")
+                logger.error(f"Input service desconocido: {self.user_input_service}")
             return ""

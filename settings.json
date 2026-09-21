@@ -1,6 +1,6 @@
 {
   "_comment_chatbot": "----CHATBOT SETTINGS-----",
-  "user_input_service": "speech",
+  "user_input_service": "console",
   "chatbot_service": "local",
   "chatbot_name": "NOUS",
   "remember_conversation": false,

@@ -146,6 +146,11 @@ class TTS:
                 logger.error("OmniVoice unavailable. Install with: pip install git+https://github.com/k2-fsa/OmniVoice.git")
             else:
                 try:
+                    hf_token = getenv("HF_TOKEN")
+                    if hf_token:
+                        from huggingface_hub import login
+                        login(token=hf_token)
+
                     import torch
                     if self.omnivoice_device == "cuda":
                         logger.debug(f"CUDA available: {torch.cuda.is_available()}")

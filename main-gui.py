@@ -829,11 +829,16 @@ async def _initialize() -> None:
     VTube Studio is deliberately left out of the parallel batch: connecting
     can block until you accept the plugin's authorization popup in VTube
     Studio, so it runs on its own first and keeps that prompt front and
-    center instead of burying it under the other services' log lines. The
-    remaining components initialize concurrently (asyncio.gather). The local
-    LLM takes the longest (loading the model into RAM), so starting it
-    together with everything else turns the wall time from the *sum* of the
-    stages into roughly the *longest* single stage.
+    center instead of burying it under the other services' log lines.
+
+    The remaining components initialize in two ordered phases (they used to
+    all share one asyncio.gather). On a cold first run OmniVoice's multi-GB
+    model download saturates the disk and starves llama-server while it reads
+    its GGUF file, blowing past the health-check timeout and taking down both
+    the local LLM and OmniVoice's own init. Running the downloads first and
+    launching llama.cpp afterwards removes that race; when the model caches
+    are warm the download phase is near-instant, so wall time stays close to
+    the *longest* single stage instead of the *sum*.
     """
     async with state.lock:
         if state.running:
@@ -967,12 +972,23 @@ async def _initialize() -> None:
         try:
             # VTS first, blocking, so the "accept the token in VTube Studio"
             # prompt stays visible instead of being scrolled away while the
-            # rest of the services spin up; then the rest in parallel.
+            # rest of the services spin up.
             await _init_vts()
-            await asyncio.gather(
-                _init_chatbot(), _init_llm(), _init_tts(),
-                _init_voice(),
-            )
+
+            # Phase 1 (model downloads): TTS + voice. On a cold first run
+            # these pull the multi-GB OmniVoice / faster-whisper weights from
+            # HuggingFace. Launching llama.cpp at the same time made the
+            # download saturate the disk, starve the GGUF read, and blow past
+            # llama-server's 60s health-check timeout, and the resulting
+            # I/O/GPU contention also broke OmniVoice's init -> both failed.
+            await asyncio.gather(_init_tts(), _init_voice())
+
+            # Phase 2 (fast paths): chatbot + local llama server, now that
+            # the heavy downloads are done. With warmed caches phase 1 is
+            # near-instant, so the extra serialization only costs wall time
+            # on the first-run download it exists to make reliable.
+            await asyncio.gather(_init_chatbot(), _init_llm())
+
             state.running = True
             logger.success(f"{i18n.t('all_online')}")
 

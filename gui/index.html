@@ -203,6 +203,7 @@ fetch('/api/settings').then(r => r.json()).then(c => {
       </div>
       <div class="tab-content" id="tab-general">
         <label data-tip-i18n="tip_app_language"><span data-i18n="lbl_app_language">App Language</span> <select data-key="app_language"><option>english</option><option>spanish</option></select></label>
+        <label data-tip-i18n="tip_display_separate_window"><span data-i18n="lbl_display_separate_window">Display in separate window</span> <input type="checkbox" data-key="display_separate_window"/></label>
         <label data-tip-i18n="tip_play_only_cable"><span data-i18n="lbl_play_only_cable">Play Only Cable</span> <input type="checkbox" data-key="play_only_cable"/></label>
         <label data-tip-i18n="tip_microphone"><span data-i18n="lbl_microphone">Microphone</span>
           <span style="display:flex;gap:6px;align-items:center;">
@@ -632,6 +633,8 @@ fetch('/api/settings').then(r => r.json()).then(c => {
       <div class="tab-content" id="tab-logs">
         <label data-tip-i18n="tip_enable_logs"><span data-i18n="lbl_enable_logs">Enable Logs</span> <input type="checkbox" data-key="enable_logs"/></label>
         <label data-tip-i18n="tip_file_logs"><span data-i18n="lbl_file_logs">Write Log File</span> <input type="checkbox" data-key="file_logs"/></label>
+        <label data-tip-i18n="tip_log_rotation"><span data-i18n="lbl_log_rotation">Log Rotation</span> <input type="text" data-key="log_rotation" placeholder="10 MB"/></label>
+        <label data-tip-i18n="tip_log_retention"><span data-i18n="lbl_log_retention">Log Retention</span> <input type="text" data-key="log_retention" placeholder="30 days"/></label>
         <label data-tip-i18n="tip_print_audio_devices"><span data-i18n="lbl_print_audio_devices">Print Audio Devices</span> <input type="checkbox" data-key="print_audio_devices"/></label>
         <label data-tip-i18n="tip_show_llm_logs"><span data-i18n="lbl_show_llm_logs">Show LLM Server Logs</span> <input type="checkbox" data-key="show_ollama_server_logs"/></label>
       </div>

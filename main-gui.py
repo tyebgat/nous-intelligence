@@ -2,8 +2,10 @@
 import asyncio
 import base64
 import json
+import socket
 import sys
 import threading
+import time
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -1050,19 +1052,177 @@ async def _shutdown() -> None:
 
 
 #Main
-def _open_browser() -> None:
-    #Open the GUI in a new browser tab once the server is up.
-    webbrowser.open("http://127.0.0.1:5050", new=2)
+HOST = "127.0.0.1"
+DEFAULT_PORT = 5050
+
+#Keeps the ctypes callback alive for the process lifetime.
+_ctrl_c_handler_route = None
 
 
-def _port_in_use(host: str = "127.0.0.1", port: int = 5050) -> bool:
-    import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(1)
-        return sock.connect_ex((host, port)) == 0
+def install_ctrl_c_handler(server) -> None:
+    """Make Ctrl+C gracefully shut the app down even while the pywebview
+    window owns the main thread.
+
+    On Windows, the edgechromium/winforms message pump blocks the main thread,
+    so Python never gets a chance to raise KeyboardInterrupt there. Instead we
+    register a Win32 console control handler that runs on its own thread when
+    Ctrl+C (or Ctrl+Break) is pressed: it stops the uvicorn backend and closes
+    the window, letting the normal post-window shutdown path finish.
+    """
+    global _ctrl_c_handler_route
+    if sys.platform != "win32" or _ctrl_c_handler_route is not None:
+        return
+
+    import ctypes
+    from ctypes import wintypes
+
+    shutdown_started = {"done": False}
+
+    def _handler(ctrl_type: int) -> bool:
+        if shutdown_started["done"]:
+            return True
+        shutdown_started["done"] = True
+        try:
+            logger.warning("Ctrl+C received; shutting down...")
+            server.should_exit = True
+            try:
+                import webview
+
+                for win in list(webview.windows):
+                    win.destroy()
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.error(f"Ctrl+C shutdown failed: {exc}")
+        return True
+
+    _ctrl_c_handler_route = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint)(_handler)
+    try:
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleCtrlHandler.argtypes = [ctypes.c_void_p, ctypes.c_bool]
+        kernel32.SetConsoleCtrlHandler.restype = ctypes.c_int
+        ok = kernel32.SetConsoleCtrlHandler(_ctrl_c_handler_route, True)
+        if not ok:
+            raise ctypes.WinError()
+    except Exception as exc:
+        logger.warning(f"Could not install the Ctrl+C handler: {exc}")
+        _ctrl_c_handler_route = None
+
+
+def open_server_console() -> None:
+    """Give the server a real console window showing its live logs.
+
+    When the app is launched without a console (e.g. via pythonw or a
+    windowed launcher) a native console is allocated for this process and
+    Python's std streams are reattached, so loguru's console output lands in
+    that visible window next to the pywebview GUI. When the process already
+    owns a console (normal `python main-gui.py` or a console=True build) the
+    existing terminal already shows the logs and nothing is changed.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        if kernel32.GetConsoleWindow():
+            return  # already attached to a console that shows the logs
+        if kernel32.AllocConsole():
+            kernel32.SetConsoleTitleW("NOUS Intelligence - Server Console")
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8", errors="replace")
+            sys.stderr = open("CONOUT$", "w", encoding="utf-8", errors="replace")
+            try:
+                sys.stdin = open("CONIN$", "r")
+            except OSError:
+                pass
+    except Exception as e:
+        logger.warning(f"Could not open the server console window: {e}")
+
+
+def get_free_port(preferred: int = DEFAULT_PORT) -> int:
+    """Return the preferred port if it is free, otherwise any free port."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, preferred))
+            return preferred
+    except OSError:
+        pass
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, 0))
+        return s.getsockname()[1]
+
+
+def wait_for_server(host: str, port: int, timeout: float = 30.0) -> bool:
+    """Poll until the uvicorn backend answers on host:port."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=1.0):
+                return True
+        except OSError:
+            time.sleep(0.25)
+    return False
+
+
+def start_backend(host: str, port: int, server: uvicorn.Server) -> None:
+    """Run uvicorn inside a worker thread (pywebview owns the main thread)."""
+    server.run()
+    logger.info(f"Backend server stopped (http://{host}:{port}).")
+
+
+def _open_browser(url: str) -> None:
+    #Open the GUI in a new browser tab.
+    webbrowser.open(url, new=2)
+
+
+class Bridge:
+    """JS bridge exposed to the GUI (via pywebview js_api)."""
+
+    port = None  # injected at startup so the bridge knows the server URL
+
+    def close_application(self):
+        import webview
+
+        try:
+            if webview.windows:
+                webview.windows[0].destroy()
+                logger.info("Application window closed from the GUI.")
+        except Exception as exc:
+            logger.error(f"Failed to close the window: {exc}")
+
+    def open_external(self, url: str):
+        try:
+            webbrowser.open(url, new=2)
+        except Exception as exc:
+            logger.error(f"Failed to open {url}: {exc}")
+
+
+def shutdown_services_after_window(server: uvicorn.Server) -> None:
+    """Stop every running AI service, then shut down the uvicorn backend.
+
+    Called once the pywebview window closes. `_shutdown()` is async and must
+    run on the FastAPI event loop, so it is scheduled there via
+    `_loop_ref` (captured by the app lifespan) instead of a fresh loop.
+    """
+    loop = _loop_ref
+    if loop is not None and loop.is_running():
+        try:
+            future = asyncio.run_coroutine_threadsafe(_shutdown(), loop)
+            future.result(timeout=30)
+            logger.success("All services shut down after window close.")
+        except Exception as e:
+            logger.error(f"Service shutdown after window close failed: {e}")
+    else:
+        logger.info("No running event loop; services were already stopped.")
+
+    server.should_exit = True
 
 
 if __name__ == "__main__":
+    # Open (or reuse) a real server console that shows the live logs next to
+    # the pywebview window. Must run BEFORE setup_logging so loguru binds to
+    # the freshly attached stderr.
+    open_server_console()
     load_settings()
     # Logging is a master on/off switch driven by enable_logs.
     setup_logging(
@@ -1073,17 +1233,82 @@ if __name__ == "__main__":
         gui_sink=_gui_log_sink,
     )
     try:
-        if _port_in_use():
-            logger.error("Port 5050 is already in use. Another instance of NOUS (or another program) is running.")
-            logger.warning("Close it first, or the GUI cannot start.")
-        else:
-            logger.info("Nous Intelligence GUI -> http://localhost:5050")
-            threading.Timer(1.5, _open_browser).start()
-            uvicorn.run(app, host="127.0.0.1", port=5050, log_config=None, log_level="warning", access_log=False)
+        port = get_free_port(DEFAULT_PORT)
+        if port != DEFAULT_PORT:
+            logger.warning(f"Port {DEFAULT_PORT} busy; using {port} instead.")
+        logger.info(f"Nous Intelligence GUI -> http://{HOST}:{port}")
+
+        config = uvicorn.Config(
+            app,
+            host=HOST,
+            port=port,
+            log_level="warning",
+            access_log=False,
+            log_config=None,  # loguru owns all logging
+        )
+        server = uvicorn.Server(config)
+        server_thread = threading.Thread(
+            target=start_backend,
+            args=(HOST, port, server),
+            daemon=True,
+            name="uvicorn-backend",
+        )
+        server_thread.start()
+
+        if not wait_for_server(HOST, port):
+            logger.error("Backend did not become reachable in time. Aborting.")
+            server.should_exit = True
+            server_thread.join(timeout=5)
+            raise SystemExit(1)
+
+        #Ctrl+C must keep working: without this, the message pump behind
+        #pywebview swallows the signal and the app can only stop via the GUI.
+        install_ctrl_c_handler(server)
+
+        if not state.config.get("display_separate_window", True):
+            #Old logic: no desktop window, GUI runs in the browser tab and the
+            #server keeps logging to this console until stopped (Ctrl+C).
+            logger.info("Display in separate window is off; opening the default browser tab instead.")
+            threading.Timer(1.5, _open_browser, args=(f"http://{HOST}:{port}",)).start()
+            try:
+                server_thread.join()
+            except KeyboardInterrupt:
+                logger.warning("Server stopped by user.")
+            shutdown_services_after_window(server)
+            raise SystemExit(0)
+
+        try:
+            import webview
+        except ImportError:
+            logger.warning("pywebview not installed; opening GUI in the default browser instead.")
+            threading.Timer(1.5, _open_browser, args=(f"http://{HOST}:{port}",)).start()
+            try:
+                server_thread.join()
+            except KeyboardInterrupt:
+                logger.warning("Server stopped by user.")
+            shutdown_services_after_window(server)
+            input("Press Enter to close this window...")
+            raise SystemExit(0)
+
+        logger.info("Opening desktop window (pywebview)...")
+        webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
+        bridge = Bridge()
+        bridge.port = port
+        icon = os.path.join(BASE_PATH, "icon.ico")
+        webview.create_window(
+            "Nous Intelligence",
+            url=f"http://{HOST}:{port}",
+            width=int(state.config.get("window_width", 1280)),
+            height=int(state.config.get("window_height", 820)),
+            min_size=(900, 600),
+            js_api=bridge,
+        )
+        webview.start(gui="edgechromium", icon=icon if os.path.isfile(icon) else None)
+
+        logger.info("Window closed; shutting down all services.")
+        shutdown_services_after_window(server)
+        server_thread.join(timeout=10)
     except KeyboardInterrupt:
         logger.warning("Server stopped by user.")
     except Exception as e:
         logger.error(f"Fatal error: {e}")
-    finally:
-        #keep the terminal open so crash/shutdown messages can be read
-        input("Press Enter to close this window...")

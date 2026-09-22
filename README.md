@@ -94,7 +94,7 @@ Edit the openai-TTS-instructions only if you are using the openai TTS service. T
 
 ### **Voice Cloning**
 
-Only available by Using "pockettts" as the tts service and settings "voice_cloning" to true. To voice clone you need a "reference.wav" file of atleast 5 seconds, and drop it into the `"data"` folder (or point the `reference_wav` setting to your file).
+Only available by Using "pockettts" or "omnivoice" as the tts service and settings "voice_cloning" to true. To voice clone you need a "reference.wav" file of atleast 5 seconds, and drop it into the `"data"` folder (or point the `reference_wav` setting to your file).
 
 ---
 
